@@ -6,7 +6,6 @@ import { LocaleToggle } from '@/components/LocaleToggle';
 import { CardNav, type CardNavItem } from '@/components/reactbits/CardNav';
 import { NAV_ITEMS } from '@/app/nav-items';
 import { useLocale } from '@/contexts/LocaleContext';
-import { bodyFont } from '@/components/home/homeContent';
 
 /**
  * Site navigation as a floating React Bits "card nav": a 60px bar with the
@@ -16,7 +15,7 @@ import { bodyFont } from '@/components/home/homeContent';
  * pages. Black-on-paper to match the keffiyeh homepage.
  */
 export default function Navbar() {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const modules = NAV_ITEMS.filter((i) => i.href !== '/');
   const explore = modules.filter((i) => i.available);
   const archive = modules.filter((i) => !i.available);
@@ -51,7 +50,6 @@ export default function Navbar() {
     <CardNav
       items={items}
       baseColor="#F8F4EE"
-      style={{ fontFamily: bodyFont(locale === 'ar') }}
       openLabel={t('افتح القائمة', 'Open menu')}
       closeLabel={t('أغلق القائمة', 'Close menu')}
       logo={
@@ -69,11 +67,11 @@ export default function Navbar() {
             </svg>
           </span>
           <span className="flex items-center gap-2.5 leading-none">
-            <span className="text-[1.15rem] font-medium text-[#0a0a0a]" style={{ fontFamily: 'var(--jt-font-kufi)' }}>
+            <span className="text-[1.35rem] font-bold text-[#0a0a0a]" style={{ fontFamily: 'var(--jt-font-display)' }}>
               جذور
             </span>
             <span aria-hidden className="h-3.5 w-px bg-black/20" />
-            <span className="pt-px text-[10px] font-normal uppercase tracking-[0.22em] text-[var(--jt-stone-500)]" style={{ fontFamily: 'var(--jt-font-sans-latin)' }}>
+            <span className="pt-px text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-stone-500)]" style={{ fontFamily: 'var(--jt-font-display-latin)' }}>
               Juthoor
             </span>
           </span>
@@ -85,7 +83,7 @@ export default function Navbar() {
           <ModeToggle />
           <Link
             href="/login"
-            className="jt-btn-shine hidden h-10 shrink-0 items-center bg-[var(--jt-gold-500)] px-4 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-[var(--jt-gold-400)] sm:inline-flex"
+            className="jt-btn-shine hidden h-10 shrink-0 items-center bg-[var(--jt-gold-500)] px-4 text-sm font-semibold text-[#0a0a0a] transition-colors hover:bg-[var(--jt-gold-400)] sm:inline-flex"
           >
             {t('تسجيل الدخول', 'Log In / Register')}
           </Link>

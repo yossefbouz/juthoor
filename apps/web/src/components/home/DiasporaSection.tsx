@@ -6,7 +6,7 @@ import { DiasporaConstellation } from '@/components/home/DiasporaConstellation';
 import { ScrollWords } from '@/components/about/ScrollWords';
 import { KeffiyehPattern } from '@/components/home/KeffiyehPattern';
 import { SectionLabel } from '@/components/home/SectionLabel';
-import { CONTAINER, EASE_OUT, GRID, headingFont, type Village } from '@/components/home/homeContent';
+import { CONTAINER, EASE_OUT, GRID, type Village } from '@/components/home/homeContent';
 
 /**
  * Map card slides in from the leading edge, copy from the trailing edge —
@@ -47,19 +47,19 @@ export function DiasporaSection({ villages }: { villages: Village[] }) {
         >
           <SectionLabel index="01" text={t('الشتات', 'Diaspora')} />
           <h2
-            className="mt-6 text-[clamp(1.4rem,2.4vw,1.95rem)] font-medium leading-[1.4] text-[var(--jt-stone-900)]"
-            style={{ fontFamily: headingFont(isAR), fontWeight: 500 }}
+            className="mt-6 text-[clamp(1.7rem,3vw,2.4rem)] font-bold leading-tight text-[var(--jt-stone-900)]"
+            style={{ fontFamily: isAR ? 'var(--jt-font-display)' : 'var(--jt-font-display-latin)', fontWeight: isAR ? 700 : 500 }}
           >
             {t('من حيفا إلى سانتياغو.', 'From Haifa to Santiago.')}
           </h2>
           <ScrollWords
-            className="mt-4 text-[15px] leading-[1.85] text-[var(--jt-stone-600)]"
+            className="mt-4 text-[15px] leading-[1.75] text-[var(--jt-stone-700)]"
             text={t(
               'كلّ نقطة عائلة موثّقة. العائلات من القرية نفسها تتناثر في عشرات الدول — وهنا يصبح هذا التشتّت مرئيًّا في مكان واحد لأول مرّة.',
               'Every dot is a documented family. Families from one village scatter across dozens of countries — here that scatter becomes visible in one place for the first time.',
             )}
           />
-          <p className="mt-7 text-[11px] font-medium uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+          <p className="mt-7 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--jt-stone-500)]">
             {t('قرى نحفظها:', 'Villages we remember:')}
           </p>
           <motion.ul
@@ -74,7 +74,8 @@ export function DiasporaSection({ villages }: { villages: Village[] }) {
               <motion.li
                 key={v.id}
                 variants={{ hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.94 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: EASE_OUT } } }}
-                className="border border-[var(--jt-stone-900)]/20 px-3 py-1 text-[13px] text-[var(--jt-stone-800)]"
+                className="border border-[var(--jt-stone-900)]/25 px-3 py-1 text-sm text-[var(--jt-stone-900)]"
+                style={{ fontFamily: 'var(--jt-font-display)' }}
               >
                 {t(v.name_ar, v.name_en ?? v.name_ar)}
               </motion.li>

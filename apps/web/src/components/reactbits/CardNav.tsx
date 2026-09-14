@@ -105,24 +105,24 @@ export function CardNav({
                   className="flex min-h-[64px] flex-1 flex-col gap-2 px-4 py-3 md:min-h-0"
                   style={{ backgroundColor: item.bgColor, color: item.textColor }}
                 >
-                  <div className="text-[16px] font-medium md:text-[18px]">
+                  <div className="text-[18px] tracking-[-0.3px] md:text-[22px]" style={{ fontFamily: 'var(--jt-font-display)' }}>
                     {item.label}
                   </div>
                   <ul className="mt-auto flex flex-col gap-[3px]">
                     {item.links.map((lnk) => (
                       <li key={lnk.label}>
                         {lnk.disabled ? (
-                          <span className="inline-flex cursor-default items-center gap-1.5 text-[14px] opacity-55">
+                          <span className="inline-flex cursor-default items-center gap-1.5 text-[15px] opacity-55">
                             <ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden />
                             {lnk.label}
-                            {lnk.badge && <span className="ms-1 border border-current px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.18em]">{lnk.badge}</span>}
+                            {lnk.badge && <span className="ms-1 border border-current px-1.5 py-px text-[9px] font-semibold uppercase tracking-[0.18em]">{lnk.badge}</span>}
                           </span>
                         ) : (
                           <Link
                             href={lnk.href}
                             aria-label={lnk.ariaLabel}
                             onClick={() => setOpen(false)}
-                            className="inline-flex items-center gap-1.5 text-[14px] transition-opacity hover:opacity-70"
+                            className="inline-flex items-center gap-1.5 text-[15px] transition-opacity hover:opacity-70"
                           >
                             <ArrowUpRight className="h-4 w-4 shrink-0 rtl:-scale-x-100" aria-hidden />
                             {lnk.label}

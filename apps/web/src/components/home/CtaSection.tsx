@@ -9,7 +9,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { Magnet } from '@/components/reactbits/Magnet';
 import { KeffiyehPattern } from '@/components/home/KeffiyehPattern';
 import { SectionLabel } from '@/components/home/SectionLabel';
-import { CONTAINER, EASE_OUT, GRID, PAPER, headingFont } from '@/components/home/homeContent';
+import { CONTAINER, EASE_OUT, GRID, PAPER } from '@/components/home/homeContent';
 
 /**
  * Closing call to action on a full keffiyeh cloth (leaves / chevron / net)
@@ -39,8 +39,8 @@ export function CtaSection() {
           <div className="col-span-12 lg:col-span-7">
             <SectionLabel index="03" text={t('ابدأ', 'Begin')} />
             <motion.h2
-              className="mt-7 max-w-xl text-[clamp(1.6rem,3.2vw,2.5rem)] font-medium leading-[1.4]"
-              style={{ fontFamily: headingFont(isAR), fontWeight: 500 }}
+              className="mt-7 text-[clamp(2.2rem,5vw,4.2rem)] font-bold leading-[1.12]"
+              style={{ fontFamily: isAR ? 'var(--jt-font-display)' : 'var(--jt-font-display-latin)', fontWeight: isAR ? 700 : 400 }}
               initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 24 }}
               whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
@@ -49,7 +49,7 @@ export function CtaSection() {
               {t('لا يمكن لقصة عائلتك ان تنسى أو ان تمحى.', "Your family's story belongs here.")}
             </motion.h2>
             <motion.p
-              className="mt-5 max-w-lg text-[15px] leading-[1.85] text-[var(--jt-stone-600)]"
+              className="mt-5 max-w-lg text-[15px] leading-relaxed text-[var(--jt-stone-700)]"
               initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.5 }}
@@ -67,7 +67,7 @@ export function CtaSection() {
               <Magnet padding={70} strength={3.5}>
                 <Link
                   href="/sign-up"
-                  className="jt-btn-shine inline-flex items-center gap-2.5 bg-[var(--jt-gold-500)] px-7 py-3.5 text-[14px] font-medium text-[#0a0a0a] transition-colors hover:bg-[var(--jt-gold-400)]"
+                  className="jt-btn-shine inline-flex items-center gap-2.5 bg-[var(--jt-gold-500)] px-8 py-4 text-[15px] font-semibold text-[#0a0a0a] transition-colors hover:bg-[var(--jt-gold-400)]"
                 >
                   {t('ابدأ بناء شجرة عائلتك', 'Create your family tree')}
                   <Arrow className="h-5 w-5" />

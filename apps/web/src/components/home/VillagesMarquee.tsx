@@ -18,7 +18,7 @@ export function VillagesMarquee({ villages }: { villages: Village[] }) {
       <div className="py-6 md:py-8">
         <ScrollVelocity baseVelocity={55}>
           {villages.map((v) => (
-            <span key={v.id} className="mx-6 inline-flex items-center gap-6 text-[clamp(1.6rem,3.6vw,2.8rem)] font-normal leading-none" style={{ fontFamily: 'var(--jt-font-kufi)' }}>
+            <span key={v.id} className="mx-6 inline-flex items-center gap-6 text-[clamp(2.2rem,5.5vw,4.6rem)] leading-none" style={{ fontFamily: 'var(--jt-font-display)' }}>
               <span>{v.name_ar}</span>
               <span aria-hidden className="text-[0.4em] text-[var(--jt-gold-400)]">◆</span>
             </span>
@@ -26,9 +26,9 @@ export function VillagesMarquee({ villages }: { villages: Village[] }) {
         </ScrollVelocity>
         <ScrollVelocity baseVelocity={-38} className="mt-3 opacity-45">
           {villages.map((v) => (
-            <span key={v.id} className="mx-6 inline-flex items-center gap-6 text-[clamp(0.75rem,1.2vw,0.9rem)] font-normal uppercase tracking-[0.3em]" style={{ fontFamily: 'var(--jt-font-sans-latin)' }}>
+            <span key={v.id} className="mx-6 inline-flex items-center gap-6 text-[clamp(1rem,1.8vw,1.35rem)] uppercase tracking-[0.35em]" style={{ fontFamily: 'var(--jt-font-display-latin)' }}>
               <span>{v.name_en ?? v.name_ar}</span>
-              {v.district_ar && <span className="text-[0.9em] tracking-[0.1em] text-[var(--jt-stone-500)]" style={{ fontFamily: 'var(--jt-font-kufi)' }}>{v.district_ar}</span>}
+              {v.district_ar && <span className="text-[0.75em] tracking-[0.2em] text-[var(--jt-stone-500)]" style={{ fontFamily: 'var(--jt-font-display)' }}>{v.district_ar}</span>}
               <span aria-hidden className="text-[0.5em]">✦</span>
             </span>
           ))}

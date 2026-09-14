@@ -81,7 +81,4 @@ export const CONTAINER = 'mx-auto w-full max-w-7xl px-6 md:px-8';
 export const GRID = 'grid grid-cols-12 gap-x-6';
 export const EASE_OUT: [number, number, number, number] = [0.22, 1, 0.36, 1];
 export const INK = '#0a0a0a';
-/** Heading face per locale — Kufi for Arabic (after howiyya.com), Hanken Grotesk for Latin. */
-export const headingFont = (isAR: boolean): string => (isAR ? 'var(--jt-font-kufi)' : 'var(--jt-font-display-latin)');
-export const bodyFont = (isAR: boolean): string => (isAR ? 'var(--jt-font-kufi)' : 'var(--jt-font-sans-latin)');
 export const PAPER = '#F8F4EE';

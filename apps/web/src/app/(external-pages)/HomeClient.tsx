@@ -7,7 +7,7 @@ import { VillagesMarquee } from '@/components/home/VillagesMarquee';
 import { FlowSection } from '@/components/home/FlowSection';
 import { CtaSection } from '@/components/home/CtaSection';
 import { KeffiyehBand } from '@/components/home/KeffiyehPattern';
-import { FALLBACK_VILLAGES, bodyFont, type Village } from '@/components/home/homeContent';
+import { FALLBACK_VILLAGES, type Village } from '@/components/home/homeContent';
 
 /**
  * Homepage — monochrome keffiyeh edition.
@@ -28,11 +28,11 @@ import { FALLBACK_VILLAGES, bodyFont, type Village } from '@/components/home/hom
  * All copy is Elfazee3's from the merged homepage (PR #6); nothing rewritten.
  */
 export function HomeClient({ villages = [] }: { villages?: Village[] }) {
-  const { dir, locale } = useLocale();
+  const { dir } = useLocale();
   const names = (villages.length >= 6 ? villages : FALLBACK_VILLAGES).slice(0, 8);
 
   return (
-    <div dir={dir} className="relative overflow-x-clip bg-[var(--jt-stone-50)] text-[var(--jt-stone-900)]" style={{ fontFamily: bodyFont(locale === 'ar') }}>
+    <div dir={dir} className="relative overflow-x-clip bg-[var(--jt-stone-50)] text-[var(--jt-stone-900)]">
       <HeroSection />
       <KeffiyehBand height={32} className="mb-24 border-y border-[var(--jt-stone-900)]/10 text-[#0a0a0a] md:mb-32" />
       <DiasporaSection villages={names} />

@@ -8,7 +8,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { SpotlightCard } from '@/components/reactbits/SpotlightCard';
 import { KeffiyehPattern } from '@/components/home/KeffiyehPattern';
 import { SectionLabel } from '@/components/home/SectionLabel';
-import { CONTAINER, EASE_OUT, FLOW_SECTIONS, GRID, headingFont } from '@/components/home/homeContent';
+import { CONTAINER, EASE_OUT, FLOW_SECTIONS, GRID } from '@/components/home/homeContent';
 
 /**
  * Who / Why / How / Contact on a strict 4 + 8 column split. The sticky
@@ -48,7 +48,7 @@ export function FlowSection() {
                   <li key={s.ref}>
                     <a
                       href={`#${s.ref}`}
-                      className="group inline-flex items-baseline gap-3 text-[14px] font-medium text-[var(--jt-stone-800)] transition-colors hover:text-[var(--jt-gold-600)]"
+                      className="group inline-flex items-baseline gap-3 text-[15px] font-semibold text-[var(--jt-stone-800)] transition-colors hover:text-[var(--jt-gold-600)]"
                     >
                       <span className="text-[11px] tracking-[0.2em] text-[var(--jt-stone-400)]" style={{ fontFamily: 'var(--jt-font-mono)' }}>
                         {s.ref}
@@ -83,20 +83,20 @@ export function FlowSection() {
                     <span className="flex h-11 w-11 items-center justify-center bg-[var(--jt-stone-900)] text-[var(--jt-stone-50)] transition-colors group-hover:bg-[var(--jt-gold-500)] group-hover:text-[#0a0a0a]">
                       <s.icon className="h-5 w-5" />
                     </span>
-                    <span className="text-[11px] font-normal tracking-[0.3em] text-[var(--jt-stone-400)]" style={{ fontFamily: 'var(--jt-font-mono)' }}>
+                    <span className="text-[11px] font-semibold tracking-[0.3em] text-[var(--jt-stone-400)]" style={{ fontFamily: 'var(--jt-font-mono)' }}>
                       {s.ref}
                     </span>
                   </div>
                   <h3
-                    className="mt-7 text-[1.15rem] font-medium leading-[1.45] text-[var(--jt-stone-900)]"
-                    style={{ fontFamily: headingFont(isAR), fontWeight: 500 }}
+                    className="mt-7 text-[1.45rem] font-bold leading-tight text-[var(--jt-stone-900)]"
+                    style={{ fontFamily: isAR ? 'var(--jt-font-display)' : 'var(--jt-font-display-latin)', fontWeight: isAR ? 700 : 500 }}
                   >
                     {t(s.titleAr, s.titleEn)}
                   </h3>
-                  <p className="mt-3 text-[14px] leading-[1.85] text-[var(--jt-stone-600)]">{t(s.bodyAr, s.bodyEn)}</p>
+                  <p className="mt-3 text-[15px] leading-relaxed text-[var(--jt-stone-600)]">{t(s.bodyAr, s.bodyEn)}</p>
                   <Link
                     href={s.href}
-                    className="mt-6 inline-flex items-center gap-2 border-b border-[var(--jt-stone-900)] pb-0.5 text-[13.5px] font-medium text-[var(--jt-stone-900)] transition-[gap,color,border-color] hover:gap-3 hover:border-[var(--jt-gold-500)] hover:text-[var(--jt-gold-600)]"
+                    className="mt-6 inline-flex items-center gap-2 border-b border-[var(--jt-stone-900)] pb-0.5 text-sm font-semibold text-[var(--jt-stone-900)] transition-[gap,color,border-color] hover:gap-3 hover:border-[var(--jt-gold-500)] hover:text-[var(--jt-gold-600)]"
                   >
                     {t('اقرأ المزيد', 'Learn more')}
                     <Arrow className="h-4 w-4" />

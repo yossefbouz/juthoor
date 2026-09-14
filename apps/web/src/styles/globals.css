@@ -1,5 +1,5 @@
 /* Google Fonts — Arabic + Latin — must be first */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Amiri:wght@400;700&family=Noto+Kufi+Arabic:wght@300;400;500;600&family=Hanken+Grotesk:wght@300;400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Amiri:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @import 'tailwindcss';
 
@@ -80,9 +80,7 @@
   /* ── Typography ── */
   --jt-font-arabic:  'Cairo', 'Noto Naskh Arabic', Tahoma, sans-serif;
   --jt-font-display: 'Amiri', 'Noto Naskh Arabic', serif;
-  --jt-font-display-latin: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
-  --jt-font-kufi:          'Noto Kufi Arabic', 'Cairo', 'Noto Naskh Arabic', sans-serif;
-  --jt-font-sans-latin:    'Hanken Grotesk', 'Inter', system-ui, sans-serif;
+  --jt-font-display-latin: 'Fraunces', 'Amiri', Georgia, serif;
   --jt-font-latin:   'Inter', 'Helvetica Neue', system-ui, sans-serif;
   --jt-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 

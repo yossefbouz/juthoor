@@ -12,7 +12,7 @@ export function SectionLabel({ index, text, tone = 'ink' }: { index: string; tex
   const color = tone === 'ink' ? 'text-[var(--jt-stone-900)]' : 'text-[var(--jt-stone-50)]';
   const rule = tone === 'ink' ? 'bg-[var(--jt-stone-900)]' : 'bg-[var(--jt-stone-50)]';
   return (
-    <div className={`flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.24em] ${color}`}>
+    <div className={`flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] ${color}`}>
       <motion.span
         aria-hidden
         className={`block h-px w-10 origin-[var(--jt-origin-start,0%)] ${rule}`}
