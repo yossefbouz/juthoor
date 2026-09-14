@@ -74,7 +74,7 @@ export function HeroSection() {
               </motion.p>
               <motion.p
                 variants={rise}
-                className="mt-1 text-[clamp(0.65rem,1vw,0.8rem)] font-normal uppercase tracking-[0.3em] text-[var(--jt-stone-500)]"
+                className="mt-0.5 text-[12px] font-normal tracking-[0.02em] text-[var(--jt-stone-500)]"
                 style={{ fontFamily: 'var(--jt-font-sans-latin)' }}
               >
                 Juthoor
