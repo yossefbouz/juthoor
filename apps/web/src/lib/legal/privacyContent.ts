@@ -1,8 +1,11 @@
 import type { LegalDocument } from './types';
 
 /**
- * Palestinian Roots Platform — Privacy Policy v1.0.
- * Source of record: partner-supplied "Palestinian_Roots_Privacy_Policy" document.
+ * Palestinian Roots Platform — Privacy Policy v1.1.
+ * Source of record: partner-supplied "Palestinian_Roots_Privacy_Policy" document,
+ * extended with three new sections (Data Controller, Cookies & Local Storage,
+ * Openness) drafted for this Platform specifically and verified against the actual
+ * codebase (cookie/localStorage usage, absence of analytics/ad trackers).
  * English body is transcribed faithfully; Arabic titles/summaries localised.
  */
 export const PRIVACY_POLICY: LegalDocument = {
@@ -11,8 +14,8 @@ export const PRIVACY_POLICY: LegalDocument = {
   titleAr: 'سياسة الخصوصية',
   subtitleEn: 'How we collect, use, protect, and respect your personal information',
   subtitleAr: 'كيف نجمع معلوماتك الشخصية ونستخدمها ونحميها ونحترمها',
-  versionEn: 'Version 1.0',
-  versionAr: 'الإصدار 1.0',
+  versionEn: 'Version 1.1',
+  versionAr: 'الإصدار 1.1',
   effectiveEn: 'Effective upon platform launch',
   effectiveAr: 'سارية عند إطلاق المنصّة',
   importantNoticeEn:
@@ -57,6 +60,27 @@ export const PRIVACY_POLICY: LegalDocument = {
       id: 'privacy-2',
       numberEn: '2',
       numberAr: '2',
+      titleEn: 'Who We Are, and Who Controls Your Data',
+      titleAr: 'من نحن، ومن يتحكّم ببياناتك',
+      blocks: [
+        {
+          type: 'p',
+          en: 'The Palestinian Roots Platform is an independent, non-profit, community-built initiative. We are not affiliated with any government, political party, or commercial genealogy company. There are no shareholders and no advertisers — the Platform is not, and will never be, a product built to be sold.',
+        },
+        {
+          type: 'p',
+          en: 'For the purposes of this Privacy Policy, Juthoor is the data controller: the entity responsible for deciding why and how your personal data is processed. [Legal entity name and registered address — placeholder, to be confirmed before launch.]',
+        },
+        {
+          type: 'p',
+          en: "The Platform's source code is public, so that any user — or any independent expert — can verify for themselves how personal data is actually handled, rather than having to take our word for it. Publishing the code does not mean publishing any user's personal data; your family tree, documents, and account details are never included in the public repository.",
+        },
+      ],
+    },
+    {
+      id: 'privacy-3',
+      numberEn: '3',
+      numberAr: '3',
       titleEn: 'Definitions',
       titleAr: 'التعريفات',
       blocks: [
@@ -113,13 +137,13 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-3',
-      numberEn: '3',
-      numberAr: '3',
+      id: 'privacy-4',
+      numberEn: '4',
+      numberAr: '4',
       titleEn: 'What Information We Collect',
       titleAr: 'ما المعلومات التي نجمعها',
       blocks: [
-        { type: 'p', en: '3.1 Information you give us directly. When you register and use the Platform, you provide us with:' },
+        { type: 'p', en: '4.1 Information you give us directly. When you register and use the Platform, you provide us with:' },
         {
           type: 'list',
           items: [
@@ -131,10 +155,10 @@ export const PRIVACY_POLICY: LegalDocument = {
             { en: 'GEDCOM files: genealogical data files you import into or export from the Platform.' },
           ],
         },
-        { type: 'p', en: '3.2 Information we collect automatically: log data (IP address, browser type, pages visited, time and date of visits), device information, and your language preference (Arabic or English).' },
+        { type: 'p', en: '4.2 Information we collect automatically: log data (IP address, browser type, pages visited, time and date of visits) and your language preference (Arabic or English). See Section 9 for the small number of cookies and local-storage items involved.' },
         {
           type: 'p',
-          en: '3.3 Information about other people. When you add individuals to your family tree, you provide personal data about people other than yourself — relatives both living and deceased. You must ensure you have the right to share this information and that doing so is consistent with the privacy expectations of the people concerned.',
+          en: '4.3 Information about other people. When you add individuals to your family tree, you provide personal data about people other than yourself — relatives both living and deceased. You must ensure you have the right to share this information and that doing so is consistent with the privacy expectations of the people concerned.',
         },
         {
           type: 'callout',
@@ -147,9 +171,9 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-4',
-      numberEn: '4',
-      numberAr: '4',
+      id: 'privacy-5',
+      numberEn: '5',
+      numberAr: '5',
       titleEn: 'How We Use Your Information',
       titleAr: 'كيف نستخدم معلوماتك',
       blocks: [
@@ -159,16 +183,20 @@ export const PRIVACY_POLICY: LegalDocument = {
           items: [
             { en: 'Run the Platform: create and manage your account; let you build, edit, and view family trees; link Individual Trees into the Master Tree; run end-of-day duplicate detection and merge processing; process GEDCOM import/export; and enable messaging.' },
             { en: 'Verify identity and access: verify your eligibility to manage a specific tree; review and approve or deny access requests; and maintain the security and integrity of the Platform.' },
-            { en: 'Improve the Platform: understand how it is used, fix technical problems, and generate anonymised statistical data about the Palestinian diaspora (see Section 6).' },
+            { en: 'Improve the Platform: understand how it is used, fix technical problems, and generate anonymised statistical data about the Palestinian diaspora (see Section 7).' },
             { en: 'Communicate with you: send notifications about activity on your tree; inform you of changes to the Platform, this Policy, or the Terms; and respond to your questions and support requests.' },
           ],
+        },
+        {
+          type: 'p',
+          en: 'We do not use your personal data for advertising, and we do not build advertising profiles. We do not make decisions about you based solely on automated processing that would have a significant effect on you.',
         },
       ],
     },
     {
-      id: 'privacy-5',
-      numberEn: '5',
-      numberAr: '5',
+      id: 'privacy-6',
+      numberEn: '6',
+      numberAr: '6',
       titleEn: 'Our Legal Basis for Processing Your Data',
       titleAr: 'الأساس القانوني لمعالجة بياناتك',
       blocks: [
@@ -184,9 +212,9 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-6',
-      numberEn: '6',
-      numberAr: '6',
+      id: 'privacy-7',
+      numberEn: '7',
+      numberAr: '7',
       titleEn: 'Anonymised and Aggregated Data',
       titleAr: 'البيانات المجهّلة والمجمّعة',
       blocks: [
@@ -209,19 +237,19 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-7',
-      numberEn: '7',
-      numberAr: '7',
+      id: 'privacy-8',
+      numberEn: '8',
+      numberAr: '8',
       titleEn: 'Who We Share Your Information With',
       titleAr: 'مع من نشارك معلوماتك',
       blocks: [
-        { type: 'p', en: 'We do not sell your personal data. We do not share it with advertisers. We share it only in these limited circumstances:' },
+        { type: 'p', en: 'We do not sell your personal data. We do not share it with advertisers, and we do not use any third-party advertising or analytics trackers on the Platform. We share it only in these limited circumstances:' },
         {
           type: 'list',
           items: [
             { en: 'Other Platform users: information you add to your tree may be visible to other users, subject to the access rights and privacy settings you choose. You control what others can see.' },
             { en: 'The Administrator: has access to all data for verifying accounts, resolving duplicate records, managing the Master Tree, and maintaining security — bound by the same confidentiality obligations as all users.' },
-            { en: 'Service providers: a small number of trusted providers (cloud hosting and security) process your data only on our instructions and are contractually required to protect it.' },
+            { en: 'Infrastructure providers: a small number of trusted providers host the Platform’s database, file storage, and authentication. They process your data only on our instructions, under a data processing agreement, and are contractually required to protect it. They do not use your data for their own purposes.' },
             { en: 'Legal requirements: where required by law, or in good faith to protect the rights, safety, or property of any person, or to comply with a legal process.' },
             { en: 'With your consent: in any other circumstances where you have given explicit, informed consent.' },
           ],
@@ -229,9 +257,34 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-8',
-      numberEn: '8',
-      numberAr: '8',
+      id: 'privacy-9',
+      numberEn: '9',
+      numberAr: '9',
+      titleEn: 'Cookies and Local Storage',
+      titleAr: 'ملفّات تعريف الارتباط والتخزين المحلّي',
+      blocks: [
+        {
+          type: 'p',
+          en: 'We keep this section short because the Platform keeps its use of cookies short. We do not run advertising or analytics trackers of any kind, so there is no cross-site tracking or ad-profiling cookie to opt out of. The Platform uses only:',
+        },
+        {
+          type: 'list',
+          items: [
+            { en: 'Authentication cookies: set when you sign in, so the Platform recognises your session. These are strictly necessary — without them you cannot stay signed in.' },
+            { en: 'A UI-preference cookie: remembers whether your sidebar is open or collapsed. It stores no personal data and does not identify you.' },
+            { en: "Local storage for language preference: your choice of Arabic or English is saved in your browser's local storage (not a cookie), so the Platform opens in the language you last used." },
+          ],
+        },
+        {
+          type: 'p',
+          en: 'You can clear cookies and local storage at any time through your browser settings. Doing so will sign you out and reset the language preference, but will not affect the data stored in your account.',
+        },
+      ],
+    },
+    {
+      id: 'privacy-10',
+      numberEn: '10',
+      numberAr: '10',
       titleEn: 'How Long We Keep Your Data',
       titleAr: 'مدّة احتفاظنا ببياناتك',
       blocks: [
@@ -248,9 +301,9 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-9',
-      numberEn: '9',
-      numberAr: '9',
+      id: 'privacy-11',
+      numberEn: '11',
+      numberAr: '11',
       titleEn: 'How We Protect Your Data',
       titleAr: 'كيف نحمي بياناتك',
       blocks: [
@@ -259,8 +312,8 @@ export const PRIVACY_POLICY: LegalDocument = {
           items: [
             { en: 'All data is transmitted over encrypted connections (HTTPS/TLS).' },
             { en: 'Passwords are stored using industry-standard hashing and never in plain text.' },
-            { en: 'Access to personal data is restricted to Platform staff and administrators on a need-to-know basis.' },
-            { en: 'We conduct regular security audits and vulnerability assessments.' },
+            { en: 'Access to personal data is restricted at the database level (row-level security policies), and further restricted to Platform staff and administrators on a need-to-know basis.' },
+            { en: 'We conduct regular security review as the Platform evolves.' },
             { en: 'Identity verification documents are stored in a separately secured, access-logged environment.' },
             { en: 'We maintain a data breach response procedure and will notify affected users and relevant authorities in accordance with applicable law.' },
           ],
@@ -276,9 +329,9 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-10',
-      numberEn: '10',
-      numberAr: '10',
+      id: 'privacy-12',
+      numberEn: '12',
+      numberAr: '12',
       titleEn: 'Your Rights Over Your Data',
       titleAr: 'حقوقك على بياناتك',
       blocks: [
@@ -287,20 +340,21 @@ export const PRIVACY_POLICY: LegalDocument = {
           items: [
             { en: 'Right of access: request a copy of the personal data we hold about you.' },
             { en: 'Right to rectification: ask us to correct inaccurate or incomplete data.' },
-            { en: 'Right to erasure: ask us to delete your personal data in certain circumstances. Genealogical data already incorporated into the Master Tree may be retained in anonymised form (see Section 8).' },
+            { en: 'Right to erasure: ask us to delete your personal data in certain circumstances. Genealogical data already incorporated into the Master Tree may be retained in anonymised form (see Section 10).' },
             { en: 'Right to restrict processing: ask us to restrict how we use your data in certain circumstances.' },
             { en: 'Right to data portability: receive a copy of your data in a portable, machine-readable format — including as a GEDCOM file for your family tree data.' },
             { en: 'Right to object: object to certain types of processing, including processing based on legitimate interests.' },
             { en: 'Right to withdraw consent: where we process your data based on consent, withdraw it at any time.' },
+            { en: 'Right to lodge a complaint: you may lodge a complaint with a data protection supervisory authority in your country of residence, place of work, or where you believe an incident took place.' },
           ],
         },
-        { type: 'p', en: 'To exercise any of these rights, contact us using the details in Section 14. We will respond to all requests within 30 days.' },
+        { type: 'p', en: 'To exercise any of these rights, contact us using the details in Section 17. We will respond to all requests within 30 days.' },
       ],
     },
     {
-      id: 'privacy-11',
-      numberEn: '11',
-      numberAr: '11',
+      id: 'privacy-13',
+      numberEn: '13',
+      numberAr: '13',
       titleEn: "Children's Privacy",
       titleAr: 'خصوصية الأطفال',
       blocks: [
@@ -315,9 +369,9 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-12',
-      numberEn: '12',
-      numberAr: '12',
+      id: 'privacy-14',
+      numberEn: '14',
+      numberAr: '14',
       titleEn: 'International Data Transfers',
       titleAr: 'نقل البيانات دوليًا',
       blocks: [
@@ -328,9 +382,26 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-13',
-      numberEn: '13',
-      numberAr: '13',
+      id: 'privacy-15',
+      numberEn: '15',
+      numberAr: '15',
+      titleEn: 'Openness and Community Trust',
+      titleAr: 'الانفتاح وثقة المجتمع',
+      blocks: [
+        {
+          type: 'p',
+          en: "Juthoor is built and maintained in the open. The application's source code is publicly available, so that users, journalists, researchers, and independent security reviewers can examine exactly how data is stored, protected, and processed — rather than relying solely on this document.",
+        },
+        {
+          type: 'p',
+          en: 'Making the code public does not make your data public. Your family tree, uploaded documents, identity verification files, and messages are never included in the public repository, and access to the live database remains restricted as described in Section 11.',
+        },
+      ],
+    },
+    {
+      id: 'privacy-16',
+      numberEn: '16',
+      numberAr: '16',
       titleEn: 'Changes to This Privacy Policy',
       titleAr: 'التغييرات على سياسة الخصوصية',
       blocks: [
@@ -341,9 +412,9 @@ export const PRIVACY_POLICY: LegalDocument = {
       ],
     },
     {
-      id: 'privacy-14',
-      numberEn: '14',
-      numberAr: '14',
+      id: 'privacy-17',
+      numberEn: '17',
+      numberAr: '17',
       titleEn: 'How to Contact Us',
       titleAr: 'كيفية التواصل معنا',
       blocks: [
