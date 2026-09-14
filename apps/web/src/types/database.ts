@@ -727,6 +727,8 @@ export type Database = {
         Returns: undefined;
       };
       revoke_person_link: { Args: { p_link_id: string }; Returns: undefined };
+      run_matching_batch: { Args: { p_full?: boolean }; Returns: string | null };
+      drain_overlay_refresh: { Args: Record<string, never>; Returns: number };
     };
     Enums: {
       gender_type: GenderType;
