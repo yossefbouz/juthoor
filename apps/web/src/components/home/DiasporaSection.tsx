@@ -53,7 +53,7 @@ export function DiasporaSection({ villages }: { villages: Village[] }) {
           <ScrollWords
             className="mt-4 text-[16px] leading-[1.85] text-[var(--jt-stone-600)]"
             text={t(
-              'كلّ نقطة عائلة موثّقة. العائلات من القرية نفسها تتناثر في عشرات الدول — وهنا يصبح هذا التشتّت مرئيًّا في مكان واحد لأول مرّة.',
+              'كل نقطة على هذه الخريطة ترمز الى احدى عائلات فلسطين التي تناثرت في الشتات. يمكنك ان تتصور مدى معاناة الشعب الفلسطيني منذ النكبة وحتى يومنا هذا',
               'Every dot is a documented family. Families from one village scatter across dozens of countries — here that scatter becomes visible in one place for the first time.',
             )}
           />
