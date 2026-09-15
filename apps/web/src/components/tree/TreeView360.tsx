@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, Heart, Users } from 'lucide-react';
 
+import { useLocale } from '@/contexts/LocaleContext';
 import { useRealtimeTree } from '@/hooks/useRealtimeTree';
 import type { Neighbors } from '@/lib/tree/types';
 
@@ -21,6 +22,7 @@ interface Props {
  * framer's shared layoutId creates a "fly to centre" animation.
  */
 export function TreeView360({ treeId, neighbors }: Props) {
+  const { t, dir } = useLocale();
   const router = useRouter();
   useRealtimeTree(treeId);
   void router;
@@ -32,7 +34,7 @@ export function TreeView360({ treeId, neighbors }: Props) {
   );
 
   return (
-    <div dir="rtl" className="relative mx-auto w-full max-w-5xl">
+    <div dir={dir} className="relative mx-auto w-full max-w-5xl">
       {/* Ambient gradient backdrop */}
       <div
         aria-hidden
@@ -46,9 +48,9 @@ export function TreeView360({ treeId, neighbors }: Props) {
         <motion.section
           layout
           className="col-span-3 flex flex-col items-center gap-3"
-          aria-label="الآباء"
+          aria-label={t('الآباء', 'Parents')}
         >
-          <SectionLabel icon={ArrowUp} label="الآباء" />
+          <SectionLabel icon={ArrowUp} label={t('الآباء', 'Parents')} />
           <div className="flex w-full flex-wrap items-start justify-center gap-3">
             <AnimatePresence mode="popLayout">
               {parents.father ? (
@@ -57,10 +59,10 @@ export function TreeView360({ treeId, neighbors }: Props) {
                   person={parents.father}
                   treeId={treeId}
                   variant="parent"
-                  subtitle="الأب"
+                  subtitle={t('الأب', 'Father')}
                 />
               ) : (
-                <EmptySlot label="الأب" hint="غير معروف — أضفه" />
+                <EmptySlot key="father-empty" label={t('الأب', 'Father')} hint={t('غير معروف — أضفه', 'Unknown — add him')} />
               )}
               {parents.mother ? (
                 <PersonSlot
@@ -68,10 +70,10 @@ export function TreeView360({ treeId, neighbors }: Props) {
                   person={parents.mother}
                   treeId={treeId}
                   variant="parent"
-                  subtitle="الأم"
+                  subtitle={t('الأم', 'Mother')}
                 />
               ) : (
-                <EmptySlot label="الأم" hint="غير معروفة — أضفها" />
+                <EmptySlot key="mother-empty" label={t('الأم', 'Mother')} hint={t('غير معروفة — أضفها', 'Unknown — add her')} />
               )}
             </AnimatePresence>
           </div>
@@ -82,13 +84,13 @@ export function TreeView360({ treeId, neighbors }: Props) {
         <motion.section
           layout
           className="flex flex-col gap-2"
-          aria-label="الأشقاء"
+          aria-label={t('الأشقاء', 'Siblings')}
         >
-          <SectionLabel icon={Users} label={`الأشقاء (${siblings.length})`} />
+          <SectionLabel icon={Users} label={t(`الأشقاء (${siblings.length})`, `Siblings (${siblings.length})`)} />
           <div className="flex flex-col gap-2">
             <AnimatePresence mode="popLayout">
               {siblings.length === 0 ? (
-                <EmptySlot label="لا يوجد" />
+                <EmptySlot label={t('لا يوجد', 'None')} />
               ) : (
                 siblings.map((s) => (
                   <PersonSlot
@@ -107,7 +109,7 @@ export function TreeView360({ treeId, neighbors }: Props) {
         <motion.section
           layout
           className="flex items-center justify-center"
-          aria-label="الشخص المحوري"
+          aria-label={t('الشخص المحوري', 'Focus person')}
         >
           <div className="relative w-full max-w-sm">
             <div
@@ -127,16 +129,16 @@ export function TreeView360({ treeId, neighbors }: Props) {
         <motion.section
           layout
           className="flex flex-col gap-2"
-          aria-label="الأزواج"
+          aria-label={t('الأزواج', 'Spouses')}
         >
           <SectionLabel
             icon={Heart}
-            label={`الزوج/ة (${spouses.length})`}
+            label={t(`الزوج/ة (${spouses.length})`, `Spouse(s) (${spouses.length})`)}
           />
           <div className="flex flex-col gap-2">
             <AnimatePresence mode="popLayout">
               {spouses.length === 0 ? (
-                <EmptySlot label="لا يوجد" />
+                <EmptySlot label={t('لا يوجد', 'None')} />
               ) : (
                 spouses.map((s) => (
                   <PersonSlot
@@ -155,17 +157,17 @@ export function TreeView360({ treeId, neighbors }: Props) {
         <motion.section
           layout
           className="col-span-3 flex flex-col items-center gap-3"
-          aria-label="الأبناء"
+          aria-label={t('الأبناء', 'Children')}
         >
           <Connector orientation="vertical" />
           <SectionLabel
             icon={ArrowDown}
-            label={`الأبناء (${totalChildren})`}
+            label={t(`الأبناء (${totalChildren})`, `Children (${totalChildren})`)}
           />
           <div className="w-full">
             {childrenByFamily.length === 0 ? (
               <div className="mx-auto max-w-xs">
-                <EmptySlot label="لم يُضَف أبناء بعد" />
+                <EmptySlot label={t('لم يُضَف أبناء بعد', 'No children added yet')} />
               </div>
             ) : (
               <div className="flex flex-col gap-3">
@@ -176,10 +178,10 @@ export function TreeView360({ treeId, neighbors }: Props) {
                   >
                     {childrenByFamily.length > 1 ? (
                       <div className="mb-2 text-xs text-muted-foreground">
-                        مجموعة:{' '}
+                        {t('مجموعة:', 'Group:')}{' '}
                         {group.otherParentId
-                          ? 'من زواج مختلف'
-                          : 'والد/ة غير محدد'}
+                          ? t('من زواج مختلف', 'from a different marriage')
+                          : t('والد/ة غير محدد', 'other parent unspecified')}
                       </div>
                     ) : null}
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

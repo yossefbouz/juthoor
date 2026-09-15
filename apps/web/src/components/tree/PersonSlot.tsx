@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { User2 } from 'lucide-react';
 
+import { useLocale } from '@/contexts/LocaleContext';
 import { cn } from '@/lib/utils';
 import type { PersonView } from '@/lib/tree/types';
 
@@ -48,13 +49,14 @@ function lifespan(person: PersonView): string | null {
  * the centre position.
  */
 export function PersonSlot({ person, treeId, variant, subtitle }: Props) {
+  const { locale } = useLocale();
   const isCenter = variant === 'center';
   const tone = toneForGender(person.gender);
-  const initial = (
-    person.displayNameAr ??
-    person.displayNameEn ??
-    '?'
-  ).trim()[0];
+  const primaryName =
+    (locale === 'ar' ? person.displayNameAr ?? person.displayNameEn : person.displayNameEn ?? person.displayNameAr)
+    ?? '—';
+  const secondaryName = locale === 'ar' ? person.displayNameEn : person.displayNameAr;
+  const initial = primaryName.trim()[0];
   const years = lifespan(person);
 
   return (
@@ -81,7 +83,7 @@ export function PersonSlot({ person, treeId, variant, subtitle }: Props) {
         <Link
           href={`/tree/${treeId}/person/${person.id}`}
           className="flex items-center gap-3"
-          aria-label={person.displayNameAr ?? person.displayNameEn ?? '—'}
+          aria-label={primaryName}
         >
           <div
             className={cn(
@@ -110,14 +112,14 @@ export function PersonSlot({ person, treeId, variant, subtitle }: Props) {
                 isCenter ? 'text-base font-bold' : 'text-sm font-medium',
               )}
             >
-              {person.displayNameAr ?? person.displayNameEn ?? '—'}
+              {primaryName}
             </div>
             {person.displayNameEn && person.displayNameAr ? (
               <div
                 className="truncate text-xs text-muted-foreground"
-                dir="ltr"
+                dir={locale === 'ar' ? 'ltr' : 'rtl'}
               >
-                {person.displayNameEn}
+                {secondaryName}
               </div>
             ) : null}
             {years ? (
