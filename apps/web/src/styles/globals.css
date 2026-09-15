@@ -1,5 +1,5 @@
 /* Google Fonts — Arabic + Latin — must be first */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Amiri:wght@400;700&family=Noto+Kufi+Arabic:wght@300;400;500;600&family=Hanken+Grotesk:wght@300;400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Amiri:wght@400;700&family=Noto+Kufi+Arabic:wght@300;400;500;600;700&family=Hanken+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @import 'tailwindcss';
 
@@ -78,12 +78,12 @@
   --jt-pal-white: #F8F4EE;
 
   /* ── Typography ── */
-  --jt-font-arabic:  'Cairo', 'Noto Naskh Arabic', Tahoma, sans-serif;
-  --jt-font-display: 'Amiri', 'Noto Naskh Arabic', serif;
+  --jt-font-arabic:  'Noto Kufi Arabic', 'Cairo', 'Noto Naskh Arabic', Tahoma, sans-serif;
+  --jt-font-display: 'Noto Kufi Arabic', 'Amiri', 'Noto Naskh Arabic', sans-serif;
   --jt-font-display-latin: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
   --jt-font-kufi:          'Noto Kufi Arabic', 'Cairo', 'Noto Naskh Arabic', sans-serif;
   --jt-font-sans-latin:    'Hanken Grotesk', 'Inter', system-ui, sans-serif;
-  --jt-font-latin:   'Inter', 'Helvetica Neue', system-ui, sans-serif;
+  --jt-font-latin:   'Hanken Grotesk', 'Inter', 'Helvetica Neue', system-ui, sans-serif;
   --jt-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 
   /* ── Shadows ── */
@@ -256,7 +256,7 @@
     font-family: var(--jt-font-latin);
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
-  /* Arabic content uses Cairo */
+  /* Arabic content uses Noto Kufi Arabic */
   [lang="ar"],
   [dir="rtl"] {
     font-family: var(--jt-font-arabic);
