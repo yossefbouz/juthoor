@@ -65,19 +65,19 @@ export function HeroSection() {
               <motion.p
                 aria-hidden
                 className="select-none leading-[1.05] text-[clamp(3.4rem,8.5vw,6.5rem)] font-medium"
-                style={{ fontFamily: 'var(--jt-font-kufi)', color: INK }}
+                style={{ fontFamily: isAR ? 'var(--jt-font-kufi)' : 'var(--jt-font-display-latin)', color: INK }}
                 initial={reduce ? { opacity: 0 } : { clipPath: wordmarkClip[0], opacity: 1 }}
                 animate={reduce ? { opacity: 1 } : { clipPath: wordmarkClip[1] }}
                 transition={{ duration: 1.25, ease: EASE_OUT, delay: 0.25 }}
               >
-                جذور
+                {isAR ? 'جذور' : 'Juthoor'}
               </motion.p>
               <motion.p
                 variants={rise}
                 className="mt-0.5 text-[12px] font-normal tracking-[0.02em] text-[var(--jt-stone-500)]"
-                style={{ fontFamily: 'var(--jt-font-sans-latin)' }}
+                style={{ fontFamily: isAR ? 'var(--jt-font-sans-latin)' : 'var(--jt-font-kufi)' }}
               >
-                Juthoor
+                {isAR ? 'Juthoor' : 'جذور'}
               </motion.p>
             </div>
 
