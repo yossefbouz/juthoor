@@ -1,6 +1,7 @@
--- pgTAP: the shadow-mode batch end-to-end (plan §7-M2, B12).
+-- pgTAP: the shadow-mode batch end-to-end (plan §7-M2, B12; extended by F5:
+-- proposed person_links, never-downgrade, overlay drain at batch end).
 BEGIN;
-SELECT plan(6);
+SELECT plan(9);
 
 INSERT INTO auth.users (id, email, aud, role) VALUES
   ('a8000000-0000-0000-0000-000000000001', 'o1@test.juthoor', 'authenticated', 'authenticated'),
@@ -39,18 +40,42 @@ SELECT ok(
   EXISTS (SELECT 1 FROM public.matching_runs WHERE status = 'completed' AND queued >= 1),
   'matching_runs recorded a completed run with >=1 queued match');
 
--- 5. a human decision must survive a re-run
+-- 5. (F5a) the batch also proposed the reversible same_as link
+SELECT is(
+  (SELECT status::text || '|' || source FROM public.person_links
+   WHERE person_a_id = 'a0000000-0000-0000-0000-000000000001'
+     AND person_b_id = 'b0000000-0000-0000-0000-000000000002'),
+  'proposed|system', 'the batch UPSERTs a proposed system person_link for the queued pair');
+
+-- 6. a human decision must survive a re-run (match AND link), and pending
+--    overlay-refresh requests must be drained at batch end
 UPDATE public.matches SET status = 'admin_approved'
   WHERE person_a_id = 'a0000000-0000-0000-0000-000000000001'
     AND person_b_id = 'b0000000-0000-0000-0000-000000000002';
+UPDATE public.person_links SET status = 'confirmed'
+  WHERE person_a_id = 'a0000000-0000-0000-0000-000000000001'
+    AND person_b_id = 'b0000000-0000-0000-0000-000000000002';
+SELECT public.enqueue_overlay_refresh('test_pending_drain', NULL);
 SELECT ok(public.run_matching_batch(true) IS NOT NULL, 're-run completes');
 
--- 6. the human decision is intact (never clobbered)
+-- 7. the human match decision is intact (never clobbered)
 SELECT is(
   (SELECT status::text FROM public.matches
    WHERE person_a_id = 'a0000000-0000-0000-0000-000000000001'
      AND person_b_id = 'b0000000-0000-0000-0000-000000000002'),
   'admin_approved', 'a human decision is not clobbered by a re-run');
+
+-- 8. (F5a) the confirmed link is never downgraded back to proposed
+SELECT is(
+  (SELECT status::text FROM public.person_links
+   WHERE person_a_id = 'a0000000-0000-0000-0000-000000000001'
+     AND person_b_id = 'b0000000-0000-0000-0000-000000000002'),
+  'confirmed', 'a confirmed person_link is never downgraded by a re-run');
+
+-- 9. (F5b) the batch drained the overlay-refresh queue
+SELECT is(
+  (SELECT count(*)::int FROM public.overlay_refresh_queue WHERE processed_at IS NULL),
+  0, 'run_matching_batch drains pending overlay-refresh requests at batch end');
 
 SELECT finish();
 ROLLBACK;

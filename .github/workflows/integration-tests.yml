@@ -16,11 +16,9 @@ jobs:
     name: Playwright e2e
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # The Playwright e2e suite is stale (Nextbase-era specs); it is revived in
-    # task A8. Until then this job is disabled. The pgTAP job below runs the DB
-    # gate on the Juthoor fork on every push/PR (the old upstream-repo guard
-    # meant nothing ran here at all).
-    if: false
+    # Suite revived in A8 (real Juthoor UI, admin-API + password auth setups),
+    # extended in B20/F7; re-enabled in F6. Runs against a local supabase stack
+    # started in this job (CLI pinned to match the repo toolchain).
     env:
       PORT: 3000
       NODE_ENV: test
@@ -71,7 +69,7 @@ jobs:
       - name: Install Playwright browsers
         run: |
           cd apps/web
-          pnpm exec playwright install chromium
+          pnpm exec playwright install --with-deps chromium
 
       - name: Wait for Supabase to be ready
         run: |
@@ -104,6 +102,23 @@ jobs:
             sleep 1
           done
           echo "Inbucket is ready!"
+
+      # Next bakes NEXT_PUBLIC_* into the client bundle at BUILD time, so the
+      # local-stack values must be in the env before `pnpm run build` (the
+      # playwright webServer gets its runtime env separately via global-setup).
+      - name: Export Supabase env for the build
+        run: |
+          cd apps/database
+          API_URL=$(supabase status --output env | grep '^API_URL=' | cut -d'"' -f2)
+          PUBLISHABLE_KEY=$(supabase status --output env | grep '^PUBLISHABLE_KEY=' | cut -d'"' -f2)
+          if [ -z "$API_URL" ] || [ -z "$PUBLISHABLE_KEY" ]; then
+            echo "Could not resolve local Supabase env"; exit 1
+          fi
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=${API_URL}/"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${PUBLISHABLE_KEY}"
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000/"
+          } >> "$GITHUB_ENV"
 
       - name: Build
         run: pnpm run build
