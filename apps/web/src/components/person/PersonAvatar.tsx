@@ -2,6 +2,8 @@
 
 import { User } from 'lucide-react';
 
+import { useLocale } from '@/contexts/LocaleContext';
+
 /**
  * Circular avatar for a person. If `photoUrl` is provided, shows the image.
  * Otherwise renders the first letter of the display name in Amiri.
@@ -17,6 +19,7 @@ export function PersonAvatar({
   size?: number;
   className?: string;
 }) {
+  const { t } = useLocale();
   const initial = (name ?? '·').trim().slice(0, 1) || '·';
 
   if (photoUrl) {
@@ -28,7 +31,7 @@ export function PersonAvatar({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photoUrl}
-          alt={name ?? 'avatar'}
+          alt={name ?? t('صورة شخصية', 'avatar')}
           loading="lazy"
           className="h-full w-full object-cover"
         />
@@ -45,7 +48,7 @@ export function PersonAvatar({
         fontFamily: 'var(--jt-font-display)',
         fontSize: Math.round(size * 0.42),
       }}
-      aria-label={name ?? 'avatar'}
+      aria-label={name ?? t('صورة شخصية', 'avatar')}
     >
       {name ? initial : <User className="h-1/2 w-1/2" />}
     </span>

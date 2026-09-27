@@ -1,14 +1,9 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { T } from '@/components/ui/Typography';
-import { AddChildForm } from '@/components/tree/AddChildForm';
+import { AddChildCard } from '@/components/tree/AddChildCard';
+import { PersonPageHeader } from '@/components/tree/PersonPageHeader';
 import { TreeView360 } from '@/components/tree/TreeView360';
-import { UpgradePlaceholderDialog } from '@/components/tree/UpgradePlaceholderDialog';
 import { EvidencePanel } from '@/components/person/EvidencePanel';
-import { PersonAvatar } from '@/components/person/PersonAvatar';
 import { PersonStoryPanel } from '@/components/person/PersonStoryPanel';
 import { getPerson, getTreePersons } from '@/data/anon/persons';
 import { getTreeSnapshot } from '@/data/anon/treeSnapshot';
@@ -70,36 +65,15 @@ export default async function PersonPage({ params }: Props) {
 
   // primaryPhotoId is on persons row (added by attachments migration)
   const primaryPhotoId = (person as { primary_photo_id?: string | null }).primary_photo_id ?? null;
-  const displayName = person.display_name_ar ?? person.display_name_en ?? '—';
 
   return (
-    <div dir="rtl" className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <PersonAvatar name={displayName} photoUrl={primaryPhotoUrl} size={72} />
-          <div className="space-y-1">
-            <T.H1>{displayName}</T.H1>
-            {person.display_name_en && person.display_name_ar ? (
-              <T.P className="text-muted-foreground">{person.display_name_en}</T.P>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {person.notes === 'placeholder' ? (
-            <UpgradePlaceholderDialog
-              treeId={treeId}
-              placeholder={person}
-              allPersons={allPersons}
-            />
-          ) : null}
-          <Link href={`/tree/${treeId}`}>
-            <Button variant="outline">عرض الشجرة</Button>
-          </Link>
-          <Link href={`/tree/${treeId}/add-person`}>
-            <Button>إضافة شخص</Button>
-          </Link>
-        </div>
-      </header>
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+      <PersonPageHeader
+        treeId={treeId}
+        person={person}
+        photoUrl={primaryPhotoUrl}
+        allPersons={allPersons}
+      />
 
       {/* Side-by-side on desktop: 360° tree on the start, evidence on the end.
           Stacks vertically below md so mobile keeps the wheel front-and-centre. */}
@@ -124,18 +98,7 @@ export default async function PersonPage({ params }: Props) {
       />
 
       {person.gender === 'M' ? (
-        <Card>
-          <CardHeader>
-            <T.H3>إضافة ابن/ابنة</T.H3>
-          </CardHeader>
-          <CardContent>
-            <AddChildForm
-              treeId={treeId}
-              fatherId={personId}
-              persons={allPersons}
-            />
-          </CardContent>
-        </Card>
+        <AddChildCard treeId={treeId} fatherId={personId} persons={allPersons} />
       ) : null}
     </div>
   );
