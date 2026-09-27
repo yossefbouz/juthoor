@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLocale } from '@/contexts/LocaleContext';
 import { insertPersonAction } from '@/data/user/persons';
 import { addRelativeAction } from '@/data/user/relatives';
 import { personInputSchema } from '@/lib/tree/zodSchemas';
@@ -82,6 +83,7 @@ export function AddPersonForm({
   initialRelationshipKind,
   onSuccess,
 }: Props) {
+  const { t, dir, locale } = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -151,11 +153,13 @@ export function AddPersonForm({
       relationship.kind === 'spouse' ||
       relationship.kind === 'sibling';
     if (needsAnchor && !relationship.anchorPersonId) {
-      toast.error('اختر الشخص المرتبط أولًا، أو اختر "لا رابط بعد".');
+      toast.error(
+        t('اختر الشخص المرتبط أولًا، أو اختر "لا رابط بعد".', 'Pick the related person first, or choose "No link yet".'),
+      );
       return;
     }
     if (showMotherSelect && !effectiveMotherChoice) {
-      toast.error('حدّد الأم من القائمة — لكل ابن/ابنة أم.');
+      toast.error(t('حدّد الأم من القائمة — لكل ابن/ابنة أم.', 'Select the mother from the list — every child needs one.'));
       return;
     }
 
@@ -188,16 +192,16 @@ export function AddPersonForm({
 
       const personId = result?.data?.personId;
       if (!personId) {
-        toast.error('لم يتم إنشاء الشخص. يرجى المحاولة مرة أخرى.');
+        toast.error(t('لم يتم إنشاء الشخص. يرجى المحاولة مرة أخرى.', 'The person wasn’t created. Please try again.'));
         return;
       }
 
       toast.success(
         mode === 'self'
-          ? 'تم إنشاء ملفك الشخصي في الشجرة!'
+          ? t('تم إنشاء ملفك الشخصي في الشجرة!', 'Your profile was created in the tree!')
           : needsAnchor
-            ? 'تمت إضافة الشخص وربطه بالشجرة'
-            : 'تمت إضافة الشخص بنجاح'
+            ? t('تمت إضافة الشخص وربطه بالشجرة', 'The person was added and linked to the tree')
+            : t('تمت إضافة الشخص بنجاح', 'The person was added successfully')
       );
 
       // When the host (e.g. inline Sheet on the tree page) wants to
@@ -220,7 +224,7 @@ export function AddPersonForm({
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
         className="grid gap-6"
-        dir="rtl"
+        dir={dir}
       >
         {/* === Relationship picker — visible by design === */}
         <RelationshipPicker
@@ -228,37 +232,43 @@ export function AddPersonForm({
           value={relationship}
           onChange={setRelationship}
           draftDisplayName={draftDisplayName || undefined}
+          locale={locale}
         />
 
         {/* === Mother resolution (FRS: every child links to a mother) === */}
         {showMotherSelect ? (
           <section className="rounded-2xl border border-[var(--jt-terra-200)]/70 bg-[var(--jt-terra-50)]/50 p-4">
             <label className="mb-2 block text-xs font-semibold text-[var(--jt-terra-700)]">
-              من هي الأم؟ {anchorSpouses.length > 1 ? '(الأب لديه أكثر من زوجة مسجّلة)' : ''}
+              {t('من هي الأم؟', 'Who is the mother?')}{' '}
+              {anchorSpouses.length > 1 ? t('(الأب لديه أكثر من زوجة مسجّلة)', '(the father has more than one recorded spouse)') : ''}
             </label>
             <Select
               value={effectiveMotherChoice ?? undefined}
               onValueChange={(v) => setMotherChoice(v)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="اختر الأم" />
+                <SelectValue placeholder={t('اختر الأم', 'Select the mother')} />
               </SelectTrigger>
               <SelectContent>
                 {anchorSpouses.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.display_name_ar ?? s.display_name_en ?? '—'}
+                    {locale === 'ar'
+                      ? s.display_name_ar ?? s.display_name_en ?? '—'
+                      : s.display_name_en ?? s.display_name_ar ?? '—'}
                   </SelectItem>
                 ))}
                 <SelectItem value={NEW_PLACEHOLDER_MOTHER}>
-                  أم أخرى غير معروفة — أنشئ أمًا مؤقتة
+                  {t('أم أخرى غير معروفة — أنشئ أمًا مؤقتة', 'Another unknown mother — create a placeholder')}
                 </SelectItem>
               </SelectContent>
             </Select>
           </section>
         ) : relationship.kind === 'child' && anchor?.gender === 'M' ? (
           <p className="rounded-2xl border border-[var(--jt-gold-400)]/40 bg-[var(--jt-gold-100)]/40 px-4 py-3 text-xs leading-relaxed text-[var(--jt-stone-700)]">
-            لا توجد زوجة مسجّلة لهذا الأب — سيتم إنشاء أم مؤقتة («أنثى ١»)
-            تلقائيًا وربطها به، ويمكنك إكمال بياناتها لاحقًا.
+            {t(
+              'لا توجد زوجة مسجّلة لهذا الأب — سيتم إنشاء أم مؤقتة («أنثى ١») تلقائيًا وربطها به، ويمكنك إكمال بياناتها لاحقًا.',
+              'This father has no recorded spouse — a placeholder mother ("Female 1") will be created and linked automatically; you can fill in her details later.',
+            )}
           </p>
         ) : null}
 
@@ -266,13 +276,13 @@ export function AddPersonForm({
         <section className="rounded-3xl border border-[var(--jt-stone-200)] bg-[var(--card)] p-5 md:p-6 shadow-[var(--jt-shadow-sm)]">
           <header className="mb-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--jt-olive-700)]">
-              بيانات الشخص
+              {t('بيانات الشخص', 'Person details')}
             </p>
             <h2
               className="text-xl font-bold text-[var(--jt-olive-900)]"
               style={{ fontFamily: 'var(--jt-font-display)' }}
             >
-              الاسم والمولد
+              {t('الاسم والمولد', 'Name and birth')}
             </h2>
           </header>
 
@@ -284,7 +294,7 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>الاسم الأول (بالعربية)</FormLabel>
+                    <FormLabel>{t('الاسم الأول (بالعربية)', 'First name (Arabic)')}</FormLabel>
                     <FieldHint fieldKey="arGivenName" />
                   </div>
                   <FormControl>
@@ -308,7 +318,7 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>اسم العائلة (بالعربية)</FormLabel>
+                    <FormLabel>{t('اسم العائلة (بالعربية)', 'Surname (Arabic)')}</FormLabel>
                     <FieldHint fieldKey="arSurname" />
                   </div>
                   <FormControl>
@@ -335,8 +345,8 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>First name (English)</FormLabel>
-                    <FieldHint fieldKey="enGivenName" lang="en" />
+                    <FormLabel>{t('الاسم الأول (بالإنجليزية)', 'First name (English)')}</FormLabel>
+                    <FieldHint fieldKey="enGivenName" />
                   </div>
                   <FormControl>
                     <Input
@@ -359,8 +369,8 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>Surname (English)</FormLabel>
-                    <FieldHint fieldKey="enSurname" lang="en" />
+                    <FormLabel>{t('اسم العائلة (بالإنجليزية)', 'Surname (English)')}</FormLabel>
+                    <FieldHint fieldKey="enSurname" />
                   </div>
                   <FormControl>
                     <Input
@@ -386,18 +396,18 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>الجنس</FormLabel>
+                    <FormLabel>{t('الجنس', 'Gender')}</FormLabel>
                     <FieldHint fieldKey="gender" />
                   </div>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="اختر" />
+                        <SelectValue placeholder={t('اختر', 'Select')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="M">ذكر</SelectItem>
-                      <SelectItem value="F">أنثى</SelectItem>
+                      <SelectItem value="M">{t('ذكر', 'Male')}</SelectItem>
+                      <SelectItem value="F">{t('أنثى', 'Female')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -411,7 +421,7 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>سنة الميلاد</FormLabel>
+                    <FormLabel>{t('سنة الميلاد', 'Birth year')}</FormLabel>
                     <FieldHint fieldKey="birthYear" />
                   </div>
                   <FormControl>
@@ -442,7 +452,7 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>سنة الوفاة</FormLabel>
+                    <FormLabel>{t('سنة الوفاة', 'Death year')}</FormLabel>
                     <FieldHint fieldKey="deathYear" />
                   </div>
                   <FormControl>
@@ -476,7 +486,7 @@ export function AddPersonForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>القرية / المدينة الأصلية</FormLabel>
+                    <FormLabel>{t('القرية / المدينة الأصلية', 'Village / town of origin')}</FormLabel>
                     <FieldHint fieldKey="placeOfOrigin" />
                   </div>
                   <FormControl>
@@ -499,10 +509,10 @@ export function AddPersonForm({
             onClick={() => router.back()}
             disabled={isPending}
           >
-            إلغاء
+            {t('إلغاء', 'Cancel')}
           </Button>
           <Button type="submit" disabled={isPending}>
-            {isPending ? 'جارٍ الحفظ…' : 'حفظ ومتابعة'}
+            {isPending ? t('جارٍ الحفظ…', 'Saving…') : t('حفظ ومتابعة', 'Save and continue')}
           </Button>
         </div>
       </form>

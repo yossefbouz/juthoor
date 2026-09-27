@@ -2,18 +2,13 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { T } from '@/components/ui/Typography';
 import { getTreeById } from '@/data/anon/trees';
 import { getTreePersons } from '@/data/anon/persons';
 import { getTreeSnapshot } from '@/data/anon/treeSnapshot';
 
-import Link from 'next/link';
-
-import { Button } from '@/components/ui/button';
-import { ExportGedcomButton } from '@/components/tree/ExportGedcomButton';
-import { ImportGedcomDialog } from '@/components/tree/ImportGedcomDialog';
+import { EmptyTreeBanner } from '@/components/tree/EmptyTreeBanner';
+import { TreePageHeader } from '@/components/tree/TreePageHeader';
 import { TreeWorkspace } from '@/components/tree/TreeWorkspace';
-import { Plus, Users } from 'lucide-react';
 
 interface Props {
   readonly params: Promise<{ readonly treeId: string }>;
@@ -41,31 +36,8 @@ export default async function TreePage({ params, searchParams }: Props) {
   if (!tree) notFound();
 
   return (
-    <div dir="rtl" className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <T.H1>{tree.name}</T.H1>
-          <T.P className="text-muted-foreground">
-            {tree.description ?? 'شجرتك العائلية — أضف نفسك أولاً، ثم الوالدين والأقارب.'}
-          </T.P>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/tree/${treeId}/add-person`}>
-            <Button className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              إضافة شخص
-            </Button>
-          </Link>
-          <Link href={`/tree/${treeId}/people`}>
-            <Button variant="outline" className="gap-1.5">
-              <Users className="h-4 w-4" />
-              كل الأشخاص
-            </Button>
-          </Link>
-          <ImportGedcomDialog treeId={treeId} />
-          <ExportGedcomButton treeId={treeId} />
-        </div>
-      </header>
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+      <TreePageHeader treeId={treeId} treeName={tree.name} treeDescription={tree.description} />
 
       <Suspense fallback={<TreeLoadingSkeleton />}>
         <TreeChartOrEmpty treeId={treeId} requestedRoot={rootParam} />
@@ -105,41 +77,6 @@ async function TreeChartOrEmpty({
       rootPersonId={rootPersonId}
       persons={persons}
     />
-  );
-}
-
-function EmptyTreeBanner({ treeId }: { readonly treeId: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-5 rounded-3xl border-2 border-dashed border-[var(--jt-olive-300)]/60 bg-[var(--jt-olive-50)]/30 p-12 text-center md:p-20">
-      <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--jt-olive-600)] text-[var(--jt-stone-50)]">
-        <Users className="h-7 w-7" />
-      </div>
-      <div className="space-y-2">
-        <h2
-          className="text-3xl font-bold text-[var(--jt-olive-900)] md:text-4xl"
-          style={{ fontFamily: 'var(--jt-font-display)' }}
-        >
-          لا تزال شجرتك فارغة
-        </h2>
-        <p className="mx-auto max-w-md text-[var(--jt-stone-700)]" style={{ lineHeight: 1.9 }}>
-          ابدأ بإضافة نفسك أو فردًا تعرفه من العائلة. ستنمو الشجرة معك خطوة بخطوة.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-        <Link href={`/tree/${treeId}/add-self`}>
-          <Button size="lg" className="gap-2">
-            <Plus className="h-4 w-4" />
-            أضف نفسك
-          </Button>
-        </Link>
-        <Link href={`/tree/${treeId}/add-person`}>
-          <Button size="lg" variant="outline" className="gap-2">
-            <Plus className="h-4 w-4" />
-            أضف فردًا آخر
-          </Button>
-        </Link>
-      </div>
-    </div>
   );
 }
 

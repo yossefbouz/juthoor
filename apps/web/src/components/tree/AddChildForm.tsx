@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useMemo, useTransition } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useLocale } from '@/contexts/LocaleContext';
 import { addChildAction } from '@/data/user/families';
 import { insertPersonAction } from '@/data/user/persons';
 import { insertPlaceholderMotherAction } from '@/data/user/persons';
@@ -32,36 +33,41 @@ import type { Person } from '@/types/database';
 import { PersonSelect } from './PersonSelect';
 import { FieldHint } from './FieldHint';
 
-const addChildFormSchema = z
-  .object({
-    treeId: z.string().uuid(),
-    fatherId: z.string().uuid(),
-    motherId: z.string().uuid().nullable(),
-    arGivenName: z.string().trim().min(1, 'الاسم الأول مطلوب'),
-    arSurname: z.string().optional(),
-    gender: z.enum(['M', 'F']),
-    birthYear: z
-      .preprocess(
-        (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
-        z.number().int().gte(1000).lte(new Date().getUTCFullYear()).optional()
-      ),
-  })
-  // FRS rule 11: every child must have a mother. If the user hasn't
-  // picked one we auto-create a placeholder during submit instead of
-  // blocking the form — but we expose that as an explicit "use placeholder"
-  // checkbox so it's never accidental.
-  .extend({
-    useMotherPlaceholder: z.boolean().default(false),
-  })
-  .refine(
-    (v) => v.motherId !== null || v.useMotherPlaceholder === true,
-    {
-      message: 'يجب ربط كل ابن بأم. إذا لم تعرف الأم، فعّل "أم مؤقتة".',
-      path: ['motherId'],
-    }
-  );
+function makeAddChildFormSchema(t: (ar: string, en: string) => string) {
+  return z
+    .object({
+      treeId: z.string().uuid(),
+      fatherId: z.string().uuid(),
+      motherId: z.string().uuid().nullable(),
+      arGivenName: z.string().trim().min(1, t('الاسم الأول مطلوب', 'First name is required')),
+      arSurname: z.string().optional(),
+      gender: z.enum(['M', 'F']),
+      birthYear: z
+        .preprocess(
+          (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
+          z.number().int().gte(1000).lte(new Date().getUTCFullYear()).optional()
+        ),
+    })
+    // FRS rule 11: every child must have a mother. If the user hasn't
+    // picked one we auto-create a placeholder during submit instead of
+    // blocking the form — but we expose that as an explicit "use placeholder"
+    // checkbox so it's never accidental.
+    .extend({
+      useMotherPlaceholder: z.boolean().default(false),
+    })
+    .refine(
+      (v) => v.motherId !== null || v.useMotherPlaceholder === true,
+      {
+        message: t(
+          'يجب ربط كل ابن بأم. إذا لم تعرف الأم، فعّل "أم مؤقتة".',
+          'Every child must be linked to a mother. If unknown, enable "placeholder mother".',
+        ),
+        path: ['motherId'],
+      }
+    );
+}
 
-type FormValues = z.infer<typeof addChildFormSchema>;
+type FormValues = z.infer<ReturnType<typeof makeAddChildFormSchema>>;
 
 interface Props {
   readonly treeId: string;
@@ -84,8 +90,11 @@ export function AddChildForm({
   persons,
   onSuccess,
 }: Props) {
+  const { t, dir } = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  const addChildFormSchema = useMemo(() => makeAddChildFormSchema(t), [t]);
 
   const form = useForm<FormValues>({
     // Cast: preprocess/default fields give the schema a wider input type
@@ -115,14 +124,14 @@ export function AddChildForm({
         });
         if (placeholder?.serverError || !placeholder?.data?.placeholderId) {
           toast.error(
-            placeholder?.serverError ?? 'فشل إنشاء الأم المؤقتة'
+            placeholder?.serverError ?? t('فشل إنشاء الأم المؤقتة', 'Failed to create the placeholder mother')
           );
           return;
         }
         motherId = placeholder.data.placeholderId;
       }
       if (!motherId) {
-        toast.error('يجب تحديد الأم');
+        toast.error(t('يجب تحديد الأم', 'The mother must be selected'));
         return;
       }
 
@@ -135,7 +144,7 @@ export function AddChildForm({
         birthYear: values.birthYear,
       });
       if (personResult?.serverError || !personResult?.data?.personId) {
-        toast.error(personResult?.serverError ?? 'فشل إضافة الابن');
+        toast.error(personResult?.serverError ?? t('فشل إضافة الابن', 'Failed to add the child'));
         return;
       }
 
@@ -152,7 +161,7 @@ export function AddChildForm({
         return;
       }
 
-      toast.success('تم إضافة الابن/الابنة بنجاح');
+      toast.success(t('تم إضافة الابن/الابنة بنجاح', 'The child was added successfully'));
       form.reset();
       onSuccess?.();
       router.refresh();
@@ -164,7 +173,7 @@ export function AddChildForm({
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
         className="grid gap-4 rounded-lg border p-4"
-        dir="rtl"
+        dir={dir}
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
@@ -173,7 +182,7 @@ export function AddChildForm({
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center gap-2">
-                  <FormLabel>الاسم الأول</FormLabel>
+                  <FormLabel>{t('الاسم الأول', 'First name')}</FormLabel>
                   <FieldHint fieldKey="arGivenName" />
                 </div>
                 <FormControl>
@@ -188,7 +197,7 @@ export function AddChildForm({
             name="gender"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>الجنس</FormLabel>
+                <FormLabel>{t('الجنس', 'Gender')}</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
@@ -199,8 +208,8 @@ export function AddChildForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="M">ذكر</SelectItem>
-                    <SelectItem value="F">أنثى</SelectItem>
+                    <SelectItem value="M">{t('ذكر', 'Male')}</SelectItem>
+                    <SelectItem value="F">{t('أنثى', 'Female')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -216,7 +225,7 @@ export function AddChildForm({
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center gap-2">
-                  <FormLabel>الأم</FormLabel>
+                  <FormLabel>{t('الأم', 'Mother')}</FormLabel>
                   <FieldHint fieldKey="gender" />
                 </div>
                 <FormControl>
@@ -230,7 +239,7 @@ export function AddChildForm({
                     }}
                     persons={persons}
                     filterGender="F"
-                    placeholder="اختر الأم"
+                    placeholder={t('اختر الأم', 'Select the mother')}
                   />
                 </FormControl>
                 <FormMessage />
@@ -243,7 +252,7 @@ export function AddChildForm({
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center gap-2">
-                  <FormLabel>سنة الميلاد</FormLabel>
+                  <FormLabel>{t('سنة الميلاد', 'Birth year')}</FormLabel>
                   <FieldHint fieldKey="birthYear" />
                 </div>
                 <FormControl>
@@ -279,8 +288,11 @@ export function AddChildForm({
                 disabled={form.watch('motherId') !== null}
               />
               <span>
-                <strong>أم مؤقتة</strong> — لا أعرف الأم الآن. سيُنشئ
-                النظام سجلًا مؤقتًا ("أنثى N") يمكن تحديثه لاحقًا.
+                <strong>{t('أم مؤقتة', 'Placeholder mother')}</strong> —{' '}
+                {t(
+                  'لا أعرف الأم الآن. سيُنشئ النظام سجلًا مؤقتًا ("أنثى N") يمكن تحديثه لاحقًا.',
+                  'I don\'t know the mother yet. The system will create a placeholder record ("Female N") that can be updated later.',
+                )}
               </span>
             </label>
           )}
@@ -292,10 +304,10 @@ export function AddChildForm({
             disabled={isPending}
           >
             {isPending
-              ? 'جارٍ الحفظ…'
+              ? t('جارٍ الحفظ…', 'Saving…')
               : useMotherPlaceholder
-                ? 'حفظ مع أم مؤقتة'
-                : 'حفظ'}
+                ? t('حفظ مع أم مؤقتة', 'Save with placeholder mother')
+                : t('حفظ', 'Save')}
           </Button>
         </div>
       </form>

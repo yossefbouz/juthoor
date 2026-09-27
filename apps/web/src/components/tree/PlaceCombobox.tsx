@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useLocale } from '@/contexts/LocaleContext';
 import { cn } from '@/lib/utils';
 
 import { searchPlacesClient } from './placeSearchClient';
@@ -36,8 +37,9 @@ interface Props {
 export function PlaceCombobox({
   value,
   onChange,
-  placeholder = 'اختر القرية أو المدينة',
+  placeholder,
 }: Props) {
+  const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -48,6 +50,8 @@ export function PlaceCombobox({
   });
 
   const selected = places.find((p) => p.id === value);
+  const nameFor = (p: { name_ar: string | null; name_en?: string | null }) =>
+    locale === 'ar' ? p.name_ar ?? p.name_en : p.name_en ?? p.name_ar;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -63,8 +67,8 @@ export function PlaceCombobox({
           )}
         >
           {selected
-            ? selected.name_ar ?? selected.name_en ?? '—'
-            : placeholder}
+            ? nameFor(selected) ?? '—'
+            : placeholder ?? t('اختر القرية أو المدينة', 'Select a village or town')}
           <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -74,13 +78,13 @@ export function PlaceCombobox({
       >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="ابحث بالعربية أو الإنجليزية..."
+            placeholder={t('ابحث بالعربية أو الإنجليزية...', 'Search in Arabic or English…')}
             value={query}
             onValueChange={setQuery}
           />
           <CommandList>
             <CommandEmpty>
-              {isFetching ? 'جارٍ البحث…' : 'لم يتم العثور على نتائج.'}
+              {isFetching ? t('جارٍ البحث…', 'Searching…') : t('لم يتم العثور على نتائج.', 'No results found.')}
             </CommandEmpty>
             <CommandGroup>
               {places.map((place) => (
@@ -90,7 +94,7 @@ export function PlaceCombobox({
                   onSelect={() => {
                     onChange(
                       place.id,
-                      place.name_ar ?? place.name_en ?? null
+                      nameFor(place) ?? null
                     );
                     setOpen(false);
                   }}
@@ -103,11 +107,11 @@ export function PlaceCombobox({
                   />
                   <div className="flex flex-col">
                     <span className="font-medium">
-                      {place.name_ar ?? place.name_en}
+                      {nameFor(place)}
                     </span>
                     {place.district_ar ? (
                       <span className="text-xs text-muted-foreground">
-                        {place.district_ar}
+                        {locale === 'ar' ? place.district_ar : place.district_en ?? place.district_ar}
                       </span>
                     ) : null}
                   </div>

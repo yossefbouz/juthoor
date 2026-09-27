@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { useLocale } from '@/contexts/LocaleContext';
 import { cn } from '@/lib/utils';
 import type { FamilyView, PersonView } from '@/lib/tree/types';
 import type { Person } from '@/types/database';
@@ -48,11 +49,11 @@ interface Props {
 
 export type AddKind = 'parent' | 'child' | 'spouse' | 'sibling';
 
-const KIND_LABEL: Record<AddKind, string> = {
-  parent: 'إضافة والدًا/والدة',
-  spouse: 'إضافة زوجًا/زوجة',
-  sibling: 'إضافة أخًا/أختًا',
-  child: 'إضافة ابنًا/ابنة',
+const KIND_LABEL: Record<AddKind, { ar: string; en: string }> = {
+  parent: { ar: 'إضافة والدًا/والدة', en: 'Add a parent' },
+  spouse: { ar: 'إضافة زوجًا/زوجة', en: 'Add a spouse' },
+  sibling: { ar: 'إضافة أخًا/أختًا', en: 'Add a sibling' },
+  child: { ar: 'إضافة ابنًا/ابنة', en: 'Add a child' },
 };
 
 /**
@@ -74,6 +75,7 @@ export function TreeSidePanel({
   families,
   initialAddKind,
 }: Props) {
+  const { t, dir, locale } = useLocale();
   const router = useRouter();
   const [openKind, setOpenKind] = useState<AddKind | null>(null);
 
@@ -104,29 +106,31 @@ export function TreeSidePanel({
   if (!selected) {
     return (
       <aside
-        dir="rtl"
+        dir={dir}
         className="sticky top-4 flex w-full flex-col gap-4 rounded-3xl border border-[var(--jt-stone-200)] bg-[var(--card)] p-5 shadow-[var(--jt-shadow-sm)] md:w-[300px]"
       >
         <header className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-olive-700)]">
-            لوحة الإجراءات
+            {t('لوحة الإجراءات', 'Action panel')}
           </p>
           <h2
             className="text-lg font-bold text-[var(--jt-olive-900)]"
             style={{ fontFamily: 'var(--jt-font-display)' }}
           >
-            اختر شخصًا من الشجرة
+            {t('اختر شخصًا من الشجرة', 'Select someone from the tree')}
           </h2>
           <p className="text-xs leading-relaxed text-[var(--jt-stone-600)]">
-            انقر على أي بطاقة لإظهار خيارات التعديل وإضافة الأقارب من هنا
-            مباشرة، دون مغادرة الشجرة.
+            {t(
+              'انقر على أي بطاقة لإظهار خيارات التعديل وإضافة الأقارب من هنا مباشرة، دون مغادرة الشجرة.',
+              'Click any card to show edit options and add relatives right here, without leaving the tree.',
+            )}
           </p>
         </header>
         <Separator />
         <Button asChild variant="outline" className="w-full justify-start gap-2">
           <Link href={`/tree/${treeId}/add-person`}>
             <Plus className="h-4 w-4" />
-            {personCount === 0 ? 'أضف أول شخص' : 'إضافة شخص جديد'}
+            {personCount === 0 ? t('أضف أول شخص', 'Add the first person') : t('إضافة شخص جديد', 'Add a new person')}
           </Link>
         </Button>
       </aside>
@@ -134,7 +138,10 @@ export function TreeSidePanel({
   }
 
   const label =
-    selected.displayNameAr ?? selected.displayNameEn ?? 'شخص بدون اسم';
+    (locale === 'ar'
+      ? selected.displayNameAr ?? selected.displayNameEn
+      : selected.displayNameEn ?? selected.displayNameAr)
+    ?? t('شخص بدون اسم', 'Unnamed person');
   const isFemale = selected.gender === 'F';
   const isFocus = selected.id === rootPersonId;
   const initial = label.trim().slice(0, 1);
@@ -142,7 +149,7 @@ export function TreeSidePanel({
   return (
     <>
       <aside
-        dir="rtl"
+        dir={dir}
         className="sticky top-4 flex w-full flex-col gap-4 rounded-3xl border border-[var(--jt-stone-200)] bg-[var(--card)] p-5 shadow-[var(--jt-shadow-sm)] md:w-[300px]"
       >
         <header className="flex items-start gap-3">
@@ -159,7 +166,7 @@ export function TreeSidePanel({
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-olive-700)]">
-              {selected.isPlaceholder ? 'مؤقت' : 'الشخص المحدد'}
+              {selected.isPlaceholder ? t('مؤقت', 'Placeholder') : t('الشخص المحدد', 'Selected person')}
             </p>
             <h2
               className="truncate text-lg font-bold text-[var(--jt-olive-900)]"
@@ -184,7 +191,7 @@ export function TreeSidePanel({
           <Link href={`/tree/${treeId}/person/${selected.id}`}>
             <span className="inline-flex items-center gap-2">
               <User className="h-4 w-4" />
-              عرض الملف الشخصي
+              {t('عرض الملف الشخصي', 'View profile')}
             </span>
             <ChevronLeft className="h-4 w-4 opacity-60" />
           </Link>
@@ -194,10 +201,10 @@ export function TreeSidePanel({
 
         <div className="space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-olive-700)]">
-            إضافة قريب
+            {t('إضافة قريب', 'Add a relative')}
           </p>
           <p className="text-[11px] text-[var(--jt-stone-600)]">
-            سيتم ربط القريب بـ{' '}
+            {t('سيتم ربط القريب بـ', 'The relative will be linked to')}{' '}
             <span className="font-semibold text-[var(--jt-olive-800)]">
               {label}
             </span>
@@ -207,22 +214,22 @@ export function TreeSidePanel({
         <div className="grid gap-2">
           <ActionButton
             icon={Users}
-            label={KIND_LABEL.parent}
+            label={t(KIND_LABEL.parent.ar, KIND_LABEL.parent.en)}
             onClick={() => setOpenKind('parent')}
           />
           <ActionButton
             icon={Heart}
-            label={KIND_LABEL.spouse}
+            label={t(KIND_LABEL.spouse.ar, KIND_LABEL.spouse.en)}
             onClick={() => setOpenKind('spouse')}
           />
           <ActionButton
             icon={UserPlus}
-            label={KIND_LABEL.sibling}
+            label={t(KIND_LABEL.sibling.ar, KIND_LABEL.sibling.en)}
             onClick={() => setOpenKind('sibling')}
           />
           <ActionButton
             icon={Plus}
-            label={KIND_LABEL.child}
+            label={t(KIND_LABEL.child.ar, KIND_LABEL.child.en)}
             onClick={() => setOpenKind('child')}
           />
         </div>
@@ -236,10 +243,10 @@ export function TreeSidePanel({
             className="w-full justify-start gap-2"
             onClick={() => router.push(`/tree/${treeId}?root=${selected.id}`)}
             disabled={isFocus}
-            title={isFocus ? 'هذا الشخص هو محور الشجرة بالفعل' : undefined}
+            title={isFocus ? t('هذا الشخص هو محور الشجرة بالفعل', 'This person is already the tree’s focus') : undefined}
           >
             <Network className="h-4 w-4" />
-            عرض الشجرة من هذا الشخص
+            {t('عرض الشجرة من هذا الشخص', 'View the tree from this person')}
           </Button>
         </div>
       </aside>
@@ -250,18 +257,18 @@ export function TreeSidePanel({
       >
         <SheetContent
           side="left"
-          dir="rtl"
+          dir={dir}
           className="w-full overflow-y-auto sm:max-w-xl"
         >
           <SheetHeader>
             <SheetTitle
-              className="text-right"
+              className="text-start"
               style={{ fontFamily: 'var(--jt-font-display)' }}
             >
-              {openKind ? KIND_LABEL[openKind] : ''}
+              {openKind ? t(KIND_LABEL[openKind].ar, KIND_LABEL[openKind].en) : ''}
             </SheetTitle>
-            <SheetDescription className="text-right">
-              ربط القريب بـ{' '}
+            <SheetDescription className="text-start">
+              {t('ربط القريب بـ', 'Linking the relative to')}{' '}
               <span className="font-semibold text-[var(--jt-olive-800)]">
                 {label}
               </span>

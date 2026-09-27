@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useLocale } from '@/contexts/LocaleContext';
 import { cn } from '@/lib/utils';
 import type { Person } from '@/types/database';
 
@@ -39,9 +40,10 @@ export function PersonSelect({
   onChange,
   persons,
   filterGender,
-  placeholder = 'اختر شخصًا',
-  emptyLabel = 'لم يتم العثور على نتائج',
+  placeholder,
+  emptyLabel,
 }: Props) {
+  const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
 
   const filtered = filterGender
@@ -49,6 +51,8 @@ export function PersonSelect({
     : persons;
 
   const selected = persons.find((p) => p.id === value);
+  const nameFor = (p: Person) =>
+    locale === 'ar' ? p.display_name_ar ?? p.display_name_en : p.display_name_en ?? p.display_name_ar;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,8 +68,8 @@ export function PersonSelect({
           )}
         >
           {selected
-            ? selected.display_name_ar ?? selected.display_name_en ?? '—'
-            : placeholder}
+            ? nameFor(selected) ?? '—'
+            : placeholder ?? t('اختر شخصًا', 'Select a person')}
           <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -74,9 +78,9 @@ export function PersonSelect({
         align="start"
       >
         <Command>
-          <CommandInput placeholder="ابحث بالاسم..." />
+          <CommandInput placeholder={t('ابحث بالاسم...', 'Search by name…')} />
           <CommandList>
-            <CommandEmpty>{emptyLabel}</CommandEmpty>
+            <CommandEmpty>{emptyLabel ?? t('لم يتم العثور على نتائج', 'No results found')}</CommandEmpty>
             <CommandGroup>
               {filtered.map((p) => (
                 <CommandItem
@@ -97,11 +101,11 @@ export function PersonSelect({
                   />
                   <div className="flex flex-col">
                     <span className="font-medium">
-                      {p.display_name_ar ?? p.display_name_en ?? '—'}
+                      {nameFor(p) ?? '—'}
                     </span>
                     {p.notes === 'placeholder' ? (
                       <span className="text-xs text-muted-foreground">
-                        شخص مؤقت
+                        {t('شخص مؤقت', 'Placeholder person')}
                       </span>
                     ) : null}
                   </div>

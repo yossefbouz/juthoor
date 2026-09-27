@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
+import { useLocale } from '@/contexts/LocaleContext';
 import type { PersonView, TreeSnapshot } from '@/lib/tree/types';
 import type { Person } from '@/types/database';
 
@@ -41,6 +42,7 @@ export function TreeWorkspace({
   rootPersonId,
   persons,
 }: Props) {
+  const { dir } = useLocale();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get('selected');
   const addParam = searchParams.get('add');
@@ -61,7 +63,7 @@ export function TreeWorkspace({
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6"
     >
       <div className="md:order-2 md:flex-1 md:min-w-0">
