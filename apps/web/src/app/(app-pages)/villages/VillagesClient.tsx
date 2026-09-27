@@ -218,6 +218,7 @@ function Stat({
   en: string;
   index: number;
 }) {
+  const { t } = useLocale();
   const reduce = useReducedMotion();
   const fg =
     color === 'olive'
@@ -246,8 +247,7 @@ function Stat({
         <CountUp value={value} duration={1.2} />
       </p>
       <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-stone-500)]">
-        <span className="hidden md:inline">{en}</span>
-        <span className="md:hidden">{ar}</span>
+        {t(ar, en)}
       </p>
     </motion.div>
   );
