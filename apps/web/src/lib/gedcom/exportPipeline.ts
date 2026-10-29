@@ -5,10 +5,16 @@
  * Uses existing `gedcom_xref` columns when present (round-trip
  * preservation); synthesises stable xrefs otherwise so a tree that
  * was built in the UI still exports cleanly.
+ *
+ * With `maskLivingPeople` (decision D5: everyone except the tree's IFT
+ * Administrator), living people keep their names, sex and family links
+ * but lose every event and note, and so do the families they are a
+ * partner in.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { isPresumedLiving } from '@/lib/privacy/lifeData';
 import type { Database, Event, EventType, Person, PersonName } from '@/types/database';
 
 import type {
@@ -20,9 +26,14 @@ import type {
   GedcomSnapshot,
 } from './types';
 
+export interface ExportOptions {
+  readonly maskLivingPeople?: boolean;
+}
+
 export async function exportTreeToSnapshot(
   supabase: SupabaseClient<Database>,
-  treeId: string
+  treeId: string,
+  options: ExportOptions = {}
 ): Promise<GedcomSnapshot> {
   const [personsRes, familiesRes, childrenRes, namesRes, eventsRes, placesRes] =
     await Promise.all([
@@ -114,6 +125,27 @@ export async function exportTreeToSnapshot(
     nextFamilyIdx++;
   }
 
+  // ---- Living people whose details are withheld ----
+  const maskedPersonIds = new Set<string>();
+  if (options.maskLivingPeople) {
+    const deceased = new Set<string>();
+    const birthYears = new Map<string, number>();
+    for (const e of events as Event[]) {
+      if (e.person_id === null) continue;
+      if (e.event_type === 'DEAT') deceased.add(e.person_id);
+      if (e.event_type === 'BIRT' && e.date_year !== null) {
+        birthYears.set(e.person_id, e.date_year);
+      }
+    }
+    for (const p of persons as Person[]) {
+      const living = isPresumedLiving({
+        hasDeath: deceased.has(p.id),
+        birthYear: birthYears.get(p.id) ?? null,
+      });
+      if (living) maskedPersonIds.add(p.id);
+    }
+  }
+
   // ---- Build persons ----
   const gedcomPersons: GedcomPerson[] = persons.map((p: Person) => {
     const personNames = names
@@ -122,9 +154,10 @@ export async function exportTreeToSnapshot(
         (a: PersonName, b: PersonName) =>
           Number(b.is_primary) - Number(a.is_primary)
       );
-    const personEvents = events.filter(
-      (e: Event) => e.person_id === p.id
-    );
+    const masked = maskedPersonIds.has(p.id);
+    const personEvents = masked
+      ? []
+      : events.filter((e: Event) => e.person_id === p.id);
 
     const mappedNames: GedcomName[] =
       personNames.length > 0
@@ -151,7 +184,7 @@ export async function exportTreeToSnapshot(
       events: personEvents.map((e: Event) =>
         toGedcomEvent(e, placeLookup)
       ),
-      notes: p.notes ?? undefined,
+      notes: masked ? undefined : (p.notes ?? undefined),
     };
   });
 
@@ -174,9 +207,15 @@ export async function exportTreeToSnapshot(
         ? personXref.get(f.partner2_id) ?? undefined
         : undefined;
 
-    const myEvents = events
-      .filter((e: Event) => e.family_id === f.id)
-      .map((e: Event) => toGedcomEvent(e, placeLookup));
+    // A marriage date or place is a detail of both partners.
+    const partnerMasked =
+      (f.partner1_id !== null && maskedPersonIds.has(f.partner1_id)) ||
+      (f.partner2_id !== null && maskedPersonIds.has(f.partner2_id));
+    const myEvents = partnerMasked
+      ? []
+      : events
+          .filter((e: Event) => e.family_id === f.id)
+          .map((e: Event) => toGedcomEvent(e, placeLookup));
 
     return {
       xref: familyXref.get(f.id)!,

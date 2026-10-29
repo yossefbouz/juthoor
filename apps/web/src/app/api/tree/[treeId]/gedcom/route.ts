@@ -20,7 +20,30 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   try {
     const supabase = await createJuthoorSupabaseClient();
-    const snapshot = await exportTreeToSnapshot(supabase, treeId);
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const userId = claimsData?.claims?.sub ?? null;
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Sign in to export a tree' },
+        { status: 401 }
+      );
+    }
+
+    const { data: tree, error: treeError } = await supabase
+      .from('trees')
+      .select('owner_id')
+      .eq('id', treeId)
+      .maybeSingle();
+    if (treeError) throw new Error(treeError.message);
+    if (!tree) {
+      return NextResponse.json({ error: 'Tree not found' }, { status: 404 });
+    }
+
+    // Decision D5: only the tree's IFT Administrator exports living
+    // people's details; every other reader gets them masked.
+    const snapshot = await exportTreeToSnapshot(supabase, treeId, {
+      maskLivingPeople: tree.owner_id !== userId,
+    });
     const gedcom = serializeGedcom(snapshot);
 
     return new NextResponse(gedcom, {
