@@ -6,7 +6,7 @@ import { TreeView360 } from '@/components/tree/TreeView360';
 import { EvidencePanel } from '@/components/person/EvidencePanel';
 import { PersonStoryPanel } from '@/components/person/PersonStoryPanel';
 import { getPerson, getTreePersons } from '@/data/anon/persons';
-import { getTreeSnapshot } from '@/data/anon/treeSnapshot';
+import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
 import { getPrimaryPhotoUrl } from '@/data/user/attachments';
 import { loadPersonProfile } from '@/data/user/personProfiles';
 import { buildNeighbors } from '@/lib/tree/relationships';
@@ -55,7 +55,7 @@ export default async function PersonPage({ params }: Props) {
 
   const [snapshot, allPersons, primaryPhotoUrl, canManage, personProfile] =
     await Promise.all([
-      getTreeSnapshot(treeId),
+      getViewerTreeSnapshot(treeId),
       getTreePersons(treeId),
       getPrimaryPhotoUrl(personId),
       viewerCanManage(treeId),

@@ -1,8 +1,9 @@
 'use server';
 
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
-import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
 import { shouldHideLifeData } from '@/lib/privacy/lifeData';
+
+import { viewerHasPrivilegedTreeAccess } from './treeAccess';
 
 /** One row of the "list of all people" table. */
 export interface PersonListRow {
@@ -102,7 +103,7 @@ export async function getTreePeoplePage(
 
   // A living person's birth year + birthplace are hidden from viewers without
   // privileged (owner / approved-member) access to the tree (plan §5.5).
-  const privileged = await viewerCanWriteTree(supabase, args.treeId);
+  const privileged = await viewerHasPrivilegedTreeAccess(args.treeId);
 
   return {
     rows: persons.map((p) => {
@@ -124,31 +125,6 @@ export async function getTreePeoplePage(
     page,
     pageSize,
   };
-}
-
-/** True when the current viewer owns or is an approved member of the tree. */
-async function viewerCanWriteTree(
-  supabase: Awaited<ReturnType<typeof createJuthoorSupabaseClient>>,
-  treeId: string
-): Promise<boolean> {
-  const uid = await getCachedLoggedInUserIdOrNull();
-  if (!uid) return false;
-  const [{ data: owned }, { data: member }] = await Promise.all([
-    supabase
-      .from('trees')
-      .select('id')
-      .eq('id', treeId)
-      .eq('owner_id', uid)
-      .maybeSingle(),
-    supabase
-      .from('tree_members')
-      .select('tree_id')
-      .eq('tree_id', treeId)
-      .eq('user_id', uid)
-      .eq('status', 'approved')
-      .maybeSingle(),
-  ]);
-  return Boolean(owned) || Boolean(member);
 }
 
 interface LifeFacts {

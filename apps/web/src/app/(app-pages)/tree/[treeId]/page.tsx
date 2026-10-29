@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getTreeById } from '@/data/anon/trees';
 import { getTreePersons } from '@/data/anon/persons';
-import { getTreeSnapshot } from '@/data/anon/treeSnapshot';
+import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
 
 import { EmptyTreeBanner } from '@/components/tree/EmptyTreeBanner';
 import { TreePageHeader } from '@/components/tree/TreePageHeader';
@@ -54,7 +54,7 @@ async function TreeChartOrEmpty({
   readonly requestedRoot?: string;
 }) {
   const [snapshot, persons] = await Promise.all([
-    getTreeSnapshot(treeId),
+    getViewerTreeSnapshot(treeId),
     getTreePersons(treeId),
   ]);
 

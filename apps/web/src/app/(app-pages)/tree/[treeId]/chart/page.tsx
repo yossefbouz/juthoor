@@ -6,7 +6,7 @@ import { T } from '@/components/ui/Typography';
 import { FamilyChart } from '@/components/tree/FamilyChart';
 import { getTreeById } from '@/data/anon/trees';
 import { getTreePersons } from '@/data/anon/persons';
-import { getTreeSnapshot } from '@/data/anon/treeSnapshot';
+import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
 
 interface Props {
   readonly params: Promise<{ readonly treeId: string }>;
@@ -25,7 +25,7 @@ export default async function ChartPage({ params }: Props) {
   if (!tree) notFound();
 
   const [snapshot, persons] = await Promise.all([
-    getTreeSnapshot(treeId),
+    getViewerTreeSnapshot(treeId),
     getTreePersons(treeId),
   ]);
 

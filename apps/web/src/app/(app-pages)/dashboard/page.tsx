@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { DashboardClient, type DashboardData } from './DashboardClient';
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { ensureUserHasDefaultTree } from '@/data/anon/trees';
-import { getTreeSnapshot } from '@/data/anon/treeSnapshot';
+import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 
 async function loadDashboard(): Promise<DashboardData> {
@@ -37,7 +37,7 @@ async function loadDashboard(): Promise<DashboardData> {
       .select('place_id, persons!inner(tree_id)')
       .eq('persons.tree_id', treeId)
       .not('place_id', 'is', null),
-    getTreeSnapshot(treeId).catch(() => null),
+    getViewerTreeSnapshot(treeId).catch(() => null),
   ]);
 
   return {
