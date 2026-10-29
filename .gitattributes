@@ -1,0 +1,2 @@
+# Piped from Windows to bash on the VPS: CRLF would break them.
+scripts/staging/*.sh text eol=lf

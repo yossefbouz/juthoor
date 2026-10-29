@@ -26,6 +26,11 @@ push to main
 - SSHs into the VPS, `git reset --hard origin/main`, install, build, `systemctl restart juthoor`
 - Curls `/` post-restart; if 5xx, dumps `journalctl` and fails the run
 
+## deploy-staging.yml — manual only
+- **Actions → Deploy staging → Run workflow**, with the branch or tag to deploy (default `main`)
+- SSHs in as the same deploy user and runs `scripts/staging/deploy.sh`: rebuilds `/opt/juthoor/staging` and restarts `juthoor-staging` (https://staging.juthoor.app). Never touches production
+- Same secrets as `deploy.yml`; staging setup and its database steps are in `RUN_GUIDE.md` §9
+
 ## Required GitHub Secrets
 | Name | Where to get it |
 |---|---|

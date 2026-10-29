@@ -243,3 +243,87 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 A backup with those values lives at `apps/web/.env.local.remote-backup`.
 
 Remote is already migrated through `20260417140000` and has 263 seeded villages. To push future migrations to remote without the Supabase CLI link, use the Management API helper pattern documented in `apps/database/README.md` (or ask me — I'll apply it with the Management API token).
+
+---
+
+## 9. Staging — https://staging.juthoor.app
+
+A hosted copy of Juthoor where the founder and testers can explore the demo data (8 trees, 49 people, 40 pending matches, 4 pending verifications) without the local stack and without touching real families' data. It runs the same code as production on the same VPS, against its own Supabase project, `juthoor-staging`.
+
+| | Production | Staging |
+|---|---|---|
+| URL | https://juthoor.app | https://staging.juthoor.app (noindex; `robots.txt` disallows everything) |
+| Supabase project | `nlufpicjdeeqcgepewdg` | `juthoor-staging`, with its own URL and keys |
+| VPS checkout | `/opt/juthoor/app` | `/opt/juthoor/staging` |
+| systemd service | `juthoor`, port 3000 | `juthoor-staging`, 127.0.0.1:3001, 1 GB memory cap |
+| Web settings | `apps/web/.env.local` in the checkout | the same file in the staging checkout |
+| Web deploys | automatic after CI passes on `main` | manual: `scripts/staging/deploy.sh` or the **Deploy staging** workflow |
+| Migrations | by hand in the SQL editor | `seed_demo_mock.py --migrate` (runs `supabase db push`) |
+
+**Signing in.** Open https://staging.juthoor.app/login, choose the **Password** tab, and use any account listed in the header of `apps/database/supabase/demo/seed_demo_mock.sql` (start with `admin@juthoor.local`). The password is **not** the local demo password. It is `STAGING_DEMO_PASSWORD` from the maintainer's staging env file, shared privately and never committed.
+
+**No email to real people.** Sign-up is off, so the only accounts are the `@juthoor.local` demo ones. The project also has no custom SMTP: Supabase's built-in mailer delivers only to members of the Supabase organisation and rejects every other address (`email_address_not_authorized`). Use the Password tab, because the OTP tab cannot reach `@juthoor.local`.
+
+### 9.1 One-time setup (done 2026-10-29; repeat only to rebuild from scratch)
+
+1. **Supabase project.** Create `juthoor-staging` in the same organisation and region as production. In its dashboard:
+   - Authentication → Sign In / Providers: turn off **Allow new users to sign up**.
+   - Authentication → URL Configuration: Site URL `https://staging.juthoor.app`, redirect URL `https://staging.juthoor.app/**`.
+   - Leave custom SMTP off.
+2. **Secrets file, outside the repo**, for example `%USERPROFILE%\.juthoor\staging.env`. Never commit it or paste it into chat:
+   ```
+   STAGING_SUPABASE_URL=https://<project-ref>.supabase.co
+   STAGING_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   STAGING_SUPABASE_SECRET_KEY=sb_secret_...
+   STAGING_DB_URL=<Connect → Session pooler string, keeping [YOUR-PASSWORD] as it is>
+   STAGING_DB_PASSWORD=<the database password>
+   STAGING_DEMO_PASSWORD=<a new random password for the demo accounts>
+   ```
+   The secret key and the database password stay on the maintainer's machine. Neither the VPS nor the web app gets them.
+3. **Migrations and demo data.** From the repo root, after `pnpm install` (for the Supabase CLI) and `python -m pip install requests pillow "psycopg[binary]"`:
+   ```cmd
+   python -I apps/database/supabase/demo/seed_demo_mock.py --env-file %USERPROFILE%\.juthoor\staging.env --migrate
+   ```
+   Expected last line: `trees=8 persons=49 pending_matches=40 pending_verifications=4`. The script refuses the production project and the public local password.
+4. **DNS** (Cloudflare, zone `juthoor.app`): `staging` A `80.241.218.49` and AAAA `2a02:c207:2325:285::1`, DNS only (grey cloud) like the apex. Caddy obtains the certificate itself.
+5. **VPS, as root, once.** Adds the `juthoor-staging` unit, a sudoers rule that lets `juthoor` restart it, and the Caddy site. Production's unit and site block stay as they are; the Caddyfile is backed up and validated before Caddy reloads.
+   ```cmd
+   scp scripts/staging/setup-vps.sh yousef@80.241.218.49:/tmp/
+   ssh -t yousef@80.241.218.49 "sudo bash /tmp/setup-vps.sh"
+   ```
+6. **Web settings on the VPS, once.** `/opt/juthoor/staging/apps/web/.env.local` (owner `juthoor`, mode 600) holds only public values. Next.js bakes them into the build, which is why staging has its own checkout:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+   NEXT_PUBLIC_SITE_URL=https://staging.juthoor.app
+   ```
+   `deploy.sh` refuses to build if this file mentions the production project or another site URL.
+7. **First build:** the web redeploy below. It clones `/opt/juthoor/staging` if it is missing.
+
+### 9.2 Redeploy
+
+**Web app.** Builds `origin/main`, or the branch or tag you name, restarts `juthoor-staging` and checks that it answers. From the repo root in cmd or Git Bash (PowerShell has no `<` redirection):
+
+```cmd
+ssh -i %USERPROFILE%\.ssh\juthoor_deploy juthoor@80.241.218.49 "bash -s" < scripts/staging/deploy.sh
+ssh -i %USERPROFILE%\.ssh\juthoor_deploy juthoor@80.241.218.49 "bash -s -- feat/my-branch" < scripts/staging/deploy.sh
+```
+
+Or on GitHub: **Actions → Deploy staging → Run workflow**, then pick the ref.
+
+**Database.** Run this after new migrations land on `main`, or to give testers a fresh demo. It resets only the `@juthoor.local` data:
+
+```cmd
+python -I apps/database/supabase/demo/seed_demo_mock.py --env-file %USERPROFILE%\.juthoor\staging.env --migrate
+```
+
+`--migrate` runs `supabase db push`, which applies only the migrations staging has not seen yet; they are recorded in `supabase_migrations.schema_migrations`. When a change needs both, run the database step before the web redeploy. To change the demo password, edit `STAGING_DEMO_PASSWORD` and run the seed again.
+
+### 9.3 Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| 502 from staging.juthoor.app | `juthoor-staging` is down. Redeploy (9.2), or as root run `systemctl status juthoor-staging` and `journalctl -u juthoor-staging -n 100` |
+| Pages load but every Supabase call fails | Free-plan projects pause after a week of low activity (Supabase emails a warning first). Resume `juthoor-staging` from the Supabase dashboard |
+| A demo account's password is rejected | Use the `STAGING_DEMO_PASSWORD` the seed last ran with; re-running the seed (9.2) resets every demo account to it |
+| A second tab does not refresh live | No migration adds `persons`, `families`, `family_children` or `person_names` to the `supabase_realtime` publication, so a fresh project sends no live tree updates |

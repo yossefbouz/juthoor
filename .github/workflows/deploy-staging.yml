@@ -1,0 +1,50 @@
+name: Deploy staging
+
+# Rebuilds https://staging.juthoor.app (demo data, its own Supabase project) on the
+# VPS. Manual only: Actions → Deploy staging → Run workflow. It never runs on push,
+# and it never touches production (/opt/juthoor/app). Runs scripts/staging/deploy.sh
+# with the same SSH secrets as deploy.yml. Database side and setup: RUN_GUIDE.md §9.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or tag to put on staging
+        required: true
+        default: main
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Pull, build, restart staging
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REF: ${{ inputs.ref }}
+        run: |
+          # the ref ends up in a remote shell command line: allow branch/tag characters only
+          [[ "$REF" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "::error::bad ref: $REF"; exit 1; }
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" "bash -s -- $REF" < scripts/staging/deploy.sh

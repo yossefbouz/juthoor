@@ -42,3 +42,10 @@ camera. Nothing here touches juthoor.app.
 
 Tips: record in Arabic (the default) — in English the admin pages flash Arabic on
 load. Don't click "Mark all read" in the bell (it shows every user's notifications).
+
+## Staging
+
+The same data runs on https://staging.juthoor.app, a hosted copy for the founder
+and testers. There the accounts share a private password instead of the one in
+`seed_demo_mock.sql`. To reset it, run the seed with `--env-file`; see
+**RUN_GUIDE.md §9** for setup and redeploys.

@@ -1,11 +1,13 @@
 -- ============================================================================
--- Juthoor — LOCAL demo / mock data for the admin interface (NOT for production)
+-- Juthoor — demo / mock data for the admin interface: the LOCAL stack and the
+-- STAGING project only (NOT for production)
 -- ----------------------------------------------------------------------------
--- Run via:  python -I apps/database/supabase/demo/seed_demo_mock.py
--- (the runner creates the demo users through the local Auth admin API, uploads
+-- Run via:  python -I apps/database/supabase/demo/seed_demo_mock.py [--env-file …]
+-- (the runner creates the demo users through the Auth admin API, uploads
 --  the sample documents, then executes this file and the matching engine).
 --
--- Demo accounts (all local, password for every account: Juthoor-Demo-2026!)
+-- Demo accounts (local password for every account: Juthoor-Demo-2026!; on
+-- staging they share a private password kept outside git, see RUN_GUIDE.md §9)
 --   admin@juthoor.local          — platform admin (profiles.is_admin = true)
 --   rania.khatib@juthoor.local   — owner: عائلة الخطيب — صفد
 --   omar.khatib@juthoor.local    — owner: آل الخطيب، فرع عمّان
