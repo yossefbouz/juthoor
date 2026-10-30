@@ -10,22 +10,43 @@ type Row = Record<string, unknown>;
 
 interface FakeQuery extends Promise<{ data: readonly Row[]; error: null }> {
   select(): FakeQuery;
-  eq(): FakeQuery;
+  eq(column: string): FakeQuery;
+  order(): FakeQuery;
+  range(from: number, to: number): FakeQuery;
 }
 
+/** Like the real API, one response carries at most 1000 rows. */
+const MAX_ROWS = 1000;
+
 /**
- * Stand-in for the Supabase query builder: each table returns the given rows
- * and filters are ignored, since the rows already belong to one tree.
+ * Stand-in for the Supabase query builder over rows that already belong to
+ * one tree. A filter through the joined person or family keeps the rows that
+ * have one, which is what tells person events from family events.
  */
+function fakeQuery(rows: readonly Row[]): FakeQuery {
+  const query: FakeQuery = Object.assign(
+    Promise.resolve({ data: rows.slice(0, MAX_ROWS), error: null as null }),
+    {
+      select: () => query,
+      eq: (column: string) => {
+        if (column === 'persons.tree_id') {
+          return fakeQuery(rows.filter((r) => r.person_id != null));
+        }
+        if (column === 'families.tree_id') {
+          return fakeQuery(rows.filter((r) => r.family_id != null));
+        }
+        return query;
+      },
+      order: () => query,
+      range: (from: number, to: number) => fakeQuery(rows.slice(from, to + 1)),
+    }
+  );
+  return query;
+}
+
 function fakeSupabase(rows: Record<string, readonly Row[]>): SupabaseClient<Database> {
   return {
-    from(table: string) {
-      const query: FakeQuery = Object.assign(
-        Promise.resolve({ data: rows[table] ?? [], error: null }),
-        { select: () => query, eq: () => query }
-      );
-      return query;
-    },
+    from: (table: string) => fakeQuery(rows[table] ?? []),
   } as unknown as SupabaseClient<Database>;
 }
 
@@ -95,6 +116,34 @@ const ROWS: Record<string, readonly Row[]> = {
   ],
   places: [],
 };
+
+describe('exportTreeToSnapshot — reading the tree', () => {
+  it('exports every person of a tree larger than one API page', async () => {
+    const count = 2 * MAX_ROWS + 1;
+    const ids = Array.from({ length: count }, (_, i) => `p${i}`);
+    const snap = await exportTreeToSnapshot(
+      fakeSupabase({
+        persons: ids.map((id, i) => person(id, `@I${i + 1}@`, 'M')),
+        person_names: ids.map((id) => name(id, 'أحمد', 'الخطيب')),
+        events: ids.map((id) => event({ person_id: id }, 'BIRT', 1900)),
+      }),
+      't'
+    );
+
+    expect(snap.persons).toHaveLength(count);
+    expect(snap.persons.at(-1)!.events).toHaveLength(1);
+    expect(snap.persons.at(-1)!.names[0].given).toBe('أحمد');
+  });
+
+  it('keeps person events and family events apart', async () => {
+    const snap = await exportTreeToSnapshot(fakeSupabase(ROWS), 't');
+
+    expect(snap.persons.find((p) => p.xref === '@I2@')!.events).toHaveLength(1);
+    expect(snap.families.find((f) => f.xref === '@F2@')!.events).toEqual([
+      expect.objectContaining({ eventType: 'MARR', year: 1985 }),
+    ]);
+  });
+});
 
 describe('exportTreeToSnapshot — living people (decision D5)', () => {
   it('exports every detail when masking is off (the IFT Administrator)', async () => {

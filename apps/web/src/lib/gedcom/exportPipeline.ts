@@ -15,7 +15,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { isPresumedLiving } from '@/lib/privacy/lifeData';
-import type { Database, Event, EventType, Person, PersonName } from '@/types/database';
+import type {
+  Database,
+  Event,
+  EventType,
+  Family,
+  Person,
+  PersonName,
+} from '@/types/database';
 
 import type {
   GedcomChildLink,
@@ -30,48 +37,107 @@ export interface ExportOptions {
   readonly maskLivingPeople?: boolean;
 }
 
+/** The API returns at most this many rows per request (Supabase `max_rows`). */
+const PAGE_SIZE = 1000;
+
+/** Reads every row of a query, one page at a time. */
+async function readAll<T>(
+  page: (
+    from: number,
+    to: number
+  ) => PromiseLike<{
+    data: readonly unknown[] | null;
+    error: { message: string } | null;
+  }>
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await page(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...((data ?? []) as T[]));
+    if ((data?.length ?? 0) < PAGE_SIZE) return rows;
+  }
+}
+
+interface ChildLinkRow {
+  readonly family_id: string;
+  readonly child_id: string;
+  readonly pedigree: 'birth' | 'adopted' | 'foster' | 'sealing' | 'other';
+  readonly families?: unknown;
+}
+
 export async function exportTreeToSnapshot(
   supabase: SupabaseClient<Database>,
   treeId: string,
   options: ExportOptions = {}
 ): Promise<GedcomSnapshot> {
-  const [personsRes, familiesRes, childrenRes, namesRes, eventsRes, placesRes] =
+  // Names and events are scoped to this tree through their person or
+  // family; on their own, those tables hold every tree the user can read.
+  const [persons, families, childRows, names, personEvents, familyEvents, places] =
     await Promise.all([
-      supabase.from('persons').select('*').eq('tree_id', treeId),
-      supabase.from('families').select('*').eq('tree_id', treeId),
-      supabase
-        .from('family_children')
-        .select('*, families!inner(tree_id)')
-        .eq('families.tree_id', treeId),
-      supabase.from('person_names').select('*'),
-      supabase.from('events').select('*'),
-      supabase.from('places').select('id, name_en, name_ar'),
+      readAll<Person>((from, to) =>
+        supabase
+          .from('persons')
+          .select('*')
+          .eq('tree_id', treeId)
+          .order('created_at')
+          .order('id')
+          .range(from, to)
+      ),
+      readAll<Family>((from, to) =>
+        supabase
+          .from('families')
+          .select('*')
+          .eq('tree_id', treeId)
+          .order('created_at')
+          .order('id')
+          .range(from, to)
+      ),
+      readAll<ChildLinkRow>((from, to) =>
+        supabase
+          .from('family_children')
+          .select('*, families!inner(tree_id)')
+          .eq('families.tree_id', treeId)
+          .order('id')
+          .range(from, to)
+      ),
+      readAll<PersonName>((from, to) =>
+        supabase
+          .from('person_names')
+          .select('*, persons!inner(tree_id)')
+          .eq('persons.tree_id', treeId)
+          .order('id')
+          .range(from, to)
+      ),
+      readAll<Event>((from, to) =>
+        supabase
+          .from('events')
+          .select('*, persons!inner(tree_id)')
+          .eq('persons.tree_id', treeId)
+          .order('id')
+          .range(from, to)
+      ),
+      readAll<Event>((from, to) =>
+        supabase
+          .from('events')
+          .select('*, families!inner(tree_id)')
+          .eq('families.tree_id', treeId)
+          .order('id')
+          .range(from, to)
+      ),
+      readAll<{ id: string; name_en: string | null; name_ar: string | null }>(
+        (from, to) =>
+          supabase
+            .from('places')
+            .select('id, name_en, name_ar')
+            .order('id')
+            .range(from, to)
+      ),
     ]);
 
-  for (const res of [
-    personsRes,
-    familiesRes,
-    childrenRes,
-    namesRes,
-    eventsRes,
-    placesRes,
-  ]) {
-    if (res.error) throw new Error(res.error.message);
-  }
-
-  const persons = personsRes.data ?? [];
-  const families = familiesRes.data ?? [];
-  const childLinks = (childrenRes.data ?? []).map(
-    // strip the joined `families` so we only keep the child-link fields
-    ({ families: _omit, ...rest }) => rest as unknown as {
-      family_id: string;
-      child_id: string;
-      pedigree: 'birth' | 'adopted' | 'foster' | 'sealing' | 'other';
-    }
-  );
-  const names = namesRes.data ?? [];
-  const events = eventsRes.data ?? [];
-  const places = placesRes.data ?? [];
+  // strip the joined `families` so we only keep the child-link fields
+  const childLinks = childRows.map(({ families: _omit, ...rest }) => rest);
+  const events = [...personEvents, ...familyEvents];
 
   const placeLookup = new Map<string, string>();
   for (const p of places) {
