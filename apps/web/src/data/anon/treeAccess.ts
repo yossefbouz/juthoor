@@ -31,3 +31,25 @@ export async function viewerHasPrivilegedTreeAccess(
   ]);
   return Boolean(owned) || Boolean(member);
 }
+
+/**
+ * The trees the current viewer owns or is an approved member of (any role),
+ * for pages that list people from many trees at once.
+ */
+export async function viewerPrivilegedTreeIds(): Promise<ReadonlySet<string>> {
+  const ids = new Set<string>();
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) return ids;
+  const supabase = await createJuthoorSupabaseClient();
+  const [{ data: owned }, { data: memberships }] = await Promise.all([
+    supabase.from('trees').select('id').eq('owner_id', uid),
+    supabase
+      .from('tree_members')
+      .select('tree_id')
+      .eq('user_id', uid)
+      .eq('status', 'approved'),
+  ]);
+  for (const t of owned ?? []) ids.add(t.id);
+  for (const m of memberships ?? []) ids.add(m.tree_id);
+  return ids;
+}

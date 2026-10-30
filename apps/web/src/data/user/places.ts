@@ -1,5 +1,7 @@
 'use server';
 
+import { viewerPrivilegedTreeIds } from '@/data/anon/treeAccess';
+import { isPresumedLiving } from '@/lib/privacy/lifeData';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
 import type { PlaceExternalLink } from '@/types/database';
@@ -145,8 +147,10 @@ export type PlacePerson = {
   birth_year: number | null;
   tree_id: string;
   tree_name: string | null;
-  /** Privacy §11: a living child under 16 from a tree the viewer can't manage —
-   *  identity is withheld from this public list. Name/year are nulled. */
+  /** Identity withheld from this list: a living person from a tree the viewer
+   *  is not a member of (being listed here would reveal their birthplace), or,
+   *  per Privacy §11, a living child under 16 from a tree the viewer can't
+   *  manage. Name, year and tree are nulled and the ids are placeholders. */
   protected: boolean;
 };
 
@@ -194,11 +198,25 @@ export async function loadPersonsFromPlace(
 
   const { data: personRows, error: pErr } = await supabase
     .from('persons')
-    .select('id, display_name_ar, display_name_en, gender, tree_id, is_living')
+    .select('id, display_name_ar, display_name_en, gender, tree_id')
     .in('id', personIds);
   if (pErr) throw new Error(`Failed to load persons: ${pErr.message}`);
 
-  const writableTrees = await viewerWritableTreeIds(supabase);
+  const [writableTrees, privilegedTrees, deathRes] = await Promise.all([
+    viewerWritableTreeIds(supabase),
+    viewerPrivilegedTreeIds(),
+    supabase
+      .from('events')
+      .select('person_id')
+      .in('person_id', personIds)
+      .eq('event_type', 'DEAT'),
+  ]);
+  if (deathRes.error) {
+    throw new Error(`Failed to load death events: ${deathRes.error.message}`);
+  }
+  const deceased = new Set(
+    ((deathRes.data ?? []) as Array<{ person_id: string }>).map((r) => r.person_id),
+  );
   const currentYear = new Date().getUTCFullYear();
 
   const treeIds = Array.from(
@@ -225,22 +243,30 @@ export async function loadPersonsFromPlace(
     display_name_en: string | null;
     gender: string | null;
     tree_id: string;
-    is_living: boolean | null;
   };
-  return ((personRows ?? []) as PersonRow[]).map((p) => {
+  return ((personRows ?? []) as PersonRow[]).map((p, i) => {
     const birthYear = yearByPerson.get(p.id) ?? null;
+    const living = isPresumedLiving(
+      { hasDeath: deceased.has(p.id), birthYear },
+      currentYear,
+    );
+    // A living person's birthplace is private to their own tree (as in the
+    // people list), and every entry on this page is a birthplace.
+    const outsideTheirTree = living && !privilegedTrees.has(p.tree_id);
     // Privacy §11: a living child under 16, in a tree the viewer can't manage,
     // is not shown publicly — withhold identity (name + year).
-    const isMinor =
-      p.is_living === true && birthYear != null && currentYear - birthYear < 16;
-    const isProtected = isMinor && !writableTrees.has(p.tree_id);
+    const isMinor = living && birthYear != null && currentYear - birthYear < 16;
+    const isProtected =
+      outsideTheirTree || (isMinor && !writableTrees.has(p.tree_id));
     return {
-      person_id: p.id,
+      // Placeholder ids, so a protected entry can't be matched to the same
+      // person on another page.
+      person_id: isProtected ? `protected-${i}` : p.id,
       display_name_ar: isProtected ? null : p.display_name_ar,
       display_name_en: isProtected ? null : p.display_name_en,
       gender: isProtected ? null : p.gender,
       birth_year: isProtected ? null : birthYear,
-      tree_id: p.tree_id,
+      tree_id: isProtected ? '' : p.tree_id,
       tree_name: isProtected ? null : treeNameById.get(p.tree_id) ?? null,
       protected: isProtected,
     };
