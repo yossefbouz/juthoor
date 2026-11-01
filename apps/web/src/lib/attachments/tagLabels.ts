@@ -9,6 +9,7 @@ export const TAG_LABELS: Record<AttachmentTag, { ar: string; en: string }> = {
   marriage_cert: { ar: 'عقد زواج', en: 'Marriage certificate' },
   land_deed: { ar: 'وثيقة عقارية', en: 'Land deed' },
   family_card: { ar: 'بطاقة عائلية', en: 'Family card' },
+  unrwa_card: { ar: 'بطاقة الأونروا', en: 'UNRWA card' },
   letter: { ar: 'رسالة', en: 'Letter' },
   old_photo: { ar: 'صورة قديمة', en: 'Old photo' },
   other: { ar: 'أخرى', en: 'Other' },
@@ -23,6 +24,7 @@ export const DOCUMENT_TAGS: AttachmentTag[] = [
   'marriage_cert',
   'land_deed',
   'family_card',
+  'unrwa_card',
   'letter',
   'other',
 ];

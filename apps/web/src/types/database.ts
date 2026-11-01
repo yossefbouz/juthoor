@@ -59,6 +59,7 @@ export type AttachmentTag =
   | 'marriage_cert'
   | 'land_deed'
   | 'family_card'
+  | 'unrwa_card'
   | 'letter'
   | 'old_photo'
   | 'other';
@@ -431,6 +432,17 @@ type MutableMatchHint = {
   updated_at: string;
 };
 
+type MutablePersonIdentifier = {
+  id: string;
+  person_id: string;
+  kind: 'unrwa_card' | 'family_card_1948';
+  value: string;
+  value_norm: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type MutablePersonPrivacyHold = {
   person_id: string;
   set_by: string | null;
@@ -603,6 +615,16 @@ export type Database = {
           counterpart_person_id: string;
         };
         Update: Partial<MutableMatchHint>;
+        Relationships: [];
+      };
+      person_identifiers: {
+        Row: MutablePersonIdentifier;
+        Insert: Partial<MutablePersonIdentifier> & {
+          person_id: string;
+          kind: MutablePersonIdentifier['kind'];
+          value: string;
+        };
+        Update: Partial<MutablePersonIdentifier>;
         Relationships: [];
       };
       person_privacy_holds: {

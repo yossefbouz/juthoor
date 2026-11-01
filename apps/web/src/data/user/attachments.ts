@@ -16,6 +16,7 @@ export type AttachmentTag =
   | 'marriage_cert'
   | 'land_deed'
   | 'family_card'
+  | 'unrwa_card'
   | 'letter'
   | 'old_photo'
   | 'other';
@@ -55,6 +56,7 @@ const InsertSchema = z.object({
     'marriage_cert',
     'land_deed',
     'family_card',
+    'unrwa_card',
     'letter',
     'old_photo',
     'other',

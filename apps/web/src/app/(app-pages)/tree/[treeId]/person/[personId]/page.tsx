@@ -4,6 +4,7 @@ import { AddChildCard } from '@/components/tree/AddChildCard';
 import { PersonPageHeader } from '@/components/tree/PersonPageHeader';
 import { TreeView360 } from '@/components/tree/TreeView360';
 import { EvidencePanel } from '@/components/person/EvidencePanel';
+import { IdentityNumbersPanel } from '@/components/person/IdentityNumbersPanel';
 import { PersonStoryPanel } from '@/components/person/PersonStoryPanel';
 import { getPerson, getTreePersons } from '@/data/anon/persons';
 import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
@@ -81,13 +82,14 @@ export default async function PersonPage({ params }: Props) {
         <div className="min-w-0">
           <TreeView360 treeId={treeId} neighbors={neighbors} />
         </div>
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-col gap-6">
           <EvidencePanel
             treeId={treeId}
             personId={personId}
             initialPrimaryPhotoId={primaryPhotoId}
             canManage={canManage}
           />
+          <IdentityNumbersPanel personId={personId} canManage={canManage} />
         </div>
       </div>
 
