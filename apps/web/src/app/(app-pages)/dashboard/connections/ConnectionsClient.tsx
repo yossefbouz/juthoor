@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, EyeOff, Inbox, Link2, Loader2, ShieldAlert, ShieldOff, X } from 'lucide-react';
+import { Check, EyeOff, Inbox, Link2, Loader2, ShieldAlert, ShieldOff, Undo2, X } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import {
   acceptConnection,
   declineConnection,
+  revokeAutoLink,
   setPrivacyHold,
   type ConnectionCard,
   type ConnectionField,
@@ -105,8 +106,8 @@ export function ConnectionsClient({
         </h1>
         <p className="mt-1 text-sm text-[var(--jt-stone-600)]">
           {t(
-            'لن يُدمج أي شخص إلا بموافقة الطرفين. هوية الطرف الآخر تبقى محجوبة حتى الموافقة المتبادلة.',
-            'No one is merged without both sides agreeing. The other party stays hidden until mutual consent.',
+            'الروابط القوية تُنشأ تلقائيًا ويمكنك إلغاء أي رابط. الروابط الأضعف تنتظر موافقة الطرفين. تفاصيل الطرف الآخر تبقى محجوبة.',
+            'Strong matches are linked automatically, and you can revoke any link. Weaker matches wait for both sides to agree. The other side’s details stay hidden.',
           )}
         </p>
       </header>
@@ -192,7 +193,24 @@ export function ConnectionsClient({
                     {t('لا تطابق قريبي', "Don't match my relative")}
                   </button>
 
-                  {pending ? (
+                  {card.autoLinked ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-[var(--jt-olive-200)] bg-[var(--jt-olive-50)] px-3 py-1 text-xs font-medium text-[var(--jt-olive-700)]">
+                        {t('رُبط تلقائيًا', 'Linked automatically')}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          act(card.hintId, () => revokeAutoLink({ matchId: card.matchId }), true)
+                        }
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                      >
+                        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                        {t('إلغاء الربط', 'Revoke link')}
+                      </button>
+                    </div>
+                  ) : pending ? (
                     <div className="flex items-center gap-2">
                       <button
                         type="button"

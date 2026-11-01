@@ -726,6 +726,7 @@ export type Database = {
         Args: { p_hint_id: string; p_accept: boolean };
         Returns: undefined;
       };
+      revoke_auto_link: { Args: { p_match_id: string }; Returns: undefined };
       revoke_person_link: { Args: { p_link_id: string }; Returns: undefined };
     };
     Enums: {

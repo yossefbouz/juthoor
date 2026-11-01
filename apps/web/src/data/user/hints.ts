@@ -12,6 +12,8 @@ export type ConnectionCard = {
   hintId: string;
   matchId: string;
   hintStatus: HintStatus;
+  /** True when the engine linked this pair automatically; the owner can revoke it. */
+  autoLinked: boolean;
   score: number;
   viewerPersonId: string;
   viewerNameAr: string | null;
@@ -86,6 +88,7 @@ export async function listConnections(): Promise<ConnectionCard[]> {
         hintId: h.id,
         matchId: h.match_id,
         hintStatus: h.status,
+        autoLinked: c.status === 'auto_merged',
         score: c.confidence_score,
         viewerPersonId: c.viewer_person_id,
         viewerNameAr: c.viewer_name_ar,
@@ -115,6 +118,7 @@ export async function countPendingConnections(): Promise<number> {
 
 // ── owner decisions ──────────────────────────────────────────────────────────
 const HintSchema = z.object({ hintId: z.string().uuid() });
+const MatchSchema = z.object({ matchId: z.string().uuid() });
 
 async function decideHint(hintId: string, accept: boolean): Promise<void> {
   const uid = await getCachedLoggedInUserIdOrNull();
@@ -130,6 +134,16 @@ async function decideHint(hintId: string, accept: boolean): Promise<void> {
 /** Accept the owner's side. When BOTH owners accept, the link is confirmed. */
 export async function acceptConnection(input: z.input<typeof HintSchema>): Promise<void> {
   await decideHint(HintSchema.parse(input).hintId, true);
+}
+
+/** Revoke a link the engine made automatically (undoes it for both trees). */
+export async function revokeAutoLink(input: z.input<typeof MatchSchema>): Promise<void> {
+  const { matchId } = MatchSchema.parse(input);
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) throw new Error('Not authenticated');
+  const supabase = await createJuthoorSupabaseClient();
+  const { error } = await supabase.rpc('revoke_auto_link', { p_match_id: matchId });
+  if (error) throw new Error(error.message);
 }
 
 /** Decline — silent to the counterpart (they are never told a side declined). */

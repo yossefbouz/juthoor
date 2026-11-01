@@ -23,7 +23,7 @@ INSERT INTO public.events (person_id, event_type, date_year) VALUES
   ('c0000000-0000-0000-0000-000000000001', 'BIRT', 1980),
   ('c0000000-0000-0000-0000-000000000002', 'BIRT', 2000),
   ('c0000000-0000-0000-0000-000000000003', 'DEAT', 1990),
-  ('c0000000-0000-0000-0000-000000000009', 'BIRT', 1900);
+  ('c0000000-0000-0000-0000-000000000009', 'BIRT', 1850);
 
 -- spouse edges: self ↔ interior ↔ target
 INSERT INTO public.families (id, tree_id, partner1_id, partner2_id) VALUES
@@ -34,7 +34,7 @@ INSERT INTO public.families (id, tree_id, partner1_id, partner2_id) VALUES
 SELECT is(public.is_person_living('c0000000-0000-0000-0000-000000000002'), true,  'birth 2000, no death -> living');
 SELECT is(public.is_person_living('c0000000-0000-0000-0000-000000000003'), false, 'has DEAT -> not living');
 SELECT is(public.is_person_living('c0000000-0000-0000-0000-000000000001'), true,  'birth 1980, no death -> living');
-SELECT is(public.is_person_living('c0000000-0000-0000-0000-000000000009'), false, 'birth 1900 (>100y) -> not living');
+SELECT is(public.is_person_living('c0000000-0000-0000-0000-000000000009'), false, 'birth 1850 (150+ years ago) -> not living');
 SELECT is(public.is_person_living('c0000000-0000-0000-0000-000000000008'), true,  'no events -> fail toward living');
 
 -- ── compute_degrees() masking, as the (non-admin) viewer ─────────────────────
