@@ -2,8 +2,10 @@
 
 import { getTreeFamilies, getTreeFamilyChildren } from './families';
 import { getTreePersons } from './persons';
+import { viewerHasPrivilegedTreeAccess } from './treeAccess';
 
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
+import { isPresumedLiving, shouldHideLifeData } from '@/lib/privacy/lifeData';
 import type {
   FamilyChildLink,
   FamilyView,
@@ -16,6 +18,7 @@ import type { Family, FamilyChild, Person } from '@/types/database';
 interface LifeFacts {
   readonly birthYear: number | null;
   readonly deathYear: number | null;
+  readonly hasDeath: boolean;
   readonly birthPlaceId: string | null;
   readonly birthPlaceAr: string | null;
 }
@@ -23,9 +26,17 @@ interface LifeFacts {
 const EMPTY_FACTS: LifeFacts = {
   birthYear: null,
   deathYear: null,
+  hasDeath: false,
   birthPlaceId: null,
   birthPlaceAr: null,
 };
+
+interface TreeRows {
+  readonly persons: readonly Person[];
+  readonly families: readonly Family[];
+  readonly familyChildren: readonly FamilyChild[];
+  readonly lifeFacts: ReadonlyMap<string, LifeFacts>;
+}
 
 /**
  * Loads every row needed to compute 360° neighbours for any person in
@@ -38,19 +49,46 @@ const EMPTY_FACTS: LifeFacts = {
  * Life years live on `events` (GEDCOM BIRT/DEAT), not on the persons
  * row — they're bulk-loaded here and merged into each PersonView so
  * chart cards and the side panel can show "1950 – 2020" + village.
+ *
+ * Unmasked: for server-side checks such as the marriage rules. Anything
+ * rendered for a viewer goes through `getViewerTreeSnapshot`.
  */
 export async function getTreeSnapshot(treeId: string): Promise<TreeSnapshot> {
+  return buildSnapshot(await loadTreeRows(treeId), true);
+}
+
+/**
+ * The snapshot as the current viewer may see it. Living people's birth
+ * year and birthplace are removed unless the viewer owns the tree or is an
+ * approved member — the people list hides the same fields.
+ */
+export async function getViewerTreeSnapshot(
+  treeId: string
+): Promise<TreeSnapshot> {
+  const [rows, privileged] = await Promise.all([
+    loadTreeRows(treeId),
+    viewerHasPrivilegedTreeAccess(treeId),
+  ]);
+  return buildSnapshot(rows, privileged);
+}
+
+async function loadTreeRows(treeId: string): Promise<TreeRows> {
   const [persons, families, familyChildren, lifeFacts] = await Promise.all([
     getTreePersons(treeId),
     getTreeFamilies(treeId),
     getTreeFamilyChildren(treeId),
     getTreeLifeFacts(treeId),
   ]);
+  return { persons, families, familyChildren, lifeFacts };
+}
 
+function buildSnapshot(rows: TreeRows, privileged: boolean): TreeSnapshot {
   return {
-    persons: persons.map((p) => toPersonView(p, lifeFacts.get(p.id))),
-    families: families.map(toFamilyView),
-    familyChildren: familyChildren.map(toFamilyChildLink),
+    persons: rows.persons.map((p) =>
+      toPersonView(p, rows.lifeFacts.get(p.id) ?? EMPTY_FACTS, privileged)
+    ),
+    families: rows.families.map(toFamilyView),
+    familyChildren: rows.familyChildren.map(toFamilyChildLink),
   };
 }
 
@@ -100,13 +138,22 @@ async function getTreeLifeFacts(
       byPerson.set(personId, {
         ...current,
         deathYear: row.date_year ?? current.deathYear,
+        hasDeath: true,
       });
     }
   }
   return byPerson;
 }
 
-function toPersonView(p: Person, facts: LifeFacts | undefined): PersonView {
+function toPersonView(
+  p: Person,
+  facts: LifeFacts,
+  privileged: boolean
+): PersonView {
+  const hide = shouldHideLifeData(
+    isPresumedLiving({ hasDeath: facts.hasDeath, birthYear: facts.birthYear }),
+    privileged
+  );
   return {
     id: p.id,
     gender: p.gender,
@@ -116,10 +163,10 @@ function toPersonView(p: Person, facts: LifeFacts | undefined): PersonView {
     // create_person_with_primary_name RPC to mark Female-N placeholder
     // rows. We may later migrate this to a dedicated column.
     isPlaceholder: p.notes === 'placeholder',
-    birthYear: facts?.birthYear ?? null,
-    deathYear: facts?.deathYear ?? null,
-    placeOfOriginId: facts?.birthPlaceId ?? null,
-    birthPlaceAr: facts?.birthPlaceAr ?? null,
+    birthYear: hide ? null : facts.birthYear,
+    deathYear: facts.deathYear,
+    placeOfOriginId: hide ? null : facts.birthPlaceId,
+    birthPlaceAr: hide ? null : facts.birthPlaceAr,
   };
 }
 

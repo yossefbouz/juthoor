@@ -277,7 +277,7 @@ export function VillageDetailClient({
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-[var(--jt-stone-500)]">{t('فرد محمي', 'Protected record')}</p>
-                          <p className="truncate text-[11px] text-[var(--jt-stone-400)]">{t('قاصر — محمي بموجب الخصوصية', 'Minor — withheld for privacy')}</p>
+                          <p className="truncate text-[11px] text-[var(--jt-stone-400)]">{t('على قيد الحياة — محمي بموجب الخصوصية', 'Living person — withheld for privacy')}</p>
                         </div>
                       </div>
                     </motion.li>

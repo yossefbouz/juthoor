@@ -1,5 +1,7 @@
 'use server';
 
+import { viewerPrivilegedTreeIds } from '@/data/anon/treeAccess';
+import { isPresumedLiving } from '@/lib/privacy/lifeData';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 
 export type FamilyAcrossVillagesGroup = {
@@ -86,16 +88,20 @@ export async function loadFamilyAcrossVillages(
     }
   }
 
-  // 4) Birth events for these persons → join with places to group.
-  const { data: birtRows, error: bErr } = await supabase
-    .from('events')
-    .select('person_id, date_year, place_id, places ( id, name_ar, name_en )')
-    .in('person_id', personIds)
-    .eq('event_type', 'BIRT');
+  // 4) Birth and death events for these persons → join with places to group.
+  const [{ data: lifeRows, error: bErr }, privilegedTrees] = await Promise.all([
+    supabase
+      .from('events')
+      .select('person_id, event_type, date_year, place_id, places ( id, name_ar, name_en )')
+      .in('person_id', personIds)
+      .in('event_type', ['BIRT', 'DEAT']),
+    viewerPrivilegedTreeIds(),
+  ]);
   if (bErr) throw new Error(`Failed to load birth events: ${bErr.message}`);
 
-  type BirtRow = {
+  type LifeRow = {
     person_id: string;
+    event_type: 'BIRT' | 'DEAT';
     date_year: number | null;
     place_id: string | null;
     places: { id: string; name_ar: string; name_en: string | null } | null;
@@ -104,8 +110,11 @@ export async function loadFamilyAcrossVillages(
     string,
     { year: number | null; place_id: string | null; place_ar: string | null; place_en: string | null }
   >();
-  for (const r of (birtRows as unknown as BirtRow[]) ?? []) {
-    if (!birtByPerson.has(r.person_id)) {
+  const deceased = new Set<string>();
+  for (const r of (lifeRows as unknown as LifeRow[]) ?? []) {
+    if (r.event_type === 'DEAT') {
+      deceased.add(r.person_id);
+    } else if (!birtByPerson.has(r.person_id)) {
       birtByPerson.set(r.person_id, {
         year: r.date_year,
         place_id: r.place_id,
@@ -130,7 +139,16 @@ export async function loadFamilyAcrossVillages(
     gender: string | null;
     tree_id: string;
   }>) {
-    const birt = birtByPerson.get(p.id);
+    // A living person's birth year and village stay with their own tree, as
+    // in the people list: elsewhere they are listed without either.
+    const knownBirt = birtByPerson.get(p.id);
+    const hidden =
+      !privilegedTrees.has(p.tree_id) &&
+      isPresumedLiving({
+        hasDeath: deceased.has(p.id),
+        birthYear: knownBirt?.year ?? null,
+      });
+    const birt = hidden ? undefined : knownBirt;
     const placeKey = birt?.place_id ?? 'unknown';
     const existing = buckets.get(placeKey);
     const treeName = treeNameById.get(p.tree_id) ?? null;
