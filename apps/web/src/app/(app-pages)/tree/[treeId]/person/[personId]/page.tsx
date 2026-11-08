@@ -6,7 +6,6 @@ import { TreeView360 } from '@/components/tree/TreeView360';
 import { DisplacementPanel } from '@/components/person/DisplacementPanel';
 import { EvidencePanel } from '@/components/person/EvidencePanel';
 import { FieldGrantsPanel } from '@/components/person/FieldGrantsPanel';
-import { DisputeRelationshipButton as MessageDisputeButton } from '@/components/messaging/DisputeRelationshipButton';
 import { DisputeRelationshipButton } from '@/components/person/DisputeRelationshipButton';
 import { PersonAccessLogger } from '@/components/person/PersonAccessLogger';
 import { PersonContactPanel } from '@/components/person/PersonContactPanel';
@@ -194,9 +193,6 @@ export default async function PersonPage({ params }: Props) {
           }
           relationType="parent"
         />
-        {neighbors.parents.familyId ? (
-          <MessageDisputeButton familyId={neighbors.parents.familyId} />
-        ) : null}
       </div>
 
       <PersonStoryPanel

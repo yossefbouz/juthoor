@@ -102,7 +102,7 @@ SELECT is((SELECT (breakdown->'meta'->>'threshold')::numeric FROM public.score_p
     'f0000000-0000-0000-0000-0000000000c1','f0000000-0000-0000-0000-0000000000c2')),
   50::numeric, 'the living threshold is read from app_settings');
 
--- 4b. sparse pair stays in review; full_scale is always 100
+-- 4b. sparse pair stays in review; living pairs rescale to 86
 SELECT is((SELECT breakdown->'meta'->>'decision' FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000e1','f0000000-0000-0000-0000-0000000000e2')),
   'review', 'a sparse pair with all of its few fields agreeing stays in review');
@@ -111,10 +111,10 @@ SELECT cmp_ok((SELECT (breakdown->'meta'->>'score_pct')::numeric FROM public.sco
   '<=', 0.6, 'its score stays well below the auto-link band on the AIO-100 scale');
 SELECT is((SELECT (breakdown->'meta'->>'full_scale')::int FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000c1','f0000000-0000-0000-0000-0000000000c2')),
-  100, 'full_scale is 100 (AIO-100)');
+  86, 'living pairs use full_scale 86 (death fields excluded)');
 SELECT is((SELECT (breakdown->'meta'->>'full_scale')::int FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000a1','f0000000-0000-0000-0000-0000000000a2')),
-  100, 'deceased pairs also use full_scale 100');
+  100, 'deceased pairs use full_scale 100');
 
 -- 5. patriline-only match stays review
 SELECT is((SELECT breakdown->'meta'->>'decision' FROM public.score_pair(
