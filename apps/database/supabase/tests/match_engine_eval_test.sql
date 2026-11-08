@@ -55,7 +55,7 @@ SELECT public.refresh_match_features('66600000-0000-0000-0000-00000000000b');
 SELECT cmp_ok(
   (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair(
      '66600000-0000-0000-0000-00000000000a','66600000-0000-0000-0000-00000000000b')),
-  '>=', 10, 'Latin Ibrahim and Arabic ابراهيم score as a given-name match (cross-script)');
+  '>=', 4, 'Latin Ibrahim and Arabic ابراهيم score as a given-name match (cross-script, AIO-100)');
 
 SELECT finish();
 ROLLBACK;

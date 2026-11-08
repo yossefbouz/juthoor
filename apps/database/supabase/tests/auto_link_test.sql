@@ -43,11 +43,11 @@ SELECT is((SELECT count(*)::int FROM public.person_links), 0, 'nothing is linked
 -- which is a small part of the full scale, so they stay in review
 UPDATE public.app_settings SET auto_merge_enabled = true;
 SELECT ok(public.run_matching_batch(true) IS NOT NULL, 'batch runs with automatic linking on at the default thresholds');
-SELECT is((SELECT count(*)::int FROM public.person_links), 0, 'a sparse pair is not linked at 90% / 76% of the full scale');
+SELECT is((SELECT count(*)::int FROM public.person_links), 0, 'a sparse pair is not linked at raw 90 / 76 on AIO-100');
 
 -- 3. lower the thresholds for this test so the same pairs link: the rest of the file exercises the
 -- linking, notification and revoke mechanics (the scoring itself is covered in score_pair_gate_test)
-UPDATE public.app_settings SET link_threshold_deceased = 0.2, link_threshold_living = 0.2;
+UPDATE public.app_settings SET link_threshold_deceased = 5, link_threshold_living = 5;
 SELECT ok(public.run_matching_batch(true) IS NOT NULL, 'batch runs with automatic linking on');
 SELECT is((SELECT count(*)::int FROM public.matches WHERE status = 'auto_merged'), 2,
   'the deceased pair and the living pair both auto-link');
