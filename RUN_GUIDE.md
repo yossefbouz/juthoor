@@ -86,7 +86,7 @@ curl -s -X POST "http://127.0.0.1:54321/auth/v1/signup" ^
   -d "{\"email\":\"demo@juthoor.test\",\"password\":\"demo-password-1234\"}"
 ```
 
-Auth confirmation mail locally is captured by **Inbucket** (Supabase CLI): open http://127.0.0.1:55124 . Product notification email is queued in `email_outbox` (admin: `/admin/email-outbox`) for a future Resend worker — Auth is not used for those.
+Auth confirmation mail locally is captured by **Inbucket** (Supabase CLI): open http://127.0.0.1:54324 . Product notification email is queued in `email_outbox` (admin: `/admin/email-outbox`) for a future Resend worker — Auth is not used for those.
 
 If the user already exists you'll get `{"code":"user_already_exists",...}` — that's fine, just log in with the same credentials.
 
