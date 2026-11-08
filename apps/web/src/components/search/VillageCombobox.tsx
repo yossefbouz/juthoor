@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, X } from 'lucide-react';
 
-type Village = { id: string; name_ar: string; name_en: string | null; district_ar: string | null };
+type Village = { id: string; name_ar: string; name_en: string | null; district_ar: string | null; district_en?: string | null };
 
 /**
  * Combobox renders the dropdown into a portal anchored to <body> so the parent
@@ -40,7 +40,8 @@ export function VillageCombobox({
         (v) =>
           v.name_ar.toLowerCase().includes(q) ||
           (v.name_en ?? '').toLowerCase().includes(q) ||
-          (v.district_ar ?? '').toLowerCase().includes(q),
+          (v.district_ar ?? '').toLowerCase().includes(q) ||
+          (v.district_en ?? '').toLowerCase().includes(q),
       )
       .slice(0, 25);
   }, [villages, query]);

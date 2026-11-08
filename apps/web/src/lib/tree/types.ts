@@ -37,6 +37,12 @@ export interface FamilyView {
   readonly id: string;
   readonly partner1Id: string | null;
   readonly partner2Id: string | null;
+  /**
+   * True when a DIV event is recorded on this family, or when
+   * `families.notes === 'dissolved'`. Dissolved unions do not count
+   * toward concurrent-spouse limits.
+   */
+  readonly isDissolved: boolean;
 }
 
 /** A child-to-family link with pedigree (birth/adopted/foster). */

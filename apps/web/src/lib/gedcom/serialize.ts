@@ -58,10 +58,22 @@ function emitPerson(lines: string[], p: GedcomPerson): void {
     emitEvent(lines, event);
   }
 
+  // Custom REFN tags (person_identifiers on IFT Admin full export).
+  for (const refn of p.refns ?? []) {
+    const safeType = refn.type.replace(/\s+/g, '_');
+    const safeValue = refn.value.replace(/\n/g, ' ').trim();
+    if (!safeValue) continue;
+    lines.push(`1 REFN ${safeType}:${safeValue}`);
+  }
+
   if (p.notes) {
     // Keep notes on one line for simplicity — CONT/CONC splitting is
     // only needed for lines >255 chars which we don't emit.
     lines.push(`1 NOTE ${p.notes.replace(/\n/g, ' ')}`);
+  }
+  for (const note of p.extraNotes ?? []) {
+    const clean = note.replace(/\n/g, ' ').trim();
+    if (clean) lines.push(`1 NOTE ${clean}`);
   }
 }
 

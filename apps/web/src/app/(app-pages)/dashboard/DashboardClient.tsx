@@ -11,6 +11,7 @@ import {
   Search,
   Sparkles,
   Upload,
+  ShieldAlert,
   Users,
 } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -43,6 +44,14 @@ export type DashboardData = {
   /** Full tree snapshot for the inline mini-chart preview. Null when load failed
    *  or tree is empty — the UI falls back to an empty-state CTA in that case. */
   snapshot: TreeSnapshot | null;
+  /**
+   * D11: verification remains post-signup (/verify) pending product diagram update.
+   * True when the user has no approved identity_verifications row.
+   */
+  needsVerification: boolean;
+  verificationStatus: 'pending' | 'approved' | 'rejected' | null;
+  /** Staff shortcut strip on the dashboard (admins + moderators). */
+  staff?: { isAdmin: boolean } | null;
 };
 
 const fade = (delay = 0) => ({
@@ -94,6 +103,73 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           </div>
         </motion.header>
 
+        {data.staff ? (
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--jt-olive-200)]/70 bg-[var(--jt-olive-50)]/50 px-4 py-3 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--jt-olive-700)]">
+              {t('الفريق', 'Staff')}
+            </span>
+            <Link
+              href="/admin/verifications"
+              className="rounded-full border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--jt-olive-800)] hover:bg-[var(--jt-olive-100)]"
+            >
+              {t('التوثيق', 'Verifications')}
+            </Link>
+            <Link
+              href="/admin/appeals"
+              className="rounded-full border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--jt-olive-800)] hover:bg-[var(--jt-olive-100)]"
+            >
+              {t('الاستئنافات', 'Appeals')}
+            </Link>
+            {data.staff.isAdmin ? (
+              <>
+                <Link
+                  href="/admin/review"
+                  className="rounded-full border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--jt-olive-800)] hover:bg-[var(--jt-olive-100)]"
+                >
+                  {t('المطابقات', 'Matches')}
+                </Link>
+                <Link
+                  href="/admin/moderators"
+                  className="rounded-full border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--jt-olive-800)] hover:bg-[var(--jt-olive-100)]"
+                >
+                  {t('المشرفون', 'Moderators')}
+                </Link>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Verification banner until approved */}
+        {data.needsVerification ? (
+          <div className="mb-8 rounded-2xl border border-[var(--jt-gold-400)]/70 bg-[var(--jt-gold-50)]/70 px-4 py-3 shadow-[var(--jt-shadow-sm)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-[var(--jt-gold-700)]" />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--jt-olive-900)]">
+                    {data.verificationStatus === 'pending'
+                      ? t('طلب التوثيق قيد المراجعة', 'Verification request pending review')
+                      : data.verificationStatus === 'rejected'
+                        ? t('لم يُقبل طلب التوثيق — يمكنك إعادة الإرسال أو الاستئناف', 'Verification was rejected — you can resubmit or appeal')
+                        : t('خطوة تالية: توثيق الهوية', 'Next step: verify your identity')}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--jt-stone-600)]">
+                    {t(
+                      'أكمل التوثيق من /register/complete أو /verify للحصول على صلاحية التحرير.',
+                      'Complete verification from /register/complete or /verify to gain write access.',
+                    )}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/verify"
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--jt-olive-600)] px-4 py-2 text-sm font-semibold text-[var(--jt-stone-50)] hover:bg-[var(--jt-olive-700)]"
+              >
+                {t('الانتقال إلى التوثيق', 'Go to verify')}
+              </Link>
+            </div>
+          </div>
+        ) : null}
         {/* Discovery tabs — 5 dimensions of search */}
         <div className="mb-8">
           <DiscoveryTabs />

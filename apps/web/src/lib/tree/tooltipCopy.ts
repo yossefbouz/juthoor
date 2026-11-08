@@ -44,4 +44,36 @@ export const TOOLTIP_COPY: Readonly<Record<string, TooltipCopy>> = {
     ar: 'القرية أو المدينة الأصلية — اختر من قائمة القرى الفلسطينية المهجرة. يُورَّث تلقائيًا من الأب.',
     en: 'Origin village or town — pick from the depopulated villages list. Auto-inherits from the father.',
   },
+  unrwaNumber: {
+    ar: 'رقم تسجيل الأونروا إن وُجد — يُحفظ أيضًا كمعرّف شخصي.',
+    en: 'UNRWA registration number if known — also stored as a person identifier.',
+  },
+  familyCard1948: {
+    ar: 'رقم بطاقة العائلة من سجل 1948 إن توفر.',
+    en: '1948 family card number when available.',
+  },
+  hostCountry: {
+    ar: 'بلد اللجوء الأول أو الحالي بعد النزوح.',
+    en: 'First or current host country after displacement.',
+  },
+  refugeeStatus: {
+    ar: 'وضع اللجوء المسجّل (لاجئ، نازح داخليًا، إلخ).',
+    en: 'Recorded refugee status (refugee, IDP, etc.).',
+  },
+  campName: {
+    ar: 'اسم المخيم إن سكن العائلة في مخيم.',
+    en: 'Camp name if the family lived in a refugee camp.',
+  },
+  displacementYear: {
+    ar: 'سنة النزوح أو التهجير — أربعة أرقام إن عُرفت.',
+    en: 'Year of displacement or expulsion — four digits when known.',
+  },
+  displacementWave: {
+    ar: 'موجة النزوح (مثل 1948 أو 1967) عند معرفتها.',
+    en: 'Displacement wave (e.g. 1948 or 1967) when known.',
+  },
+  oralHistory: {
+    ar: 'رواية شفهية عن العائلة أو القرية — تُحفظ مع مصدرها إن أمكن.',
+    en: 'Oral history about the family or village — store provenance when possible.',
+  },
 };

@@ -11,6 +11,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react';
+import { AdminStaffNav } from '@/components/admin/AdminStaffNav';
 import { useLocale } from '@/contexts/LocaleContext';
 import {
   rescoreMatch,
@@ -27,16 +28,14 @@ const FIELD_LABEL: Record<string, { ar: string; en: string }> = {
   father: { ar: 'الأب', en: 'Father' },
   mother: { ar: 'الأم', en: 'Mother' },
   pgf: { ar: 'الجد لأب', en: 'Pat. GF' },
-  pgm: { ar: 'الجدة لأب', en: 'Pat. GM' },
   mgf: { ar: 'الجد لأم', en: 'Mat. GF' },
-  mgm: { ar: 'الجدة لأم', en: 'Mat. GM' },
-  spouse: { ar: 'الزوج/ة', en: 'Spouse' },
+  spouse_first: { ar: 'اسم الزوج/ة', en: 'Spouse first' },
+  spouse_family: { ar: 'عائلة الزوج/ة', en: 'Spouse family' },
   origin: { ar: 'الأصل', en: 'Origin' },
   birth_year: { ar: 'سنة الميلاد', en: 'Birth yr' },
   birth_place: { ar: 'مكان الميلاد', en: 'Birthplace' },
   death_year: { ar: 'سنة الوفاة', en: 'Death yr' },
   death_place: { ar: 'مكان الوفاة', en: 'Death place' },
-  email: { ar: 'البريد', en: 'Email' },
   num_children: { ar: 'الأبناء', en: 'Children' },
 };
 
@@ -146,6 +145,7 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
 
   return (
     <div dir={dir} className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-4 md:p-8">
+      <AdminStaffNav isAdmin />
       <header>
         <span className="mb-2 inline-flex items-center gap-2 rounded-full border border-[var(--jt-olive-200)]/70 bg-[var(--jt-olive-50)]/80 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-olive-700)]">
           <UsersRound className="h-3.5 w-3.5" />
@@ -220,6 +220,11 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
                       <ShieldAlert className="h-3.5 w-3.5" />
                       {t('يشمل شخصًا حيًّا — سرّية قصوى', 'Living person — max privacy')}
+                  {card.perfectMatchBlocked && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/70 bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800">
+                      {t('مطابقة تامة محجوبة بدون دليل الأونروا', 'Perfect match blocked without UNRWA evidence')}
+                    </span>
+                  )}
                     </span>
                   )}
                   {card.vetoes.map((v) => (

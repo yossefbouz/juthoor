@@ -1,19 +1,29 @@
 import { Suspense } from 'react';
 import { listIncomingRequests } from '@/data/user/access';
+import { listMyContactRelays } from '@/data/user/contactRelay';
 import { RequestsClient } from './RequestsClient';
 
 async function RequestsShell() {
-  try {
-    const requests = await listIncomingRequests();
-    return <RequestsClient initialRequests={requests} />;
-  } catch {
-    return <RequestsClient initialRequests={[]} />;
-  }
+  const [requests, relays] = await Promise.all([
+    listIncomingRequests().catch(() => []),
+    listMyContactRelays().catch(() => ({ outgoing: [], incoming: [] })),
+  ]);
+  return (
+    <RequestsClient
+      initialRequests={requests}
+      contactOutgoing={relays.outgoing}
+      contactIncoming={relays.incoming}
+    />
+  );
 }
 
 export default function RequestsPage() {
   return (
-    <Suspense fallback={<RequestsClient initialRequests={[]} />}>
+    <Suspense
+      fallback={
+        <RequestsClient initialRequests={[]} contactOutgoing={[]} contactIncoming={[]} />
+      }
+    >
       <RequestsShell />
     </Suspense>
   );

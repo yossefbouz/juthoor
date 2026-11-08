@@ -18,16 +18,31 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
   if (!parsed.success) {
     throw new Error(parsed.error.issues.map((i) => i.message).join(', '));
   }
-  const { q, given, surname, father, mother, placeId, birthYear, yearWindow, gender, limit } = parsed.data;
+  const {
+    q,
+    given,
+    surname,
+    father,
+    mother,
+    paternalGrandfather,
+    paternalGreatGrandfather,
+    placeId,
+    birthYear,
+    yearWindow,
+    gender,
+    limit,
+  } = parsed.data;
 
   // Pre-transliterate every text field. Users typing "Ahmad" or "Deir Yassin"
   // need Arabic script before the Postgres trigram index will fire.
-  const [qTr, gTr, sTr, fTr, mTr] = await Promise.all([
+  const [qTr, gTr, sTr, fTr, mTr, pgfTr, pggfTr] = await Promise.all([
     q ? toArabic(q) : Promise.resolve(null),
     given ? toArabic(given) : Promise.resolve(null),
     surname ? toArabic(surname) : Promise.resolve(null),
     father ? toArabic(father) : Promise.resolve(null),
     mother ? toArabic(mother) : Promise.resolve(null),
+    paternalGrandfather ? toArabic(paternalGrandfather) : Promise.resolve(null),
+    paternalGreatGrandfather ? toArabic(paternalGreatGrandfather) : Promise.resolve(null),
   ]);
 
   const supabase = await createJuthoorSupabaseClient();
@@ -36,6 +51,8 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
     q_surname: sTr?.arabic ?? surname ?? null,
     q_father: fTr?.arabic ?? father ?? null,
     q_mother: mTr?.arabic ?? mother ?? null,
+    q_pgf: pgfTr?.arabic ?? paternalGrandfather ?? null,
+    q_pggf: pggfTr?.arabic ?? paternalGreatGrandfather ?? null,
     q_free: qTr?.arabic ?? q ?? null,
     q_place_id: placeId ?? null,
     q_birth_year: birthYear ?? null,
@@ -50,7 +67,13 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
   return (data ?? []) as SearchResult[];
 }
 
-type Village = { id: string; name_ar: string; name_en: string | null; district_ar: string | null };
+type Village = {
+  id: string;
+  name_ar: string;
+  name_en: string | null;
+  district_ar: string | null;
+  district_en: string | null;
+};
 
 /**
  * All places eligible as origin filters. Small enough (~263 rows) to ship
@@ -60,7 +83,7 @@ export async function loadVillagesForFilter(): Promise<Village[]> {
   const supabase = await createJuthoorSupabaseClient();
   const { data, error } = await supabase
     .from('places')
-    .select('id, name_ar, name_en, district_ar')
+    .select('id, name_ar, name_en, district_ar, district_en')
     .order('name_ar', { ascending: true });
   if (error) throw new Error(`Failed to load villages: ${error.message}`);
   return (data ?? []) as Village[];

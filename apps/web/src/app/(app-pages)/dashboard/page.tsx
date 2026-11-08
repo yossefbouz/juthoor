@@ -5,6 +5,8 @@ import { DashboardClient, type DashboardData } from './DashboardClient';
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { ensureUserHasDefaultTree } from '@/data/anon/trees';
 import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
+import { getStaffRole } from '@/data/admin/requireStaff';
+import { getMyVerification } from '@/data/user/identityVerification';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 
 async function loadDashboard(): Promise<DashboardData> {
@@ -18,7 +20,16 @@ async function loadDashboard(): Promise<DashboardData> {
 
   const supabase = await createJuthoorSupabaseClient();
 
-  const [treeRes, personsCountRes, personsRecentRes, villagesDiscoverRes, userOriginsRes, snapshot] = await Promise.all([
+  const [
+    treeRes,
+    personsCountRes,
+    personsRecentRes,
+    villagesDiscoverRes,
+    userOriginsRes,
+    snapshot,
+    verification,
+    staffRole,
+  ] = await Promise.all([
     supabase.from('trees').select('id, name, created_at').eq('id', treeId).maybeSingle(),
     supabase.from('persons').select('id', { count: 'exact', head: true }).eq('tree_id', treeId),
     supabase
@@ -38,7 +49,11 @@ async function loadDashboard(): Promise<DashboardData> {
       .eq('persons.tree_id', treeId)
       .not('place_id', 'is', null),
     getViewerTreeSnapshot(treeId).catch(() => null),
+    getMyVerification().catch(() => null),
+    getStaffRole().catch(() => null),
   ]);
+
+  const needsVerification = !(verification && verification.status === 'approved');
 
   return {
     treeId,
@@ -48,6 +63,11 @@ async function loadDashboard(): Promise<DashboardData> {
     villagesDiscover: (villagesDiscoverRes.data ?? []) as DashboardData['villagesDiscover'],
     userOrigins: (userOriginsRes.data ?? []) as unknown as DashboardData['userOrigins'],
     snapshot,
+    needsVerification,
+    verificationStatus: verification?.status ?? null,
+    staff: staffRole
+      ? { isAdmin: staffRole.isAdmin }
+      : null,
   };
 }
 

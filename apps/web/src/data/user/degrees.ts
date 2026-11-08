@@ -27,10 +27,15 @@ export async function getSelfPersonId(): Promise<string | null> {
   const supabase = await createJuthoorSupabaseClient();
   const { data } = await supabase
     .from('profiles')
-    .select('self_person_id')
+    .select('linked_person_id, self_person_id')
     .eq('id', userId)
+    .is('deleted_at', null)
     .maybeSingle();
-  return ((data as { self_person_id: string | null } | null)?.self_person_id) ?? null;
+  const row = data as {
+    linked_person_id: string | null;
+    self_person_id: string | null;
+  } | null;
+  return row?.linked_person_id ?? row?.self_person_id ?? null;
 }
 
 export async function computeDegreesTo(targetPersonId: string): Promise<DegreesResult> {
@@ -47,4 +52,27 @@ export async function computeDegreesTo(targetPersonId: string): Promise<DegreesR
   }
   if (!data) return null;
   return data as DegreesResult;
+}
+
+export type AllPathsResult = {
+  paths: Array<{ degrees: number; path: PathNode[] }>;
+  max_paths?: number;
+  note?: string;
+} | null;
+
+/** W3.3 / D12: up to N alternate connection paths (default 5). */
+export async function computeAllPathsTo(
+  targetPersonId: string,
+  maxPaths = 5,
+): Promise<AllPathsResult> {
+  const selfId = await getSelfPersonId();
+  if (!selfId || !targetPersonId || selfId === targetPersonId) return null;
+  const supabase = await createJuthoorSupabaseClient();
+  const { data, error } = await supabase.rpc('compute_all_paths', {
+    p_source: selfId,
+    p_target: targetPersonId,
+    p_max_paths: maxPaths,
+  });
+  if (error || !data) return null;
+  return data as AllPathsResult;
 }

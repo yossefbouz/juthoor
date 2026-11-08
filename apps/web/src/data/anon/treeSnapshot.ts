@@ -36,6 +36,7 @@ interface TreeRows {
   readonly families: readonly Family[];
   readonly familyChildren: readonly FamilyChild[];
   readonly lifeFacts: ReadonlyMap<string, LifeFacts>;
+  readonly dissolvedFamilyIds: ReadonlySet<string>;
 }
 
 /**
@@ -73,13 +74,15 @@ export async function getViewerTreeSnapshot(
 }
 
 async function loadTreeRows(treeId: string): Promise<TreeRows> {
-  const [persons, families, familyChildren, lifeFacts] = await Promise.all([
-    getTreePersons(treeId),
-    getTreeFamilies(treeId),
-    getTreeFamilyChildren(treeId),
-    getTreeLifeFacts(treeId),
-  ]);
-  return { persons, families, familyChildren, lifeFacts };
+  const [persons, families, familyChildren, lifeFacts, dissolvedFamilyIds] =
+    await Promise.all([
+      getTreePersons(treeId),
+      getTreeFamilies(treeId),
+      getTreeFamilyChildren(treeId),
+      getTreeLifeFacts(treeId),
+      getDissolvedFamilyIds(treeId),
+    ]);
+  return { persons, families, familyChildren, lifeFacts, dissolvedFamilyIds };
 }
 
 function buildSnapshot(rows: TreeRows, privileged: boolean): TreeSnapshot {
@@ -87,7 +90,9 @@ function buildSnapshot(rows: TreeRows, privileged: boolean): TreeSnapshot {
     persons: rows.persons.map((p) =>
       toPersonView(p, rows.lifeFacts.get(p.id) ?? EMPTY_FACTS, privileged)
     ),
-    families: rows.families.map(toFamilyView),
+    families: rows.families.map((f) =>
+      toFamilyView(f, rows.dissolvedFamilyIds.has(f.id))
+    ),
     familyChildren: rows.familyChildren.map(toFamilyChildLink),
   };
 }
@@ -170,11 +175,38 @@ function toPersonView(
   };
 }
 
-function toFamilyView(f: Family): FamilyView {
+/**
+ * Family-level DIV events (GEDCOM FAMILY_EVENT). Joined through families so
+ * we only see events for this tree.
+ */
+async function getDissolvedFamilyIds(
+  treeId: string
+): Promise<ReadonlySet<string>> {
+  const supabase = await createJuthoorSupabaseClient();
+  const { data, error } = await supabase
+    .from('events')
+    .select('family_id, families!inner(tree_id)')
+    .eq('families.tree_id', treeId)
+    .eq('event_type', 'DIV')
+    .not('family_id', 'is', null);
+
+  if (error) {
+    throw new Error(`Failed to load divorce events: ${error.message}`);
+  }
+
+  const ids = new Set<string>();
+  for (const row of data ?? []) {
+    if (row.family_id) ids.add(row.family_id);
+  }
+  return ids;
+}
+
+function toFamilyView(f: Family, hasDivEvent: boolean): FamilyView {
   return {
     id: f.id,
     partner1Id: f.partner1_id,
     partner2Id: f.partner2_id,
+    isDissolved: hasDivEvent || f.notes === 'dissolved',
   };
 }
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -25,7 +26,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useLocale } from '@/contexts/LocaleContext';
-import { insertPersonAction } from '@/data/user/persons';
+import {
+  getAttachmentUploadTarget,
+  recordAttachment,
+} from '@/data/user/attachments';
+import { upsertPersonIdentifier } from '@/data/user/personIdentifiers';
+import {
+  getInheritanceDefaultsAction,
+  getPersonPrimaryNamesAction,
+  insertPersonAction,
+} from '@/data/user/persons';
 import { addRelativeAction } from '@/data/user/relatives';
 import { personInputSchema } from '@/lib/tree/zodSchemas';
 import type { FamilyView } from '@/lib/tree/types';
@@ -95,6 +105,7 @@ export function AddPersonForm({
     anchorPersonId: initialAnchorPersonId ?? null,
   });
   const [motherChoice, setMotherChoice] = useState<string | null>(null);
+  const [unrwaCardFile, setUnrwaCardFile] = useState<File | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(personInputSchema) as Resolver<FormValues>,
@@ -105,6 +116,16 @@ export function AddPersonForm({
       arSurname: '',
       enGivenName: '',
       enSurname: '',
+      fatherGivenAr: '',
+      fatherSurnameAr: '',
+      motherGivenAr: '',
+      motherMaidenAr: '',
+      fatherGivenEn: '',
+      fatherSurnameEn: '',
+      motherGivenEn: '',
+      motherMaidenEn: '',
+      unrwaRegistrationNumber: '',
+      familyCard1948Number: '',
     },
   });
 
@@ -145,6 +166,98 @@ export function AddPersonForm({
   const effectiveMotherChoice =
     motherChoice ?? (anchorSpouses.length === 1 ? anchorSpouses[0].id : null);
 
+  // R4: when adding a child, pre-fill blank surname/origin from the father.
+  const fatherIdForDefaults = useMemo(() => {
+    if (relationship.kind !== 'child' || !anchor) return null;
+    if (anchor.gender === 'M') return anchor.id;
+    if (anchorSpouses.length === 1) return anchorSpouses[0].id;
+    return null;
+  }, [relationship.kind, anchor, anchorSpouses]);
+
+  const appliedFatherRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fatherIdForDefaults) {
+      appliedFatherRef.current = null;
+      return;
+    }
+    if (appliedFatherRef.current === fatherIdForDefaults) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await getInheritanceDefaultsAction({
+        fatherId: fatherIdForDefaults,
+      });
+      if (cancelled || result?.serverError || !result?.data) return;
+      const defaults = result.data;
+      appliedFatherRef.current = fatherIdForDefaults;
+      const cur = form.getValues();
+      if (!cur.arSurname?.trim() && defaults.arSurname) {
+        form.setValue('arSurname', defaults.arSurname);
+      }
+      if (!cur.enSurname?.trim() && defaults.enSurname) {
+        form.setValue('enSurname', defaults.enSurname);
+      }
+      if (!cur.placeOfOriginId && defaults.placeOfOriginId) {
+        form.setValue('placeOfOriginId', defaults.placeOfOriginId);
+      }
+      if (!cur.fatherGivenAr?.trim() && defaults.arGivenName) {
+        form.setValue('fatherGivenAr', defaults.arGivenName);
+      }
+      if (!cur.fatherSurnameAr?.trim() && defaults.arSurname) {
+        form.setValue('fatherSurnameAr', defaults.arSurname);
+      }
+      if (!cur.fatherGivenEn?.trim() && defaults.enGivenName) {
+        form.setValue('fatherGivenEn', defaults.enGivenName);
+      }
+      if (!cur.fatherSurnameEn?.trim() && defaults.enSurname) {
+        form.setValue('fatherSurnameEn', defaults.enSurname);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // form methods are stable; omit form from deps to avoid re-fetch loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fatherIdForDefaults]);
+
+  // Prefill mother R10 fields from the selected spouse / mother.
+  const appliedMotherRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !effectiveMotherChoice ||
+      effectiveMotherChoice === NEW_PLACEHOLDER_MOTHER
+    ) {
+      appliedMotherRef.current = null;
+      return;
+    }
+    if (appliedMotherRef.current === effectiveMotherChoice) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await getPersonPrimaryNamesAction({
+        personId: effectiveMotherChoice,
+      });
+      if (cancelled || result?.serverError || !result?.data) return;
+      appliedMotherRef.current = effectiveMotherChoice;
+      const names = result.data;
+      const cur = form.getValues();
+      if (!cur.motherGivenAr?.trim() && names.arGiven) {
+        form.setValue('motherGivenAr', names.arGiven);
+      }
+      if (!cur.motherMaidenAr?.trim() && names.arSurname) {
+        form.setValue('motherMaidenAr', names.arSurname);
+      }
+      if (!cur.motherGivenEn?.trim() && names.enGiven) {
+        form.setValue('motherGivenEn', names.enGiven);
+      }
+      if (!cur.motherMaidenEn?.trim() && names.enSurname) {
+        form.setValue('motherMaidenEn', names.enSurname);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveMotherChoice]);
+
   function handleSubmit(values: FormValues) {
     // Block save when a relationship was picked but no anchor was chosen.
     const needsAnchor =
@@ -183,7 +296,10 @@ export function AddPersonForm({
                   : { motherId: effectiveMotherChoice }
                 : {}),
             })
-          : await insertPersonAction(values);
+          : await insertPersonAction({
+              ...values,
+              linkAsSelf: mode === 'self',
+            });
 
       if (result?.serverError) {
         toast.error(result.serverError);
@@ -194,6 +310,49 @@ export function AddPersonForm({
       if (!personId) {
         toast.error(t('لم يتم إنشاء الشخص. يرجى المحاولة مرة أخرى.', 'The person wasn’t created. Please try again.'));
         return;
+      }
+
+      // Optional D8 identifiers (after create so attachments can target person_id).
+      const unrwa = values.unrwaRegistrationNumber?.trim();
+      const familyCard = values.familyCard1948Number?.trim();
+      if (unrwa || familyCard) {
+        try {
+          if (unrwa) {
+            if (!unrwaCardFile) {
+              toast.error(
+                t(
+                  'رقم الأونروا يتطلب رفع صورة البطاقة.',
+                  'UNRWA number requires an uploaded card file.',
+                ),
+              );
+            } else {
+              const evidenceId = await uploadIdentifierCard({
+                treeId,
+                personId,
+                file: unrwaCardFile,
+              });
+              await upsertPersonIdentifier({
+                personId,
+                idType: 'unrwa_registration',
+                idValue: unrwa,
+                evidenceAttachmentId: evidenceId,
+              });
+            }
+          }
+          if (familyCard) {
+            await upsertPersonIdentifier({
+              personId,
+              idType: 'family_card_1948',
+              idValue: familyCard,
+            });
+          }
+        } catch (e) {
+          toast.error(
+            e instanceof Error
+              ? e.message
+              : t('تعذّر حفظ المعرّفات', 'Could not save identifiers'),
+          );
+        }
       }
 
       toast.success(
@@ -500,6 +659,180 @@ export function AddPersonForm({
               )}
             />
           </div>
+
+          {/* R10 parent names */}
+          <div className="mt-6 border-t border-[var(--jt-stone-200)] pt-5">
+            <p className="mb-3 text-xs font-semibold text-[var(--jt-olive-700)]">
+              {t('أسماء الوالدين (إلزامية — غير معروف إن تُركت فارغة)', 'Parent names (mandatory — Unknown if left blank)')}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="fatherGivenAr"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('اسم الأب الأول (ع)', 'Father first (AR)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="rtl" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="fatherSurnameAr"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('عائلة الأب (ع)', 'Father family (AR)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="rtl" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="motherGivenAr"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('اسم الأم الأول (ع)', 'Mother first (AR)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="rtl" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="motherMaidenAr"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('اسم الأم قبل الزواج (ع)', 'Mother maiden (AR)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="rtl" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="fatherGivenEn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('اسم الأب الأول (En)', 'Father first (EN)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="ltr" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="fatherSurnameEn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('عائلة الأب (En)', 'Father family (EN)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="ltr" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="motherGivenEn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('اسم الأم الأول (En)', 'Mother first (EN)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="ltr" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="motherMaidenEn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('اسم الأم قبل الزواج (En)', 'Mother maiden (EN)')}</FormLabel>
+                    <FormControl>
+                      <Input dir="ltr" value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Optional D8 identifiers */}
+        <section className="rounded-3xl border border-[var(--jt-stone-200)] bg-[var(--card)] p-5 md:p-6 shadow-[var(--jt-shadow-sm)]">
+          <header className="mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--jt-olive-700)]">
+              {t('اختياري', 'Optional')}
+            </p>
+            <h2
+              className="text-xl font-bold text-[var(--jt-olive-900)]"
+              style={{ fontFamily: 'var(--jt-font-display)' }}
+            >
+              {t('معرّفات المطابقة', 'Match identifiers')}
+            </h2>
+            <p className="mt-1 text-xs text-[var(--jt-stone-500)]">
+              {t(
+                'رقم الأونروا يتطلب رفع صورة البطاقة. بطاقة العائلة 1948 لا تحتاج مرفقًا.',
+                'UNRWA number requires an uploaded card. 1948 family card does not.',
+              )}
+            </p>
+          </header>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="unrwaRegistrationNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('رقم تسجيل الأونروا', 'UNRWA registration #')}</FormLabel>
+                  <FormControl>
+                    <Input value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="familyCard1948Number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('رقم بطاقة العائلة 1948', '1948 family card #')}</FormLabel>
+                  <FormControl>
+                    <Input value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="sm:col-span-2">
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">
+                  {t('بطاقة الأونروا (ملف)', 'UNRWA card (file)')}
+                </span>
+                <Input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.heic,.pdf,image/*,application/pdf"
+                  onChange={(e) => setUnrwaCardFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          </div>
         </section>
 
         <div className="flex items-center justify-between pt-2">
@@ -518,4 +851,41 @@ export function AddPersonForm({
       </form>
     </Form>
   );
+}
+
+async function uploadIdentifierCard(input: {
+  treeId: string;
+  personId: string;
+  file: File;
+}): Promise<string> {
+  const ext = input.file.name.split('.').pop() ?? 'bin';
+  const kind = /\.pdf$/i.test(input.file.name) ? 'document' : 'photo';
+  const { path, token } = await getAttachmentUploadTarget({
+    treeId: input.treeId,
+    personId: input.personId,
+    fileExtension: ext,
+    kind,
+  });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) throw new Error('Storage is not configured');
+  const browser = createClient(url, key);
+  const { error } = await browser.storage
+    .from('person-attachments')
+    .uploadToSignedUrl(path, token, input.file);
+  if (error) throw new Error(error.message);
+  const recorded = await recordAttachment({
+    personId: input.personId,
+    treeId: input.treeId,
+    kind,
+    tag: 'id_card',
+    storagePath: path,
+    mimeType:
+      input.file.type ||
+      (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
+    sizeBytes: input.file.size,
+    title: 'UNRWA registration card',
+    openMessageThread: false,
+  });
+  return recorded.id;
 }

@@ -32,8 +32,9 @@ const person = (
 const family = (
   id: string,
   partner1Id: string | null,
-  partner2Id: string | null
-): FamilyView => ({ id, partner1Id, partner2Id });
+  partner2Id: string | null,
+  isDissolved = false,
+): FamilyView => ({ id, partner1Id, partner2Id, isDissolved });
 
 const link = (
   familyId: string,

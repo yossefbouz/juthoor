@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, GitBranch } from 'lucide-react';
+import { X, GitBranch, Route } from 'lucide-react';
 import { PathGraph } from './PathGraph';
-import type { DegreesResult } from '@/data/user/degrees';
+import { computeAllPathsTo, type AllPathsResult, type DegreesResult } from '@/data/user/degrees';
 import { kinshipLabel } from '@/lib/search/relationLabels';
 
 export function DegreesDialog({
@@ -19,6 +20,43 @@ export function DegreesDialog({
   locale: 'ar' | 'en';
   t: <T extends string>(ar: T, en: T) => T;
 }) {
+  const [allPaths, setAllPaths] = useState<AllPathsResult>(null);
+  const [loadingPaths, setLoadingPaths] = useState(false);
+  const [selectedPathIdx, setSelectedPathIdx] = useState(0);
+
+  useEffect(() => {
+    if (!open || !data?.path?.length) {
+      setAllPaths(null);
+      setSelectedPathIdx(0);
+      return;
+    }
+    const targetId = data.path[data.path.length - 1]?.person_id;
+    if (!targetId) return;
+    let cancelled = false;
+    setLoadingPaths(true);
+    computeAllPathsTo(targetId, 5)
+      .then((res) => {
+        if (!cancelled) {
+          setAllPaths(res);
+          setSelectedPathIdx(0);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPaths(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, data]);
+
+  const alternatePaths = allPaths?.paths ?? [];
+  const activePath =
+    alternatePaths[selectedPathIdx]?.path ??
+    data?.path ??
+    [];
+  const activeDegrees =
+    alternatePaths[selectedPathIdx]?.degrees ?? data?.degrees ?? 0;
+
   return (
     <AnimatePresence>
       {open && data && (
@@ -35,7 +73,7 @@ export function DegreesDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-[var(--jt-olive-200)] bg-[var(--card)] p-6 shadow-[var(--jt-shadow-xl)] md:p-8"
+            className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[var(--jt-olive-200)] bg-[var(--card)] p-6 shadow-[var(--jt-shadow-xl)] md:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -56,18 +94,72 @@ export function DegreesDialog({
                 className="text-3xl font-bold text-[var(--jt-olive-900)]"
                 style={{ fontFamily: 'var(--jt-font-display)' }}
               >
-                {data.degrees}° {t('من', '·')} {kinshipLabel(data.degrees, data.path, locale)}
+                {activeDegrees}° {t('من', '·')} {kinshipLabel(activeDegrees, activePath, locale)}
               </h2>
               <p className="mt-2 text-sm text-[var(--jt-stone-600)]">
                 {t(
-                  `يمرّ المسار عبر ${Math.max(0, data.path.length - 2)} فردًا بينكما.`,
-                  `The path passes through ${Math.max(0, data.path.length - 2)} ${Math.max(0, data.path.length - 2) === 1 ? 'person' : 'people'} between you.`,
+                  `يمرّ المسار عبر ${Math.max(0, activePath.length - 2)} فردًا بينكما.`,
+                  `The path passes through ${Math.max(0, activePath.length - 2)} ${Math.max(0, activePath.length - 2) === 1 ? 'person' : 'people'} between you.`,
                 )}
               </p>
             </div>
 
             <div className="rounded-2xl border border-[var(--jt-stone-200)] bg-[var(--jt-stone-50)]/50 p-4">
-              <PathGraph path={data.path} locale={locale} />
+              <PathGraph path={activePath} locale={locale} />
+            </div>
+
+            <div className="mt-6">
+              <p className="mb-3 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                <Route className="h-3.5 w-3.5" />
+                {t('كل المسارات', 'All paths')}
+              </p>
+              {loadingPaths && (
+                <p className="text-sm text-[var(--jt-stone-500)]">
+                  {t('جاري تحميل المسارات…', 'Loading paths…')}
+                </p>
+              )}
+              {!loadingPaths && alternatePaths.length <= 1 && (
+                <p className="text-sm text-[var(--jt-stone-500)]">
+                  {t(
+                    'مسار واحد ضمن الشجرة (أو أقصر مسار عبر الشجرات).',
+                    'One path within the tree (or shortest cross-tree path).',
+                  )}
+                </p>
+              )}
+              {!loadingPaths && alternatePaths.length > 1 && (
+                <ul className="space-y-2">
+                  {alternatePaths.map((p, i) => (
+                    <li key={`path-${i}`}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPathIdx(i)}
+                        className={`w-full rounded-xl border px-4 py-3 text-start text-sm transition-colors ${
+                          selectedPathIdx === i
+                            ? 'border-[var(--jt-olive-400)] bg-[var(--jt-olive-50)] text-[var(--jt-olive-900)]'
+                            : 'border-[var(--jt-stone-200)] hover:border-[var(--jt-olive-300)]'
+                        }`}
+                      >
+                        <span className="font-semibold">
+                          {t(`مسار ${i + 1}`, `Path ${i + 1}`)} · {p.degrees}°
+                        </span>
+                        <span className="ms-2 text-[var(--jt-stone-500)]">
+                          {kinshipLabel(p.degrees, p.path, locale)}
+                          {' · '}
+                          {t(
+                            `${Math.max(0, p.path.length - 2)} وسيط`,
+                            `${Math.max(0, p.path.length - 2)} hop${Math.max(0, p.path.length - 2) === 1 ? '' : 's'}`,
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {allPaths?.note && (
+                <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-[var(--jt-stone-400)]">
+                  {t('ضمن رسم القرابة المتاح', 'Within the reachable graph')}
+                </p>
+              )}
             </div>
 
             {data.cached && (

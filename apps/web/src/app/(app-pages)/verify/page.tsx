@@ -1,3 +1,4 @@
+import { getMyOpenAppeal } from '@/data/user/appeals';
 import { getMyVerification, listVerifiableTrees } from '@/data/user/identityVerification';
 import { VerifyClient } from './VerifyClient';
 
@@ -12,5 +13,15 @@ export default async function VerifyPage() {
     getMyVerification().catch(() => null),
     listVerifiableTrees().catch(() => []),
   ]);
-  return <VerifyClient initialVerification={verification} trees={trees} />;
+  const openAppeal =
+    verification?.status === 'rejected'
+      ? await getMyOpenAppeal(verification.id).catch(() => null)
+      : null;
+  return (
+    <VerifyClient
+      initialVerification={verification}
+      trees={trees}
+      initialOpenAppeal={openAppeal}
+    />
+  );
 }

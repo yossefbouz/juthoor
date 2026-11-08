@@ -64,6 +64,18 @@ export const personInputSchema = z
     placeOfOriginId: uuid.optional(),
     placeOfOriginName: optionalTrimmedString(200),
     notes: optionalTrimmedString(5000),
+    // R10 mandatory parent names (Unknown default applied at create).
+    fatherGivenAr: optionalTrimmedString(100),
+    fatherSurnameAr: optionalTrimmedString(100),
+    motherGivenAr: optionalTrimmedString(100),
+    motherMaidenAr: optionalTrimmedString(100),
+    fatherGivenEn: optionalTrimmedString(100),
+    fatherSurnameEn: optionalTrimmedString(100),
+    motherGivenEn: optionalTrimmedString(100),
+    motherMaidenEn: optionalTrimmedString(100),
+    // Optional D8 identifiers (saved after create).
+    unrwaRegistrationNumber: optionalTrimmedString(120),
+    familyCard1948Number: optionalTrimmedString(120),
   })
   .refine(
     (input) => hasText(input.arGivenName) || hasText(input.enGivenName),

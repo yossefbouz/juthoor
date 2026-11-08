@@ -27,6 +27,16 @@ export interface GedcomPerson {
   readonly names: readonly GedcomName[];
   readonly events: readonly GedcomEvent[];
   readonly notes?: string;
+  /**
+   * IFT Admin full export only (`maskLivingPeople: false`).
+   * Emitted as GEDCOM `1 REFN <type>:<value>` (e.g. family_card_1948:…).
+   */
+  readonly refns?: readonly { readonly type: string; readonly value: string }[];
+  /**
+   * Extra NOTE lines (identifiers as `NOTE UNRWA:…`, origin as `NOTE ORIGIN:…`).
+   * Appended after `notes` when serializing.
+   */
+  readonly extraNotes?: readonly string[];
 }
 
 export interface GedcomName {

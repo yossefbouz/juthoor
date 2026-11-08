@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { isCurrentUserAdmin } from '@/data/admin/requireAdmin';
+import { getStaffRole } from '@/data/admin/requireStaff';
 import { listPendingVerifications } from '@/data/user/identityVerification';
 import { AdminVerificationsClient } from './AdminVerificationsClient';
 
@@ -8,8 +8,13 @@ export const metadata = {
 };
 
 export default async function AdminVerificationsPage() {
-  // Non-admins get a 404 — the page does not exist for them.
-  if (!(await isCurrentUserAdmin())) notFound();
+  const role = await getStaffRole();
+  if (!role) notFound();
   const pending = await listPendingVerifications().catch(() => []);
-  return <AdminVerificationsClient initialPending={pending} />;
+  return (
+    <AdminVerificationsClient
+      initialPending={pending}
+      isAdmin={role.isAdmin}
+    />
+  );
 }

@@ -14,8 +14,7 @@ import { usePathname } from 'next/navigation';
 
 const routeLabels: Record<string, string> = {
     dashboard: 'Dashboard',
-    'private-items': 'Private Items',
-    'private-item': 'Private Item',
+    // Nextbase private-items starter labels removed in Wave 0.5
     item: 'Item',
     new: 'New',
 };

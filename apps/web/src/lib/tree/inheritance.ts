@@ -43,6 +43,54 @@ export function inheritVillage(input: InheritVillageInput): string | null {
   return input.childPlaceId ?? input.fatherPlaceId ?? null;
 }
 
+/** Father-side values used when applying R4 defaults to a new child. */
+export interface FatherInheritanceDefaults {
+  readonly arSurname: string | undefined;
+  readonly enSurname: string | undefined;
+  readonly arGivenName: string | undefined;
+  readonly enGivenName: string | undefined;
+  readonly placeOfOriginId: string | null;
+}
+
+/**
+ * Apply R4 defaults to a new person's input. Explicit child values win;
+ * blank surname / missing origin fall back to the father's.
+ */
+export function applyFatherInheritance<
+  T extends {
+    readonly arSurname?: string;
+    readonly enSurname?: string;
+    readonly placeOfOriginId?: string;
+    readonly fatherGivenAr?: string;
+    readonly fatherSurnameAr?: string;
+    readonly fatherGivenEn?: string;
+    readonly fatherSurnameEn?: string;
+  },
+>(person: T, father: FatherInheritanceDefaults | null): T {
+  if (!father) return person;
+  const surnames = inheritSurname({
+    childArSurname: person.arSurname,
+    childEnSurname: person.enSurname,
+    fatherArSurname: father.arSurname,
+    fatherEnSurname: father.enSurname,
+  });
+  const placeId = inheritVillage({
+    childPlaceId: person.placeOfOriginId ?? null,
+    fatherPlaceId: father.placeOfOriginId,
+  });
+  return {
+    ...person,
+    arSurname: surnames.arSurname,
+    enSurname: surnames.enSurname,
+    ...(placeId ? { placeOfOriginId: placeId } : {}),
+    // Prefill R10 father-name fields when adding a child of a known father.
+    fatherGivenAr: nonBlank(person.fatherGivenAr) ?? father.arGivenName,
+    fatherSurnameAr: nonBlank(person.fatherSurnameAr) ?? father.arSurname,
+    fatherGivenEn: nonBlank(person.fatherGivenEn) ?? father.enGivenName,
+    fatherSurnameEn: nonBlank(person.fatherSurnameEn) ?? father.enSurname,
+  };
+}
+
 export interface DeriveDisplayNameInput {
   readonly gender: GenderType;
   readonly given: string | undefined;

@@ -86,6 +86,17 @@ describe('VillageDetailClient — editorial enrichment (mockup 04)', () => {
     expect(screen.queryByText(/لا ينسخ محتوى الأرشيفات/)).not.toBeNull();
   });
 
+  it('shows an OpenStreetMap embed when coordinates exist', () => {
+    renderVillage(null);
+    const iframe = document.querySelector('iframe[src*="openstreetmap.org/export/embed"]');
+    expect(iframe).not.toBeNull();
+  });
+
+  it('hides the map when coordinates are missing', () => {
+    renderVillage(null, { ...AL_TIRA, latitude: null, longitude: null });
+    expect(document.querySelector('iframe[src*="openstreetmap.org"]')).toBeNull();
+  });
+
   it('withholds a protected (minor) record from the public people list (Privacy §11)', () => {
     const people: PlacePerson[] = [
       {

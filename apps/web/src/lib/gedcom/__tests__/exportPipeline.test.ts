@@ -115,6 +115,7 @@ const ROWS: Record<string, readonly Row[]> = {
     event({ family_id: 'f-parents' }, 'MARR', 1985, 'Amman'),
   ],
   places: [],
+  person_identifiers: [],
 };
 
 describe('exportTreeToSnapshot — reading the tree', () => {
@@ -192,6 +193,58 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
     ]);
   });
 
+  it('uses the D2 150-year rule, not persons.is_living alone', async () => {
+    const currentYear = new Date().getFullYear();
+    const rows: Record<string, readonly Row[]> = {
+      persons: [
+        // Flag says deceased, but no DEAT and birth is recent → still living under D2.
+        {
+          ...person('p-flag-dead', '@I10@', 'M', 'secret note'),
+          is_living: false,
+        },
+        // Flag says living, but born 150+ years ago with no DEAT → presumed deceased.
+        {
+          ...person('p-flag-alive', '@I11@', 'F', 'old note'),
+          is_living: true,
+        },
+      ],
+      families: [],
+      family_children: [],
+      person_names: [
+        name('p-flag-dead', 'حديث', 'الشخص'),
+        name('p-flag-alive', 'قديم', 'الشخص'),
+      ],
+      events: [
+        event({ person_id: 'p-flag-dead' }, 'BIRT', currentYear - 40, 'Nablus'),
+        event(
+          { person_id: 'p-flag-alive' },
+          'BIRT',
+          currentYear - 150,
+          'Jaffa'
+        ),
+      ],
+      places: [],
+      person_identifiers: [],
+    };
+
+    const snap = await exportTreeToSnapshot(fakeSupabase(rows), 't', {
+      maskLivingPeople: true,
+    });
+    const recent = snap.persons.find((p) => p.xref === '@I10@')!;
+    const ancient = snap.persons.find((p) => p.xref === '@I11@')!;
+
+    expect(recent.events).toEqual([]);
+    expect(recent.notes).toBeUndefined();
+    expect(ancient.events).toEqual([
+      expect.objectContaining({
+        eventType: 'BIRT',
+        year: currentYear - 150,
+        place: 'Jaffa',
+      }),
+    ]);
+    expect(ancient.notes).toBe('old note');
+  });
+
   it('leaves no trace of the withheld details in the .ged text', async () => {
     const ged = serializeGedcom(
       await exportTreeToSnapshot(fakeSupabase(ROWS), 't', { maskLivingPeople: true })
@@ -203,4 +256,64 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
     expect(ged).toContain('1 NAME محمد /الخطيب/');
     expect(ged).toContain('2 PLAC Safad');
   });
+
+  it('emits person_identifiers and ORIGIN notes on IFT Admin full export', async () => {
+    const rows: Record<string, readonly Row[]> = {
+      ...ROWS,
+      person_identifiers: [
+        {
+          person_id: 'p-grandfather',
+          id_type: 'unrwa_registration',
+          id_value: 'UNRWA-123',
+        },
+        {
+          person_id: 'p-grandfather',
+          id_type: 'family_card_1948',
+          id_value: 'FC-9',
+        },
+      ],
+    };
+    const snap = await exportTreeToSnapshot(fakeSupabase(rows), 't', {
+      maskLivingPeople: false,
+    });
+    const gf = snap.persons.find((p) => p.xref === '@I1@')!;
+    expect(gf.refns).toEqual(
+      expect.arrayContaining([
+        { type: 'unrwa_registration', value: 'UNRWA-123' },
+        { type: 'family_card', value: 'FC-9' },
+      ])
+    );
+    expect(gf.extraNotes).toEqual(
+      expect.arrayContaining([
+        'UNRWA: UNRWA-123',
+        'family_card: FC-9',
+        'ORIGIN: Safad',
+      ])
+    );
+    const ged = serializeGedcom(snap);
+    expect(ged).toContain('1 REFN unrwa_registration:UNRWA-123');
+    expect(ged).toContain('1 REFN family_card:FC-9');
+    expect(ged).toContain('1 NOTE UNRWA: UNRWA-123');
+  });
+
+  it('withholds identifiers when maskLivingPeople is true', async () => {
+    const rows: Record<string, readonly Row[]> = {
+      ...ROWS,
+      person_identifiers: [
+        {
+          person_id: 'p-father',
+          id_type: 'unrwa_registration',
+          id_value: 'SECRET',
+        },
+      ],
+    };
+    const snap = await exportTreeToSnapshot(fakeSupabase(rows), 't', {
+      maskLivingPeople: true,
+    });
+    for (const p of snap.persons) {
+      expect(p.refns).toBeUndefined();
+      expect(p.extraNotes).toBeUndefined();
+    }
+  });
 });
+

@@ -6,11 +6,23 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Search, Users, X } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { FamilyIndexRow } from '@/data/user/families-index';
+import { DistrictSelect, type DistrictOption } from '@/components/search/DistrictSelect';
+import { useRouter } from 'next/navigation';
 
-export function FamiliesIndexClient({ rows }: { rows: FamilyIndexRow[] }) {
+export function FamiliesIndexClient({
+  rows,
+  districts = [],
+  initialDistrict = null,
+}: {
+  rows: FamilyIndexRow[];
+  districts?: DistrictOption[];
+  initialDistrict?: string | null;
+}) {
   const { t, locale, dir } = useLocale();
+  const router = useRouter();
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   const [query, setQuery] = useState('');
+  const [district, setDistrict] = useState<string | null>(initialDistrict);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -73,6 +85,23 @@ export function FamiliesIndexClient({ rows }: { rows: FamilyIndexRow[] }) {
               <X className="h-4 w-4" />
             </button>
           )}
+        </div>
+
+        <div className="mb-6 max-w-sm">
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+            {t('اللواء / القضاء', 'District')}
+          </label>
+          <DistrictSelect
+            districts={districts}
+            value={district}
+            onChange={(key) => {
+              setDistrict(key);
+              const params = new URLSearchParams();
+              if (key) params.set('district', key);
+              router.push(params.toString() ? `/families?${params}` : '/families');
+            }}
+            locale={locale}
+          />
         </div>
 
         {/* Direct entry — let user jump to a surname not yet in the top list */}

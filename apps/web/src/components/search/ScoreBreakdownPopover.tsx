@@ -15,9 +15,11 @@ export function ScoreBreakdownPopover({
   const rows: Array<{ key: keyof ScoreBreakdown; labelAr: string; labelEn: string }> = [
     { key: 'given', labelAr: 'الاسم', labelEn: 'Given' },
     { key: 'surname', labelAr: 'اللقب', labelEn: 'Surname' },
-    { key: 'free', labelAr: 'بحث حر', labelEn: 'Free text' },
+    { key: 'free', labelAr: 'نص حر', labelEn: 'Free text' },
     { key: 'father', labelAr: 'الأب', labelEn: 'Father' },
     { key: 'mother', labelAr: 'الأم', labelEn: 'Mother' },
+    { key: 'pgf', labelAr: 'الجد لأب', labelEn: 'Pat. grandfather' },
+    { key: 'pggf', labelAr: 'أبو الجد لأب', labelEn: 'Pat. great-grandfather' },
     { key: 'place', labelAr: 'الأصل', labelEn: 'Origin' },
     { key: 'year', labelAr: 'سنة الميلاد', labelEn: 'Birth year' },
   ];

@@ -12,6 +12,8 @@ import {
 import { cn } from '@/lib/utils';
 import type { PersonView } from '@/lib/tree/types';
 
+import { PersonHoverCard } from './PersonHoverCard';
+
 /**
  * Landscape card: avatar on the start side, name + life-years stacked on
  * the rest — mirrors FamilyEcho / Ancestry / Geni layout.
@@ -38,6 +40,11 @@ interface Props {
   readonly isFocus?: boolean;
   /** True when this node is the `?selected=` person (side-panel target). */
   readonly isSelected?: boolean;
+  /**
+   * PFT / read-only overlays: hide add-relative controls and link the card
+   * straight to the person profile instead of the editor selection query.
+   */
+  readonly readOnly?: boolean;
 }
 
 /**
@@ -58,6 +65,7 @@ export function ChartNode({
   unitPx,
   isFocus = false,
   isSelected = false,
+  readOnly = false,
 }: Props) {
   const x = left * unitPx;
   const y = top * unitPx;
@@ -74,9 +82,10 @@ export function ChartNode({
   // Left-click selects the card (updates ?selected= so the side panel
   // shows this person + actions). Profile view lives in the right-click
   // context menu — keeps people on the chart instead of bouncing them
-  // to a separate page on every click.
+  // to a separate page on every click. readOnly (PFT) goes to profile.
   const selectHref = `/tree/${treeId}?selected=${person.id}`;
   const profileHref = `/tree/${treeId}/person/${person.id}`;
+  const cardHref = readOnly ? profileHref : selectHref;
   const addHref = (kind: 'parent' | 'child' | 'spouse' | 'sibling') =>
     `/tree/${treeId}?selected=${person.id}&add=${kind}`;
 
@@ -92,31 +101,37 @@ export function ChartNode({
     >
       {/* Add-relative buttons — appear on hover at the card edges and
           open the side-panel sheet inline (no page navigation). */}
-      <AddRelativeButton
-        href={addHref('parent')}
-        position="top"
-        labelAr="أضف والدًا/والدة"
-      />
-      <AddRelativeButton
-        href={addHref('child')}
-        position="bottom"
-        labelAr="أضف ابنًا/ابنة"
-      />
-      <AddRelativeButton
-        href={addHref('sibling')}
-        position="start"
-        labelAr="أضف أخًا/أختًا"
-      />
-      <AddRelativeButton
-        href={addHref('spouse')}
-        position="end"
-        labelAr="أضف زوجًا/زوجة"
-      />
+      {!readOnly ? (
+        <>
+          <AddRelativeButton
+            href={addHref('parent')}
+            position="top"
+            labelAr="أضف والدًا/والدة"
+          />
+          <AddRelativeButton
+            href={addHref('child')}
+            position="bottom"
+            labelAr="أضف ابنًا/ابنة"
+          />
+          <AddRelativeButton
+            href={addHref('sibling')}
+            position="start"
+            labelAr="أضف أخًا/أختًا"
+          />
+          <AddRelativeButton
+            href={addHref('spouse')}
+            position="end"
+            labelAr="أضف زوجًا/زوجة"
+          />
+        </>
+      ) : null}
 
+      <PersonHoverCard person={person}>
+        <div className="h-full w-full">
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <Link
-            href={selectHref}
+            href={cardHref}
             scroll={false}
             className="block h-full w-full focus-visible:outline-none"
             aria-label={label}
@@ -235,6 +250,8 @@ export function ChartNode({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+        </div>
+      </PersonHoverCard>
     </div>
   );
 }

@@ -14,6 +14,10 @@ afterEach(() => cleanup());
 
 const PROFILE: PersonProfile = {
   person_id: 'p1',
+  contact_consent: false,
+  contact_email: null,
+  contact_phone: null,
+  contribution_consent: true,
   achievements_ar: 'قائد في المجتمع المحلي',
   achievements_en: null,
   contribution_ar: 'خدمة قريته وأهلها',

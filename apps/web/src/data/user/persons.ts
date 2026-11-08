@@ -13,6 +13,7 @@ import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import {
   createPersonWithPrimaryName,
   joinDisplay,
+  loadFatherInheritanceDefaults,
   toUserFacingDbError,
   type SupabaseServerClient,
 } from './personCreate';
@@ -27,14 +28,75 @@ import {
  * added later via a separate mutation so they stay searchable but are
  * never picked as display.
  */
-export const insertPersonAction = authActionClient
-  .schema(personInputSchema)
+
+/**
+ * R4 defaults for the add-person UI: surname + origin from a known father.
+ * Used to pre-fill the form; the server re-applies the same rules on save.
+ */
+export const getInheritanceDefaultsAction = authActionClient
+  .schema(z.object({ fatherId: z.string().uuid() }))
   .action(async ({ parsedInput }) => {
     const supabase = await createJuthoorSupabaseClient();
-    const personId = await createPersonWithPrimaryName(supabase, parsedInput);
+    return loadFatherInheritanceDefaults(supabase, parsedInput.fatherId);
+  });
+
+/** Primary given/surname for prefilling R10 parent-name fields. */
+export const getPersonPrimaryNamesAction = authActionClient
+  .schema(z.object({ personId: z.string().uuid() }))
+  .action(async ({ parsedInput }) => {
+    const supabase = await createJuthoorSupabaseClient();
+    const { data, error } = await supabase
+      .from('person_names')
+      .select('lang, given_name, surname, is_primary')
+      .eq('person_id', parsedInput.personId)
+      .order('is_primary', { ascending: false });
+    if (error) throw new Error(error.message);
+    let arGiven: string | undefined;
+    let arSurname: string | undefined;
+    let enGiven: string | undefined;
+    let enSurname: string | undefined;
+    for (const row of data ?? []) {
+      const given = row.given_name?.trim();
+      const surname = row.surname?.trim();
+      if (row.lang === 'ar') {
+        if (given && !arGiven) arGiven = given;
+        if (surname && !arSurname) arSurname = surname;
+      } else if (row.lang === 'en') {
+        if (given && !enGiven) enGiven = given;
+        if (surname && !enSurname) enSurname = surname;
+      }
+    }
+    return { arGiven, arSurname, enGiven, enSurname };
+  });
+
+export const insertPersonAction = authActionClient
+  .schema(
+    personInputSchema.extend({
+      /** When true (add-self), set profiles.linked_person_id to the new person. */
+      linkAsSelf: z.boolean().optional(),
+    })
+  )
+  .action(async ({ parsedInput, ctx: { userId } }) => {
+    const { linkAsSelf, ...personInput } = parsedInput;
+    const supabase = await createJuthoorSupabaseClient();
+    const personId = await createPersonWithPrimaryName(supabase, personInput);
+
+    if (linkAsSelf) {
+      const { error: linkErr } = await supabase
+        .from('profiles')
+        .update({
+          linked_person_id: personId,
+          self_person_id: personId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+        .is('deleted_at', null);
+      if (linkErr) throw new Error(linkErr.message);
+    }
 
     revalidatePath('/tree');
     revalidatePath(`/tree/${parsedInput.treeId}`);
+    revalidatePath('/dashboard');
     return { personId };
   });
 

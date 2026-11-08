@@ -7,8 +7,18 @@ import { motion } from 'framer-motion';
 import { Check, X, FileText, Users, ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { approveAccessRequest, rejectAccessRequest, type AccessRequest } from '@/data/user/access';
+import type { ContactRelayRow } from '@/data/user/contactRelay';
+import { ContactRelaysPanel } from '@/components/search/ContactRelaysPanel';
 
-export function RequestsClient({ initialRequests }: { initialRequests: AccessRequest[] }) {
+export function RequestsClient({
+  initialRequests,
+  contactOutgoing = [],
+  contactIncoming = [],
+}: {
+  initialRequests: AccessRequest[];
+  contactOutgoing?: ContactRelayRow[];
+  contactIncoming?: ContactRelayRow[];
+}) {
   const { t, locale, dir } = useLocale();
   const router = useRouter();
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
@@ -199,6 +209,8 @@ export function RequestsClient({ initialRequests }: { initialRequests: AccessReq
           </div>
         )}
       </div>
+
+        <ContactRelaysPanel outgoing={contactOutgoing} incoming={contactIncoming} />
     </div>
   );
 }

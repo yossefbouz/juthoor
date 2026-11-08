@@ -2,8 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronsUpDown } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import {
+  DistrictSelect,
+  districtsFromPlaces,
+} from '@/components/search/DistrictSelect';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -30,9 +34,9 @@ interface Props {
 }
 
 /**
- * Searchable combobox over the seeded `places` table. Debounced via
- * React Query's default staleTime; searches both Arabic and English
- * names via the server-side `searchPlaces` helper.
+ * Searchable combobox over the seeded `places` table. District filter
+ * comes first (same pattern as Villages / search), then the place list
+ * is narrowed to that district.
  */
 export function PlaceCombobox({
   value,
@@ -42,85 +46,112 @@ export function PlaceCombobox({
   const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [district, setDistrict] = useState<string | null>(null);
+
+  // Broad fetch to build the district list (seed table is ~263 rows).
+  const { data: allPlaces = [] } = useQuery({
+    queryKey: ['places', 'all-for-districts'],
+    queryFn: () => searchPlacesClient('', { limit: 500 }),
+    staleTime: 5 * 60_000,
+  });
 
   const { data: places = [], isFetching } = useQuery({
-    queryKey: ['places', query],
-    queryFn: () => searchPlacesClient(query),
+    queryKey: ['places', query, district],
+    queryFn: () =>
+      searchPlacesClient(query, { districtKey: district, limit: 40 }),
     staleTime: 60_000,
   });
 
-  const selected = places.find((p) => p.id === value);
+  const districts = useMemo(() => districtsFromPlaces(allPlaces), [allPlaces]);
+  const selected =
+    places.find((p) => p.id === value) ??
+    allPlaces.find((p) => p.id === value);
+
   const nameFor = (p: { name_ar: string | null; name_en?: string | null }) =>
     locale === 'ar' ? p.name_ar ?? p.name_en : p.name_en ?? p.name_ar;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            'w-full justify-between font-normal',
-            !selected && 'text-muted-foreground'
-          )}
+    <div className="grid gap-2">
+      <DistrictSelect
+        districts={districts}
+        value={district}
+        onChange={(key) => {
+          setDistrict(key);
+          // Clearing district keeps the selected place; changing it may
+          // hide the current value from the filtered list — that is fine.
+        }}
+        locale={locale}
+        placeholder={t('المنطقة / القضاء أولًا', 'District first')}
+        allLabel={t('كل المناطق', 'All districts')}
+      />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              'w-full justify-between font-normal',
+              !selected && 'text-muted-foreground'
+            )}
+          >
+            {selected
+              ? nameFor(selected) ?? '—'
+              : placeholder ?? t('اختر القرية أو المدينة', 'Select a village or town')}
+            <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-0"
+          align="start"
         >
-          {selected
-            ? nameFor(selected) ?? '—'
-            : placeholder ?? t('اختر القرية أو المدينة', 'Select a village or town')}
-          <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
-        align="start"
-      >
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={t('ابحث بالعربية أو الإنجليزية...', 'Search in Arabic or English…')}
-            value={query}
-            onValueChange={setQuery}
-          />
-          <CommandList>
-            <CommandEmpty>
-              {isFetching ? t('جارٍ البحث…', 'Searching…') : t('لم يتم العثور على نتائج.', 'No results found.')}
-            </CommandEmpty>
-            <CommandGroup>
-              {places.map((place) => (
-                <CommandItem
-                  key={place.id}
-                  value={place.id}
-                  onSelect={() => {
-                    onChange(
-                      place.id,
-                      nameFor(place) ?? null
-                    );
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      'me-2 h-4 w-4',
-                      value === place.id ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <div className="flex flex-col">
-                    <span className="font-medium">
-                      {nameFor(place)}
-                    </span>
-                    {place.district_ar ? (
-                      <span className="text-xs text-muted-foreground">
-                        {locale === 'ar' ? place.district_ar : place.district_en ?? place.district_ar}
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder={t('ابحث بالعربية أو الإنجليزية...', 'Search in Arabic or English…')}
+              value={query}
+              onValueChange={setQuery}
+            />
+            <CommandList>
+              <CommandEmpty>
+                {isFetching ? t('جارٍ البحث…', 'Searching…') : t('لم يتم العثور على نتائج.', 'No results found.')}
+              </CommandEmpty>
+              <CommandGroup>
+                {places.map((place) => (
+                  <CommandItem
+                    key={place.id}
+                    value={place.id}
+                    onSelect={() => {
+                      onChange(
+                        place.id,
+                        nameFor(place) ?? null
+                      );
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'me-2 h-4 w-4',
+                        value === place.id ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {nameFor(place)}
                       </span>
-                    ) : null}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                      {place.district_ar ? (
+                        <span className="text-xs text-muted-foreground">
+                          {locale === 'ar' ? place.district_ar : place.district_en ?? place.district_ar}
+                        </span>
+                      ) : null}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

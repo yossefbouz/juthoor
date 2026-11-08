@@ -20,10 +20,13 @@ export function PersonStoryPanel({
   personId,
   initialProfile,
   canManage,
+  isLiving = false,
 }: {
   personId: string;
   initialProfile: PersonProfile | null;
   canManage: boolean;
+  /** When true and contribution_consent is false, hide story from non-managers (D13). */
+  isLiving?: boolean;
 }) {
   const { t, locale } = useLocale();
   const isAR = locale === 'ar';
@@ -34,6 +37,10 @@ export function PersonStoryPanel({
   const [conDraft, setConDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contribConsent, setContribConsent] = useState(Boolean(initialProfile?.contribution_consent));
+  const [contactConsent, setContactConsent] = useState(Boolean(initialProfile?.contact_consent));
+  const [contactEmail, setContactEmail] = useState(initialProfile?.contact_email ?? '');
+  const [contactPhone, setContactPhone] = useState(initialProfile?.contact_phone ?? '');
 
   const achievements = isAR
     ? profile?.achievements_ar ?? profile?.achievements_en
@@ -42,14 +49,24 @@ export function PersonStoryPanel({
     ? profile?.contribution_ar ?? profile?.contribution_en
     : profile?.contribution_en ?? profile?.contribution_ar;
 
-  const hasContent = Boolean(achievements || contribution);
+  const contributionConsent = Boolean(profile?.contribution_consent);
+  const hideForLiving = isLiving && !contributionConsent && !canManage;
+  const achievementsVisible = hideForLiving ? null : achievements;
+  const contributionVisible = hideForLiving ? null : contribution;
+  const hasContent = Boolean(achievementsVisible || contributionVisible);
 
   // Nothing recorded and the viewer can't add anything → render nothing.
+  // Also hide entirely for living people without consent (non-managers).
+  if (hideForLiving) return null;
   if (!hasContent && !canManage) return null;
 
   function startEditing() {
     setAchDraft((isAR ? profile?.achievements_ar : profile?.achievements_en) ?? '');
     setConDraft((isAR ? profile?.contribution_ar : profile?.contribution_en) ?? '');
+    setContribConsent(Boolean(profile?.contribution_consent));
+    setContactConsent(Boolean(profile?.contact_consent));
+    setContactEmail(profile?.contact_email ?? '');
+    setContactPhone(profile?.contact_phone ?? '');
     setError(null);
     setEditing(true);
   }
@@ -65,6 +82,10 @@ export function PersonStoryPanel({
         achievementsEn: isAR ? profile?.achievements_en ?? null : achDraft,
         contributionAr: isAR ? conDraft : profile?.contribution_ar ?? null,
         contributionEn: isAR ? profile?.contribution_en ?? null : conDraft,
+        contributionConsent: contribConsent,
+        contactConsent,
+        contactEmail: contactEmail || null,
+        contactPhone: contactPhone || null,
       });
       setProfile(updated);
       setEditing(false);
@@ -115,6 +136,40 @@ export function PersonStoryPanel({
                 "This person's role in serving Palestine and its people…",
               )}
             />
+            <label className="flex items-center gap-2 text-sm text-[var(--jt-stone-700)]">
+              <input
+                type="checkbox"
+                checked={contribConsent}
+                onChange={(e) => setContribConsent(e.target.checked)}
+              />
+              {t('الموافقة على عرض الإنجازات/المساهمة (للأحياء)', 'Consent to show achievements/contribution (living)')}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-[var(--jt-stone-700)]">
+              <input
+                type="checkbox"
+                checked={contactConsent}
+                onChange={(e) => setContactConsent(e.target.checked)}
+              />
+              {t('الموافقة على إظهار بيانات التواصل', 'Consent to show contact details')}
+            </label>
+            {contactConsent && (
+              <div className="grid gap-3 md:grid-cols-2">
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder={t('البريد', 'Email')}
+                  className="rounded-xl border border-[var(--jt-stone-200)] px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]"
+                />
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder={t('الهاتف', 'Phone')}
+                  className="rounded-xl border border-[var(--jt-stone-200)] px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]"
+                />
+              </div>
+            )}
             {error && (
               <p className="text-sm text-[var(--jt-terra-600)]">{error}</p>
             )}
@@ -139,13 +194,13 @@ export function PersonStoryPanel({
             <ReadBlock
               icon={Award}
               label={t('الإنجازات', 'Achievements')}
-              text={achievements}
+              text={achievementsVisible}
               empty={t('لم تُسجَّل إنجازات بعد.', 'No achievements recorded yet.')}
             />
             <ReadBlock
               icon={HeartHandshake}
               label={t('المساهمة في القضية', 'Contribution to the cause')}
-              text={contribution}
+              text={contributionVisible}
               empty={t('لم تُسجَّل مساهمة بعد.', 'No contribution recorded yet.')}
             />
           </>

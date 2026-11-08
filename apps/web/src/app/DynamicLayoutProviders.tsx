@@ -5,6 +5,7 @@ import { Toaster as SonnerToaster } from 'sonner';
 import { ThemeProvider, useTheme } from 'next-themes';
 import { AppProgressBar as ProgressBar } from 'next-nprogress-bar';
 import { LocaleProvider } from '@/contexts/LocaleContext';
+import { PwaRegister } from '@/components/pwa/PwaRegister';
 
 function CustomerToaster() {
   const theme = useTheme();
@@ -29,6 +30,7 @@ export function DynamicLayoutProviders({
     <ThemeProvider enableSystem themes={['light', 'dark']} defaultTheme="light">
       <LocaleProvider>
         {children}
+        <PwaRegister />
         <Suspense>
           <ProgressBar
             height="4px"

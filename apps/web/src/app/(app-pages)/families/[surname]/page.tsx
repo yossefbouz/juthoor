@@ -1,10 +1,14 @@
 import { Suspense } from 'react';
 import { loadFamilyAcrossVillages } from '@/data/user/families-search';
+import { loadFamilyGallery } from '@/data/user/archives';
 import { FamilyClient } from './FamilyClient';
 
 async function FamilyContainer({ surname }: { surname: string }) {
-  const overview = await loadFamilyAcrossVillages(surname);
-  return <FamilyClient overview={overview} />;
+  const [overview, gallery] = await Promise.all([
+    loadFamilyAcrossVillages(surname),
+    loadFamilyGallery(surname),
+  ]);
+  return <FamilyClient overview={overview} gallery={gallery} />;
 }
 
 export default async function FamilyPage({

@@ -9,7 +9,14 @@
  * With `maskLivingPeople` (decision D5: everyone except the tree's IFT
  * Administrator), living people keep their names, sex and family links
  * but lose every event and note, and so do the families they are a
- * partner in.
+ * partner in. Living status uses `isPresumedLiving` (D2 150-year rule
+ * from death/birth events), not `persons.is_living`.
+ *
+ * IFT Admin full export (`maskLivingPeople: false`) also emits:
+ *   - person_identifiers as REFN + NOTE (UNRWA / family_card)
+ *   - match-relevant fields already on the person: NAME records and
+ *     origin via BIRT PLAC (and an ORIGIN NOTE when a place is known)
+ * Living-mask behaviour above stays unchanged (identifiers withheld).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -73,7 +80,9 @@ export async function exportTreeToSnapshot(
 ): Promise<GedcomSnapshot> {
   // Names and events are scoped to this tree through their person or
   // family; on their own, those tables hold every tree the user can read.
-  const [persons, families, childRows, names, personEvents, familyEvents, places] =
+  const includeIdentifiers = options.maskLivingPeople !== true;
+
+  const [persons, families, childRows, names, personEvents, familyEvents, places, identifierRows] =
     await Promise.all([
       readAll<Person>((from, to) =>
         supabase
@@ -133,6 +142,22 @@ export async function exportTreeToSnapshot(
             .order('id')
             .range(from, to)
       ),
+      includeIdentifiers
+        ? readAll<{
+            person_id: string;
+            id_type: string;
+            id_value: string;
+          }>((from, to) =>
+            supabase
+              .from('person_identifiers')
+              .select('person_id, id_type, id_value, persons!inner(tree_id)')
+              .eq('persons.tree_id', treeId)
+              .order('id')
+              .range(from, to)
+          )
+        : Promise.resolve(
+            [] as { person_id: string; id_type: string; id_value: string }[]
+          ),
     ]);
 
   // strip the joined `families` so we only keep the child-link fields
@@ -212,6 +237,16 @@ export async function exportTreeToSnapshot(
     }
   }
 
+  const identifiersByPerson = new Map<
+    string,
+    { id_type: string; id_value: string }[]
+  >();
+  for (const row of identifierRows) {
+    const list = identifiersByPerson.get(row.person_id) ?? [];
+    list.push({ id_type: row.id_type, id_value: row.id_value });
+    identifiersByPerson.set(row.person_id, list);
+  }
+
   // ---- Build persons ----
   const gedcomPersons: GedcomPerson[] = persons.map((p: Person) => {
     const personNames = names
@@ -243,14 +278,50 @@ export async function exportTreeToSnapshot(
             },
           ];
 
+    const gedEvents = personEvents.map((e: Event) =>
+      toGedcomEvent(e, placeLookup)
+    );
+
+    // Match-relevant fields already exported for every person:
+    //   - names → NAME records (above)
+    //   - origin → BIRT PLAC when a birth event has a place
+    // IFT Admin full export also attaches identifiers + an ORIGIN NOTE.
+    const extraNotes: string[] = [];
+    const refns: { type: string; value: string }[] = [];
+    if (!masked && includeIdentifiers) {
+      const ids = identifiersByPerson.get(p.id) ?? [];
+      for (const id of ids) {
+        const refType =
+          id.id_type === 'unrwa_registration'
+            ? 'unrwa_registration'
+            : id.id_type === 'family_card_1948'
+              ? 'family_card'
+              : id.id_type;
+        refns.push({ type: refType, value: id.id_value });
+        if (id.id_type === 'unrwa_registration') {
+          extraNotes.push(`UNRWA: ${id.id_value}`);
+        } else if (id.id_type === 'family_card_1948') {
+          extraNotes.push(`family_card: ${id.id_value}`);
+        } else {
+          extraNotes.push(`${id.id_type}: ${id.id_value}`);
+        }
+      }
+      const birthPlace = gedEvents.find(
+        (e) => e.eventType === 'BIRT' && e.place
+      )?.place;
+      if (birthPlace) {
+        extraNotes.push(`ORIGIN: ${birthPlace}`);
+      }
+    }
+
     return {
       xref: personXref.get(p.id)!,
       gender: p.gender,
       names: mappedNames,
-      events: personEvents.map((e: Event) =>
-        toGedcomEvent(e, placeLookup)
-      ),
+      events: gedEvents,
       notes: masked ? undefined : (p.notes ?? undefined),
+      refns: refns.length > 0 ? refns : undefined,
+      extraNotes: extraNotes.length > 0 ? extraNotes : undefined,
     };
   });
 

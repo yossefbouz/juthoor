@@ -9,7 +9,10 @@ export const SearchQuerySchema = z
     surname: z.string().trim().min(0).max(60).optional(),
     father: z.string().trim().min(0).max(60).optional(),
     mother: z.string().trim().min(0).max(60).optional(),
+    paternalGrandfather: z.string().trim().min(0).max(60).optional(),
+    paternalGreatGrandfather: z.string().trim().min(0).max(60).optional(),
     placeId: z.string().uuid().optional(),
+    district: z.string().trim().min(0).max(120).optional(),
     birthYear: z.coerce.number().int().min(1500).max(new Date().getUTCFullYear()).optional(),
     yearWindow: z.coerce.number().int().min(0).max(25).default(5),
     gender: GenderEnum.optional(),
@@ -23,6 +26,8 @@ export const SearchQuerySchema = z
           v.surname?.length ||
           v.father?.length ||
           v.mother?.length ||
+          v.paternalGrandfather?.length ||
+          v.paternalGreatGrandfather?.length ||
           v.placeId ||
           v.birthYear,
       ),
@@ -37,6 +42,8 @@ export type ScoreBreakdown = {
   free: number;
   father: number;
   mother: number;
+  pgf?: number;
+  pggf?: number;
   place: number;
   year: number;
 };

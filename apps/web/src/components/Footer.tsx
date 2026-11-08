@@ -59,7 +59,7 @@ const Footer = () => {
           items={[
             { label: t('شجرة العائلة', 'Family Tree'), href: '/tree' },
             { label: t('البحث عن ذويك', 'Family Finder'), href: '/sign-up' },
-            { label: t('الشجرة الأم', 'Mother Tree'), href: '/sign-up' },
+            { label: t('الشجرة الفلسطينية', 'Palestinian Family Tree'), href: '/pft' },
             { label: t('توثيق الهوية', 'Verify identity'), href: '/verify' },
           ]}
         />
@@ -78,6 +78,7 @@ const Footer = () => {
           items={[
             { label: t('الخصوصية', 'Privacy'), href: '/privacy' },
             { label: t('الشروط', 'Terms'), href: '/terms' },
+            { label: t('أسئلة شائعة', 'FAQ'), href: '/faq' },
             { label: t('تواصل', 'Contact'), href: 'mailto:hello@juthoor.app' },
           ]}
         />

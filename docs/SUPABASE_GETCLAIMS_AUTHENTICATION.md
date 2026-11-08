@@ -245,7 +245,7 @@ export async function updateSession(request: NextRequest) {
   // server-side AuthGuard so visitors never see a flash of protected UI.
   const publicExact = new Set(['/']);
   const publicPrefixes = [
-    '/about', '/why', '/how', '/contact', '/privacy', '/terms',
+    '/about', '/why', '/how', '/contact', '/faq', '/privacy', '/terms',
     '/login', '/sign-up', '/forgot-password', '/update-password', '/auth',
   ];
   const isPublic =

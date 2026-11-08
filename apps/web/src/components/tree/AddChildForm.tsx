@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useMemo, useTransition } from 'react';
+import { useEffect, useMemo, useTransition } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -25,9 +25,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useLocale } from '@/contexts/LocaleContext';
+import { applyFatherInheritance } from '@/lib/tree/inheritance';
 import { addChildAction } from '@/data/user/families';
-import { insertPersonAction } from '@/data/user/persons';
-import { insertPlaceholderMotherAction } from '@/data/user/persons';
+import {
+  getInheritanceDefaultsAction,
+  insertPersonAction,
+  insertPlaceholderMotherAction,
+} from '@/data/user/persons';
 import type { Person } from '@/types/database';
 
 import { PersonSelect } from './PersonSelect';
@@ -41,6 +45,8 @@ function makeAddChildFormSchema(t: (ar: string, en: string) => string) {
       motherId: z.string().uuid().nullable(),
       arGivenName: z.string().trim().min(1, t('الاسم الأول مطلوب', 'First name is required')),
       arSurname: z.string().optional(),
+      enSurname: z.string().optional(),
+      placeOfOriginId: z.string().uuid().optional(),
       gender: z.enum(['M', 'F']),
       birthYear: z
         .preprocess(
@@ -108,10 +114,36 @@ export function AddChildForm({
       gender: 'M',
       arGivenName: '',
       arSurname: '',
+      enSurname: '',
+      placeOfOriginId: undefined,
     },
   });
 
   const useMotherPlaceholder = form.watch('useMotherPlaceholder');
+
+  // R4: pre-fill surname (and origin when known) from the father.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await getInheritanceDefaultsAction({ fatherId });
+      if (cancelled || result?.serverError || !result?.data) return;
+      const defaults = result.data;
+      const cur = form.getValues();
+      if (!cur.arSurname?.trim() && defaults.arSurname) {
+        form.setValue('arSurname', defaults.arSurname);
+      }
+      if (!cur.enSurname?.trim() && defaults.enSurname) {
+        form.setValue('enSurname', defaults.enSurname);
+      }
+      if (!cur.placeOfOriginId && defaults.placeOfOriginId) {
+        form.setValue('placeOfOriginId', defaults.placeOfOriginId);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fatherId]);
 
   function handleSubmit(values: FormValues) {
     startTransition(async () => {
@@ -135,14 +167,23 @@ export function AddChildForm({
         return;
       }
 
-      // Step 2: create the child person.
-      const personResult = await insertPersonAction({
-        treeId: values.treeId,
-        gender: values.gender,
-        arGivenName: values.arGivenName,
-        arSurname: values.arSurname || undefined,
-        birthYear: values.birthYear,
+      // Step 2: create the child person (R4: fill blank surname/origin from father).
+      const inheritResult = await getInheritanceDefaultsAction({
+        fatherId: values.fatherId,
       });
+      const withDefaults = applyFatherInheritance(
+        {
+          treeId: values.treeId,
+          gender: values.gender,
+          arGivenName: values.arGivenName,
+          arSurname: values.arSurname || undefined,
+          enSurname: values.enSurname || undefined,
+          birthYear: values.birthYear,
+          placeOfOriginId: values.placeOfOriginId,
+        },
+        inheritResult?.data ?? null
+      );
+      const personResult = await insertPersonAction(withDefaults);
       if (personResult?.serverError || !personResult?.data?.personId) {
         toast.error(personResult?.serverError ?? t('فشل إضافة الابن', 'Failed to add the child'));
         return;

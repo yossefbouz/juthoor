@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ChevronLeft, MapPin, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronLeft, Image as ImageIcon, MapPin, Users } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { FamilySurnameOverview } from '@/data/user/families-search';
+import type { FamilyGalleryItem } from '@/data/user/archives';
 
 function looksArabic(s: string | null): boolean {
   if (!s) return false;
   return /[؀-ۿ]/.test(s);
 }
 
-export function FamilyClient({ overview }: { overview: FamilySurnameOverview }) {
+export function FamilyClient({ overview, gallery = [] }: { overview: FamilySurnameOverview; gallery?: FamilyGalleryItem[] }) {
   const { t, locale, dir } = useLocale();
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   const Back = locale === 'ar' ? ChevronLeft : ArrowLeft;
@@ -70,6 +71,62 @@ export function FamilyClient({ overview }: { overview: FamilySurnameOverview }) 
           <Stat color="gold" value={overview.total_villages} ar="قرية تحضر فيها" en="Villages they appear in" />
           <Stat color="terra" value={overview.total_trees} ar="شجرات" en="Trees" />
         </div>
+
+
+        {/* Family gallery */}
+        {gallery.length > 0 && (
+          <section className="mb-10">
+            <header className="mb-4">
+              <p className="mb-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-olive-700)]">
+                <ImageIcon className="h-3 w-3" />
+                {t('معرض العائلة', 'Family gallery')}
+              </p>
+              <h2
+                className="text-2xl font-bold text-[var(--jt-olive-900)]"
+                style={{ fontFamily: 'var(--jt-font-display)' }}
+              >
+                {t('صور مرتبطة بهذا اللقب', 'Pictures linked to this surname')}
+              </h2>
+            </header>
+            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {gallery.map((pic) => {
+                const name =
+                  locale === 'ar'
+                    ? pic.person_name_ar || pic.person_name_en
+                    : pic.person_name_en || pic.person_name_ar;
+                return (
+                  <li key={pic.id}>
+                    <Link
+                      href={`/tree/${pic.tree_id}/person/${pic.person_id}`}
+                      className="group block overflow-hidden rounded-2xl border border-[var(--jt-stone-200)] bg-[var(--card)] shadow-[var(--jt-shadow-sm)] transition hover:-translate-y-0.5 hover:border-[var(--jt-olive-300)]"
+                    >
+                      <div className="aspect-square bg-[var(--jt-stone-100)]">
+                        {pic.signed_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={pic.signed_url}
+                            alt={name ?? ''}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-[var(--jt-stone-400)]">
+                            <ImageIcon className="h-6 w-6" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-2.5">
+                        <p className="truncate text-sm font-semibold text-[var(--jt-olive-900)]">{name}</p>
+                        {pic.date_taken && (
+                          <p className="text-[11px] text-[var(--jt-stone-500)]">{pic.date_taken}</p>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         {/* Per-village groups */}
         {overview.groups.length === 0 ? (

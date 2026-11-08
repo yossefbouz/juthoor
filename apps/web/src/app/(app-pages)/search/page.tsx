@@ -21,12 +21,15 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
   const surname = firstString(params.surname);
   const father = firstString(params.father);
   const mother = firstString(params.mother);
+  const paternalGrandfather = firstString(params.paternalGrandfather);
+  const paternalGreatGrandfather = firstString(params.paternalGreatGrandfather);
   const placeId = firstString(params.placeId);
+  const district = firstString(params.district);
   const birthYear = firstString(params.birthYear);
   const yearWindow = firstString(params.yearWindow);
   const gender = firstString(params.gender);
 
-  const hasQuery = Boolean(q || given || surname || father || mother || placeId || birthYear);
+  const hasQuery = Boolean(q || given || surname || father || mother || paternalGrandfather || paternalGreatGrandfather || placeId || birthYear);
   if (!hasQuery) return { results: [], hasQuery: false, error: null };
 
   const parsed = SearchQuerySchema.safeParse({
@@ -35,6 +38,8 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
     surname,
     father,
     mother,
+    paternalGrandfather,
+    paternalGreatGrandfather,
     placeId,
     birthYear,
     yearWindow,
@@ -94,7 +99,10 @@ async function SearchContainer({
         surname: firstString(params.surname) ?? '',
         father: firstString(params.father) ?? '',
         mother: firstString(params.mother) ?? '',
+        paternalGrandfather: firstString(params.paternalGrandfather) ?? '',
+        paternalGreatGrandfather: firstString(params.paternalGreatGrandfather) ?? '',
         placeId: firstString(params.placeId) ?? null,
+        district: firstString(params.district) ?? null,
         birthYear: firstString(params.birthYear) ?? '',
         yearWindow: Number(firstString(params.yearWindow) ?? 5),
         gender: (firstString(params.gender) as 'M' | 'F' | undefined) ?? null,
@@ -118,7 +126,7 @@ export default function SearchPage({
           initialResults={[]}
           degreesByPersonId={{}}
           selfPersonId={null}
-          initialQuery={{ q: '', given: '', surname: '', father: '', mother: '', placeId: null, birthYear: '', yearWindow: 5, gender: null }}
+          initialQuery={{ q: '', given: '', surname: '', father: '', mother: '', paternalGrandfather: '', paternalGreatGrandfather: '', placeId: null, district: null, birthYear: '', yearWindow: 5, gender: null }}
           villages={[]}
           hasQuery={false}
           serverError={null}
