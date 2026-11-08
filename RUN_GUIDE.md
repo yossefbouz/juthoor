@@ -33,8 +33,8 @@ First run pulls ~2 GB of Docker images (~5-10 min). Subsequent runs take ~30-60 
 
 When done you'll see a table ending with:
 ```
-Studio: http://127.0.0.1:55123
-Database: postgresql://postgres:postgres@127.0.0.1:55122/postgres
+Studio: http://127.0.0.1:54323
+Database: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 ```
 
 **Seed the 456 Palestinian villages** (one-time per fresh DB):
@@ -80,7 +80,7 @@ pnpm lint             # oxlint
 Local Supabase auto-confirms emails, so there's no inbox step:
 
 ```cmd
-curl -s -X POST "http://127.0.0.1:55121/auth/v1/signup" ^
+curl -s -X POST "http://127.0.0.1:54321/auth/v1/signup" ^
   -H "apikey: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" ^
   -H "Content-Type: application/json" ^
   -d "{\"email\":\"demo@juthoor.test\",\"password\":\"demo-password-1234\"}"
