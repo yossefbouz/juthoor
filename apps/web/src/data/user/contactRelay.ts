@@ -66,3 +66,45 @@ export async function listMyContactRelays(): Promise<{
     incoming: rows.filter((r) => r.to_user_id === uid),
   };
 }
+
+const RespondSchema = z.object({
+  relayId: z.string().uuid(),
+  status: z.enum(['accepted', 'declined', 'revoked']),
+});
+
+/** Accept, decline, or revoke a contact request (respond_contact_relay RPC). */
+export async function respondContactRelayAction(
+  input: z.input<typeof RespondSchema>,
+): Promise<{ relay: ContactRelayRow; threadId?: string }> {
+  const parsed = RespondSchema.parse(input);
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) throw new Error('Not authenticated');
+  const supabase = await createJuthoorSupabaseClient();
+
+  const { data, error } = await supabase.rpc('respond_contact_relay', {
+    p_relay_id: parsed.relayId,
+    p_status: parsed.status,
+  });
+  if (error) throw new Error(error.message);
+  const relay = data as unknown as ContactRelayRow;
+
+  let threadId: string | undefined;
+  if (parsed.status === 'accepted') {
+    const counterpart =
+      relay.from_user_id === uid ? relay.to_user_id : relay.from_user_id;
+    const { data: tid, error: threadErr } = await supabase.rpc(
+      'open_or_create_message_thread',
+      {
+        p_context_type: 'contact_relay',
+        p_context_id: relay.id,
+        p_counterpart_user_id: counterpart,
+        p_initial_body: 'Contact request accepted. You can message here.',
+      },
+    );
+    if (!threadErr && tid) threadId = tid as string;
+  }
+
+  revalidatePath('/dashboard/requests');
+  revalidatePath('/messages');
+  return { relay, threadId };
+}

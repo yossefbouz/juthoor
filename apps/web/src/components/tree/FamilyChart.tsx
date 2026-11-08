@@ -125,12 +125,9 @@ export function FamilyChart({
   );
 
   /**
-   * Connector edges, drawn from the family data itself rather than
-   * relatives-tree's raw `connectors`. The library assumes square
-   * 2×2-unit nodes, so its segment endpoints float ~88 px away from our
-   * landscape cards. Drawing per-family lets every line snap exactly to
-   * a card edge: a marriage line between partner cards, then a stem →
-   * horizontal bus → vertical drop into each child's top edge.
+   * Connector edges from family data. Horizontal: marriage bus above children.
+   * Vertical (after axis swap): partners stack, so marriage is a vertical
+   * segment and the child bus runs beside the generation column.
    */
   const edges = useMemo(() => {
     const pos = new Map(
@@ -141,41 +138,56 @@ export function FamilyChart({
     );
     const HALF_W = CHART_NODE_WIDTH / 2;
     const HALF_H = CHART_NODE_HEIGHT / 2;
-    /** Bus line sits this far above the children's card tops. */
     const BUS_RISE = 48;
+    const vertical = layout === 'vertical';
 
-    const spouseEdges: { x1: number; x2: number; y: number; ghost: boolean }[] =
-      [];
+    const spouseEdges: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      ghost: boolean;
+    }[] = [];
     const childPaths: string[] = [];
 
     for (const fam of snapshot.families) {
       const real1 = fam.partner1Id ? pos.get(fam.partner1Id) : undefined;
       const real2 = fam.partner2Id ? pos.get(fam.partner2Id) : undefined;
-      // Single-parent family → the layout placed a phantom partner;
-      // route the marriage line (dashed) and child stem through it.
       const phantom =
         real1 && real2 ? undefined : pos.get(phantomIdForFamily(fam.id));
       const p1 = real1 ?? phantom;
       const p2 = real1 ? (real2 ?? phantom) : real2;
 
-      // Where this family's children hang from: the middle of the
-      // marriage line for couples, or the card's bottom edge for a
-      // single recorded parent.
       let anchor: { x: number; y: number } | null = null;
 
       if (p1 && p2) {
-        const [left, right] = p1.x <= p2.x ? [p1, p2] : [p2, p1];
-        const y = (left.y + right.y) / 2;
-        spouseEdges.push({
-          x1: left.x + HALF_W,
-          x2: right.x - HALF_W,
-          y,
-          ghost: Boolean(phantom),
-        });
-        anchor = { x: (left.x + right.x) / 2, y };
+        if (vertical) {
+          const [topP, botP] = p1.y <= p2.y ? [p1, p2] : [p2, p1];
+          spouseEdges.push({
+            x1: topP.x,
+            y1: topP.y + HALF_H,
+            x2: botP.x,
+            y2: botP.y - HALF_H,
+            ghost: Boolean(phantom),
+          });
+          anchor = { x: (topP.x + botP.x) / 2, y: (topP.y + botP.y) / 2 };
+        } else {
+          const [left, right] = p1.x <= p2.x ? [p1, p2] : [p2, p1];
+          const y = (left.y + right.y) / 2;
+          spouseEdges.push({
+            x1: left.x + HALF_W,
+            y1: y,
+            x2: right.x - HALF_W,
+            y2: y,
+            ghost: Boolean(phantom),
+          });
+          anchor = { x: (left.x + right.x) / 2, y };
+        }
       } else if (p1 ?? p2) {
         const solo = (p1 ?? p2) as { x: number; y: number };
-        anchor = { x: solo.x, y: solo.y + HALF_H };
+        anchor = vertical
+          ? { x: solo.x + HALF_W, y: solo.y }
+          : { x: solo.x, y: solo.y + HALF_H };
       }
       if (!anchor) continue;
 
@@ -185,24 +197,45 @@ export function FamilyChart({
         .filter((c): c is { x: number; y: number } => Boolean(c));
       if (childPos.length === 0) continue;
 
-      const childTopY = Math.min(...childPos.map((c) => c.y)) - HALF_H;
-      const busY = childTopY - BUS_RISE;
-      const xs = [anchor.x, ...childPos.map((c) => c.x)];
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
+      if (vertical) {
+        const childMidX =
+          childPos.reduce((sum, c) => sum + c.x, 0) / childPos.length;
+        const childrenOnRight = childMidX >= anchor.x;
+        const busX = childrenOnRight
+          ? Math.min(...childPos.map((c) => c.x)) - HALF_W - BUS_RISE
+          : Math.max(...childPos.map((c) => c.x)) + HALF_W + BUS_RISE;
+        const ys = [anchor.y, ...childPos.map((c) => c.y)];
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const segments: string[] = [`M ${anchor.x} ${anchor.y} H ${busX}`];
+        if (maxY - minY > 0.5) {
+          segments.push(`M ${busX} ${minY} V ${maxY}`);
+        }
+        for (const c of childPos) {
+          const edgeX = childrenOnRight ? c.x - HALF_W : c.x + HALF_W;
+          segments.push(`M ${busX} ${c.y} H ${edgeX}`);
+        }
+        childPaths.push(segments.join(' '));
+      } else {
+        const childTopY = Math.min(...childPos.map((c) => c.y)) - HALF_H;
+        const busY = childTopY - BUS_RISE;
+        const xs = [anchor.x, ...childPos.map((c) => c.x)];
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
 
-      const segments: string[] = [`M ${anchor.x} ${anchor.y} V ${busY}`];
-      if (maxX - minX > 0.5) {
-        segments.push(`M ${minX} ${busY} H ${maxX}`);
+        const segments: string[] = [`M ${anchor.x} ${anchor.y} V ${busY}`];
+        if (maxX - minX > 0.5) {
+          segments.push(`M ${minX} ${busY} H ${maxX}`);
+        }
+        for (const c of childPos) {
+          segments.push(`M ${c.x} ${busY} V ${c.y - HALF_H}`);
+        }
+        childPaths.push(segments.join(' '));
       }
-      for (const c of childPos) {
-        segments.push(`M ${c.x} ${busY} V ${c.y - HALF_H}`);
-      }
-      childPaths.push(segments.join(' '));
     }
 
     return { spouseEdges, childPaths };
-  }, [nodes, snapshot]);
+  }, [nodes, snapshot, layout]);
 
   /**
    * Generation-row labels (Ancestry-style: "parents", "grandparents", …).
@@ -418,9 +451,9 @@ export function FamilyChart({
               <line
                 key={`spouse-${i}`}
                 x1={e.x1}
-                y1={e.y}
+                y1={e.y1}
                 x2={e.x2}
-                y2={e.y}
+                y2={e.y2}
                 stroke="var(--jt-stone-400)"
                 strokeWidth={2.5}
                 strokeLinecap="round"
