@@ -90,8 +90,8 @@ export function AppSidebarContent({
   function handleDeleteAccount() {
     const ok = window.confirm(
       t(
-        'حذف الحساب يخفي ملفك ويخرجك من الجلسة. نقل ملكية الأشجار غير مُنفَّذ بعد.',
-        'Deleting your account soft-deletes your profile and signs you out. Tree ownership transfer is not implemented yet.',
+        'إغلاق الحساب نهائي: أشجارك تُنقل إلى أرشيف المنصة، ويُحذف تسجيل الدخول. لا يمكن التراجع عن ذلك.',
+        'Closing your account is permanent: your trees move to the platform archive vault, and your login is deleted. This cannot be undone.',
       ),
     );
     if (!ok) return;

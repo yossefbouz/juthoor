@@ -65,7 +65,14 @@ type AttachmentRow = {
   mime_type: string;
   created_at: string;
   media_kind: string;
+  tag: string | null;
 };
+
+const IDENTITY_DOC_TAGS = new Set(['id_card', 'unrwa_card', 'family_card']);
+
+function isPublicArchiveRow(row: AttachmentRow): boolean {
+  return !IDENTITY_DOC_TAGS.has((row.tag ?? '').toLowerCase());
+}
 
 type PersonRow = {
   id: string;
@@ -122,14 +129,14 @@ export async function loadPictureArchive(limit = 200): Promise<ArchivePicture[]>
   const { data, error } = await supabase
     .from('person_attachments')
     .select(
-      'id, person_id, place_taken_id, date_taken, title, issuing_authority, issue_date, year, caption_ar, caption_en, storage_path, mime_type, created_at, media_kind',
+      'id, person_id, place_taken_id, date_taken, title, issuing_authority, issue_date, year, caption_ar, caption_en, storage_path, mime_type, created_at, media_kind, tag',
     )
     .eq('media_kind', 'picture')
     .order('created_at', { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 500));
   if (error) throw new Error(error.message);
 
-  const rows = (data ?? []) as AttachmentRow[];
+  const rows = ((data ?? []) as AttachmentRow[]).filter(isPublicArchiveRow);
   const personMap = await loadPersonsByIds(Array.from(new Set(rows.map((r) => r.person_id))));
   const placeMap = await loadPlacesByIds(
     Array.from(new Set(rows.map((r) => r.place_taken_id).filter(Boolean) as string[])),
@@ -167,14 +174,14 @@ export async function loadDocumentArchive(limit = 200): Promise<ArchiveDocument[
   const { data, error } = await supabase
     .from('person_attachments')
     .select(
-      'id, person_id, place_taken_id, date_taken, title, issuing_authority, issue_date, year, caption_ar, caption_en, storage_path, mime_type, created_at, media_kind',
+      'id, person_id, place_taken_id, date_taken, title, issuing_authority, issue_date, year, caption_ar, caption_en, storage_path, mime_type, created_at, media_kind, tag',
     )
     .eq('media_kind', 'document')
     .order('created_at', { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 500));
   if (error) throw new Error(error.message);
 
-  const rows = (data ?? []) as AttachmentRow[];
+  const rows = ((data ?? []) as AttachmentRow[]).filter(isPublicArchiveRow);
   const personMap = await loadPersonsByIds(Array.from(new Set(rows.map((r) => r.person_id))));
   const signed = await signPaths(rows.map((r) => r.storage_path));
 
@@ -222,7 +229,7 @@ export async function loadFamilyGallery(surname: string, limit = 48): Promise<Fa
   const { data, error } = await supabase
     .from('person_attachments')
     .select(
-      'id, person_id, date_taken, caption_ar, caption_en, storage_path, created_at, media_kind',
+      'id, person_id, date_taken, caption_ar, caption_en, storage_path, created_at, media_kind, tag',
     )
     .eq('media_kind', 'picture')
     .in('person_id', personIds)
@@ -230,7 +237,7 @@ export async function loadFamilyGallery(surname: string, limit = 48): Promise<Fa
     .limit(Math.min(Math.max(limit, 1), 100));
   if (error) throw new Error(error.message);
 
-  const rows = (data ?? []) as AttachmentRow[];
+  const rows = ((data ?? []) as AttachmentRow[]).filter(isPublicArchiveRow);
   const personMap = await loadPersonsByIds(Array.from(new Set(rows.map((r) => r.person_id))));
   const signed = await signPaths(rows.map((r) => r.storage_path));
 

@@ -111,21 +111,25 @@ export const grantOptionalFieldsAction = authActionClient
       throw new Error('You already own this record');
     }
     const supabase = await createJuthoorSupabaseClient();
-    const { error } = await supabase.from('person_field_grants').upsert(
-      {
-        person_id: parsedInput.personId,
-        grantee_user_id: parsedInput.granteeUserId,
-        granted_by: userId,
-        scope: 'optional_fields',
-      },
-      { onConflict: 'person_id,grantee_user_id,scope' },
-    );
+    const { data, error } = await supabase
+      .from('person_field_grants')
+      .upsert(
+        {
+          person_id: parsedInput.personId,
+          grantee_user_id: parsedInput.granteeUserId,
+          granted_by: userId,
+          scope: 'optional_fields',
+        },
+        { onConflict: 'person_id,grantee_user_id,scope' },
+      )
+      .select('id, person_id, grantee_user_id, granted_by, scope, created_at')
+      .single();
     if (error) throw new Error(error.message);
 
     if (parsedInput.treeId) {
       revalidatePath(`/tree/${parsedInput.treeId}/person/${parsedInput.personId}`);
     }
-    return { ok: true as const };
+    return { ok: true as const, grant: data as PersonFieldGrantRow };
   });
 
 export const revokeOptionalFieldsGrantAction = authActionClient

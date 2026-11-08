@@ -82,15 +82,9 @@ export const insertPersonAction = authActionClient
     const personId = await createPersonWithPrimaryName(supabase, personInput);
 
     if (linkAsSelf) {
-      const { error: linkErr } = await supabase
-        .from('profiles')
-        .update({
-          linked_person_id: personId,
-          self_person_id: personId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId)
-        .is('deleted_at', null);
+      const { error: linkErr } = await supabase.rpc('claim_linked_person', {
+        p_person_id: personId,
+      });
       if (linkErr) throw new Error(linkErr.message);
     }
 

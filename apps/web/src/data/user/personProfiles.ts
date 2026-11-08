@@ -19,13 +19,26 @@ export type PersonProfile = {
 const PROFILE_COLS =
   'person_id, achievements_ar, achievements_en, contribution_ar, contribution_en, contact_consent, contact_email, contact_phone, contribution_consent';
 
+async function viewerMaySeeContact(personId: string): Promise<boolean> {
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) return false;
+  const supabase = await createJuthoorSupabaseClient();
+  const [{ data: canEdit }, { data: isOwner }, { data: profile }] = await Promise.all([
+    supabase.rpc('can_edit_optional_person_fields', { p_person_id: personId }),
+    supabase.rpc('is_record_owner', { p_person_id: personId }),
+    supabase.from('profiles').select('is_admin').eq('id', uid).maybeSingle(),
+  ]);
+  return Boolean(canEdit || isOwner || (profile as { is_admin?: boolean } | null)?.is_admin);
+}
+
 /** Narrative enrichment (achievements, contribution) for a person.
- *  Degrades gracefully to null if the row is absent OR the `person_profiles`
- *  table has not been migrated yet — so the person page is unchanged until then. */
+ *  Contact email/phone are only returned to record owners, optional-field
+ *  editors, or admins. Other viewers get consent flags without the values. */
 export async function loadPersonProfile(
   personId: string,
 ): Promise<PersonProfile | null> {
   const supabase = await createJuthoorSupabaseClient();
+  const maySeeContact = await viewerMaySeeContact(personId);
   const { data, error } = await supabase
     .from('person_profiles')
     .select(PROFILE_COLS)
@@ -33,7 +46,7 @@ export async function loadPersonProfile(
     .maybeSingle();
   if (error) return null; // table missing / not yet migrated — degrade silently
   if (!data) return null;
-  const row = data as Partial<PersonProfile> & { person_id: string };
+  const row = data as PersonProfile;
   return {
     person_id: row.person_id,
     achievements_ar: row.achievements_ar ?? null,
@@ -41,8 +54,8 @@ export async function loadPersonProfile(
     contribution_ar: row.contribution_ar ?? null,
     contribution_en: row.contribution_en ?? null,
     contact_consent: Boolean(row.contact_consent),
-    contact_email: row.contact_email ?? null,
-    contact_phone: row.contact_phone ?? null,
+    contact_email: maySeeContact ? (row.contact_email ?? null) : null,
+    contact_phone: maySeeContact ? (row.contact_phone ?? null) : null,
     contribution_consent: Boolean(row.contribution_consent),
   };
 }

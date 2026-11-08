@@ -32,7 +32,41 @@ export async function loadPersonDisplacement(
     .eq('person_id', personId)
     .maybeSingle();
   if (error) return null;
-  return (data as PersonDisplacement | null) ?? null;
+
+  const row = (data as PersonDisplacement | null) ?? null;
+
+  // Identifiers may have been entered via AddPersonForm without a displacement
+  // row. Merge so the panel does not show blank then wipe on save.
+  const { data: ids } = await supabase
+    .from('person_identifiers')
+    .select('id_type, id_value')
+    .eq('person_id', personId)
+    .in('id_type', ['unrwa_registration', 'family_card_1948']);
+  const idMap = new Map(
+    ((ids ?? []) as Array<{ id_type: string; id_value: string }>).map((r) => [
+      r.id_type,
+      r.id_value,
+    ]),
+  );
+  const unrwa = row?.unrwa_registration_number ?? idMap.get('unrwa_registration') ?? null;
+  const card = row?.family_card_1948_number ?? idMap.get('family_card_1948') ?? null;
+
+  if (!row && !unrwa && !card) return null;
+
+  return {
+    person_id: personId,
+    unrwa_registration_number: unrwa,
+    family_card_1948_number: card,
+    host_country_first: row?.host_country_first ?? null,
+    host_country_current: row?.host_country_current ?? null,
+    refugee_status: row?.refugee_status ?? null,
+    camp_name: row?.camp_name ?? null,
+    displacement_year: row?.displacement_year ?? null,
+    displacement_wave: row?.displacement_wave ?? null,
+    land_property_notes: row?.land_property_notes ?? null,
+    oral_history: row?.oral_history ?? null,
+    oral_history_provenance: row?.oral_history_provenance ?? null,
+  };
 }
 
 const SaveSchema = z.object({

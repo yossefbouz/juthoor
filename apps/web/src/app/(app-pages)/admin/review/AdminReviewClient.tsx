@@ -220,11 +220,11 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
                       <ShieldAlert className="h-3.5 w-3.5" />
                       {t('يشمل شخصًا حيًّا — سرّية قصوى', 'Living person — max privacy')}
+                    </span>
+                  )}
                   {card.perfectMatchBlocked && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/70 bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-800">
                       {t('مطابقة تامة محجوبة بدون دليل الأونروا', 'Perfect match blocked without UNRWA evidence')}
-                    </span>
-                  )}
                     </span>
                   )}
                   {card.vetoes.map((v) => (

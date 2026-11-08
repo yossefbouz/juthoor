@@ -30,6 +30,14 @@ export async function setModeratorRole(
   }
 
   const admin = createSupabaseAdminClient();
+  const { data: existing, error: lookupErr } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', parsed.userId)
+    .maybeSingle();
+  if (lookupErr) throw new Error(lookupErr.message);
+  if (!existing) throw new Error('No profile found for that user id');
+
   const { error } = await admin
     .from('profiles')
     .update({

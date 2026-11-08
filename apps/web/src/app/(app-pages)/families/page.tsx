@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { loadTopSurnames } from '@/data/user/families-index';
 import { loadAllPlaces } from '@/data/user/places';
 import { FamiliesIndexClient } from './FamiliesIndexClient';
-import { districtsFromPlaces } from '@/components/search/DistrictSelect';
+import { districtsFromPlaces } from '@/lib/places/districts';
 
 type SearchParamsValue = string | string[] | undefined;
 

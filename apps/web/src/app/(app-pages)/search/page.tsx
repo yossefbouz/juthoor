@@ -3,6 +3,7 @@ import { SearchClient } from './SearchClient';
 import { loadVillagesForFilter, searchMasterTree } from '@/data/user/search';
 import { computeDegreesTo, getSelfPersonId, type DegreesResult } from '@/data/user/degrees';
 import { SearchQuerySchema, type SearchResult } from '@/lib/search/zodSchemas';
+import { placeMatchesDistrict } from '@/lib/places/districts';
 
 type SearchParamsValue = string | string[] | undefined;
 
@@ -29,7 +30,18 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
   const yearWindow = firstString(params.yearWindow);
   const gender = firstString(params.gender);
 
-  const hasQuery = Boolean(q || given || surname || father || mother || paternalGrandfather || paternalGreatGrandfather || placeId || birthYear);
+  const hasQuery = Boolean(
+    q ||
+      given ||
+      surname ||
+      father ||
+      mother ||
+      paternalGrandfather ||
+      paternalGreatGrandfather ||
+      placeId ||
+      district ||
+      birthYear,
+  );
   if (!hasQuery) return { results: [], hasQuery: false, error: null };
 
   const parsed = SearchQuerySchema.safeParse({
@@ -41,6 +53,7 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
     paternalGrandfather,
     paternalGreatGrandfather,
     placeId,
+    district,
     birthYear,
     yearWindow,
     gender,
@@ -49,7 +62,18 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
     return { results: [], hasQuery: true, error: parsed.error.issues[0]?.message ?? 'Invalid query' };
   }
   try {
-    const results = await searchMasterTree(parsed.data);
+    let results = await searchMasterTree(parsed.data);
+    if (district && !placeId) {
+      const villages = await loadVillagesForFilter();
+      const allowed = new Set(
+        villages
+          .filter((v) => placeMatchesDistrict(v, district.toLowerCase()))
+          .map((v) => v.id),
+      );
+      results = results.filter(
+        (r) => r.origin_place_id != null && allowed.has(r.origin_place_id),
+      );
+    }
     return { results, hasQuery: true, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Search failed';

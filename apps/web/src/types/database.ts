@@ -1007,7 +1007,20 @@ export type Database = {
           canonical_person_id: string;
           group_id: string;
         }>;
-      };      is_record_owner: { Args: { p_person_id: string }; Returns: boolean };
+      };
+      is_record_owner: { Args: { p_person_id: string }; Returns: boolean };
+      claim_linked_person: {
+        Args: { p_person_id: string };
+        Returns: string;
+      };
+      respond_contact_relay: {
+        Args: { p_relay_id: string; p_status: string };
+        Returns: Record<string, unknown>;
+      };
+      can_view_sensitive_person_fields: {
+        Args: { p_person_id: string };
+        Returns: boolean;
+      };
       can_edit_optional_person_fields: {
         Args: { p_person_id: string };
         Returns: boolean;

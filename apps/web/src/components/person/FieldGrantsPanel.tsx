@@ -50,16 +50,16 @@ export function FieldGrantsPanel({
         toast.error(result.serverError);
         return;
       }
+      const grant = result?.data?.grant;
+      if (!grant?.id) {
+        toast.error(t('تعذر حفظ المنح', 'Could not save grant'));
+        return;
+      }
       const picked = candidates.find((c) => c.userId === granteeId);
       setGrants((list) => [
-        ...list,
+        ...list.filter((g) => g.grantee_user_id !== grant.grantee_user_id),
         {
-          id: crypto.randomUUID(),
-          person_id: personId,
-          grantee_user_id: granteeId,
-          granted_by: null,
-          scope: 'optional_fields',
-          created_at: new Date().toISOString(),
+          ...grant,
           grantee_name: picked?.displayName ?? null,
         },
       ]);

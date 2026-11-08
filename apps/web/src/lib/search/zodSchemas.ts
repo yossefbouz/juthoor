@@ -29,6 +29,7 @@ export const SearchQuerySchema = z
           v.paternalGrandfather?.length ||
           v.paternalGreatGrandfather?.length ||
           v.placeId ||
+          v.district?.length ||
           v.birthYear,
       ),
     { message: 'At least one search field is required', path: ['q'] },

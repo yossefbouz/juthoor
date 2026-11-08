@@ -8,51 +8,27 @@ import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
 
 /**
- * Link the current account to an existing person (D1 / registration match 1.4).
- * Sets profiles.linked_person_id (mirrored to self_person_id by DB trigger).
+ * Link the current account to an existing person (D1).
+ * Goes through claim_linked_person RPC so clients cannot PATCH linked_person_id
+ * directly. Requires an approved identity verification (or admin).
  */
 export const linkMyPersonAction = authActionClient
   .schema(z.object({ personId: z.string().uuid() }))
-  .action(async ({ parsedInput, ctx: { userId } }) => {
+  .action(async ({ parsedInput }) => {
     const supabase = await createJuthoorSupabaseClient();
 
-    const { data: person, error: personErr } = await supabase
-      .from('persons')
-      .select('id')
-      .eq('id', parsedInput.personId)
-      .maybeSingle();
-    if (personErr) throw new Error(personErr.message);
-    if (!person) throw new Error('Person not found or not accessible');
-
-    // D10: another active account may already own this person.
-    const { data: claimed } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('linked_person_id', parsedInput.personId)
-      .is('deleted_at', null)
-      .neq('id', userId)
-      .maybeSingle();
-    if (claimed) {
-      throw new Error(
-        'This person is already linked to another account. Ask an administrator if you need to reclaim it.',
-      );
-    }
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        linked_person_id: parsedInput.personId,
-        self_person_id: parsedInput.personId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-      .is('deleted_at', null);
-
+    const { data, error } = await supabase.rpc('claim_linked_person', {
+      p_person_id: parsedInput.personId,
+    });
     if (error) {
-      // Unique partial index on linked_person_id (active profiles).
-      if (error.code === '23505' || /unique|duplicate/i.test(error.message)) {
+      if (/already.?linked|already claimed/i.test(error.message)) {
         throw new Error(
           'This person is already linked to another account. Ask an administrator if you need to reclaim it.',
+        );
+      }
+      if (/verification|not_authorized|42501/i.test(error.message)) {
+        throw new Error(
+          'Verify your identity before claiming a living person record, or ask an administrator.',
         );
       }
       throw new Error(error.message);
@@ -61,7 +37,7 @@ export const linkMyPersonAction = authActionClient
     revalidatePath('/dashboard');
     revalidatePath('/tree');
     revalidatePath('/register/complete');
-    return { linkedPersonId: parsedInput.personId };
+    return { linkedPersonId: (data as string | null) ?? parsedInput.personId };
   });
 
 /** Read the current user's linked person id, or null. */
