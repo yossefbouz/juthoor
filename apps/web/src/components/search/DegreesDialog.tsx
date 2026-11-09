@@ -169,7 +169,7 @@ export function DegreesDialog({
               )}
             </div>
 
-            {data.cached && (
+            {ok.cached && (
               <p className="mt-4 text-center text-[10px] uppercase tracking-[0.2em] text-[var(--jt-stone-400)]">
                 {t('محفوظ في الذاكرة', 'cached')}
               </p>
