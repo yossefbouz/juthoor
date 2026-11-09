@@ -26,6 +26,13 @@ export interface PersonView {
   readonly isPlaceholder: boolean;
   readonly birthYear: number | null;
   readonly deathYear: number | null;
+  /**
+   * True when a DEAT event exists even if date_year is null.
+   * Used so undated deaths are not treated as living/concurrent spouses.
+   */
+  readonly hasDeath?: boolean;
+  /** Explicit living flag when known (e.g. persons.is_living). */
+  readonly isLiving?: boolean;
   /** Village id (FK to places) — optional. */
   readonly placeOfOriginId: string | null;
   /** Arabic name of the birth village/city — for chart card display. */

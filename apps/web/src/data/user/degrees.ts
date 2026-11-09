@@ -11,11 +11,18 @@ export type PathNode = {
   gender: 'M' | 'F' | 'X' | 'U' | null;
 };
 
-export type DegreesResult = {
+export type DegreesOk = {
   degrees: number;
   path: PathNode[];
   cached?: boolean;
-} | null;
+};
+
+/** null = inaccessible / no self / same person. Prefer throw for real RPC errors. */
+export type DegreesResult = DegreesOk | { error: string } | null;
+
+export function isDegreesOk(d: DegreesResult): d is DegreesOk {
+  return d != null && 'degrees' in d && typeof (d as DegreesOk).degrees === 'number';
+}
 
 /**
  * Resolve the viewer's self-person id from their profile. Returns null if the
@@ -47,17 +54,22 @@ export async function computeDegreesTo(targetPersonId: string): Promise<DegreesR
     p_target: targetPersonId,
   });
   if (error) {
-    // Non-fatal: swallow to avoid breaking the result card.
-    return null;
+    console.error('compute_degrees failed:', error.message);
+    // Permission / not-found style errors stay null so the UI can say "no path".
+    if (/42501|P0002|not.?found|permission|access/i.test(error.message)) {
+      return null;
+    }
+    return { error: error.message };
   }
   if (!data) return null;
-  return data as DegreesResult;
+  return data as DegreesOk;
 }
 
 export type AllPathsResult = {
   paths: Array<{ degrees: number; path: PathNode[] }>;
   max_paths?: number;
   note?: string;
+  error?: string;
 } | null;
 
 /** W3.3 / D12: up to N alternate connection paths (default 5). */
@@ -73,6 +85,13 @@ export async function computeAllPathsTo(
     p_target: targetPersonId,
     p_max_paths: maxPaths,
   });
-  if (error || !data) return null;
+  if (error) {
+    console.error('compute_all_paths failed:', error.message);
+    if (/42501|P0002|not.?found|permission|access/i.test(error.message)) {
+      return null;
+    }
+    return { paths: [], error: error.message };
+  }
+  if (!data) return null;
   return data as AllPathsResult;
 }

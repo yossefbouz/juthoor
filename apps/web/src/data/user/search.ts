@@ -27,6 +27,7 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
     paternalGrandfather,
     paternalGreatGrandfather,
     placeId,
+    district,
     birthYear,
     yearWindow,
     gender,
@@ -45,6 +46,11 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
     paternalGreatGrandfather ? toArabic(paternalGreatGrandfather) : Promise.resolve(null),
   ]);
 
+  // search_master_tree has no district arg; when filtering by district client-side,
+  // raise lim so district-only searches are not truncated before the filter.
+  const districtOnly = Boolean(district?.trim()) && !placeId;
+  const effectiveLimit = districtOnly ? Math.max(limit, 100) : limit;
+
   const supabase = await createJuthoorSupabaseClient();
   const { data, error } = await supabase.rpc('search_master_tree', {
     q_given: gTr?.arabic ?? given ?? null,
@@ -58,7 +64,7 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
     q_birth_year: birthYear ?? null,
     q_year_window: yearWindow,
     q_gender: gender ?? null,
-    lim: limit,
+    lim: effectiveLimit,
   });
 
   if (error) {

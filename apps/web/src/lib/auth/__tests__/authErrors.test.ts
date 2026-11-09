@@ -34,6 +34,28 @@ describe('friendlyAuthError', () => {
     expect(friendlyAuthError('Not authenticated')).toContain('signed in');
   });
 
+  it('maps person-claim RPC codes to specific messages (not the generic fallback)', () => {
+    expect(friendlyAuthError(new Error('claim_requires_approval'))).toContain(
+      'requires the tree owner'
+    );
+    expect(friendlyAuthError('tree_access_required')).toContain(
+      'need access to this tree'
+    );
+    expect(friendlyAuthError(new Error('already_pending'))).toContain(
+      'already linked or has a pending claim'
+    );
+    expect(friendlyAuthError('verification_required')).toContain(
+      'Verify your identity before claiming'
+    );
+    expect(
+      friendlyAuthError(
+        new Error(
+          'Verify your identity before claiming a living person record, or ask an administrator.'
+        )
+      )
+    ).toContain('Verify your identity before claiming');
+  });
+
   it('collapses unknown errors to a generic message without leaking internals', () => {
     const out = friendlyAuthError(
       new Error('Database connection failed: ECONNREFUSED 10.0.0.5:5432')

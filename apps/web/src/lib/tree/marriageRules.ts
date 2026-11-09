@@ -15,8 +15,8 @@
  *   - mahram by affinity: stepmother, stepsister, mother-in-law while married
  *     to her daughter, sister-in-law while married to her sister;
  *   - concurrent-spouse counts exclude unions where the other partner has a
- *     recorded deathYear (widowhood), and unions marked `isDissolved` (DIV
- *     event on the family, or `families.notes === 'dissolved'`).
+ *     recorded death (deathYear or hasDeath without year), and unions marked
+ *     `isDissolved` (DIV event on the family, or `families.notes === 'dissolved'`).
  */
 
 import type { GenderType } from '@/types/database';
@@ -113,10 +113,18 @@ export function spouseIdsOf(snapshot: TreeSnapshot, personId: string): string[] 
   return [...spouses];
 }
 
+/** True when the person is known deceased (dated or undated DEAT). */
+function spouseIsDeceased(spouse: PersonView): boolean {
+  if (spouse.hasDeath) return true;
+  if (spouse.deathYear != null) return true;
+  if (spouse.isLiving === false) return true;
+  return false;
+}
+
 /**
  * Spouses that still count as concurrent for polygyny / polyandry limits.
  * A union is not concurrent when it is dissolved (DIV / notes) or when the
- * other partner has a recorded deathYear (widowhood).
+ * other partner is deceased (widowhood), including DEAT with no year.
  */
 export function concurrentSpouseIdsOf(
   snapshot: TreeSnapshot,
@@ -130,7 +138,7 @@ export function concurrentSpouseIdsOf(
     else if (fam.partner2Id === personId && fam.partner1Id) spouseId = fam.partner1Id;
     if (!spouseId) continue;
     const spouse = personOf(snapshot, spouseId);
-    if (spouse != null && spouse.deathYear === null) spouses.add(spouseId);
+    if (spouse != null && !spouseIsDeceased(spouse)) spouses.add(spouseId);
   }
   return [...spouses];
 }

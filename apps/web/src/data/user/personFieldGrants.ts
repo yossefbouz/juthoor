@@ -111,6 +111,7 @@ export const grantOptionalFieldsAction = authActionClient
       throw new Error('You already own this record');
     }
     const supabase = await createJuthoorSupabaseClient();
+    // Upsert needs INSERT + UPDATE RLS. Migration adds person_field_grants UPDATE.
     const { data, error } = await supabase
       .from('person_field_grants')
       .upsert(

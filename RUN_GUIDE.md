@@ -55,6 +55,20 @@ Should return `villages=456, rpc=create_person_with_primary_name`.
 
 ### Terminal B — Web app
 
+Copy env examples and set keys (local values come from `npx supabase status`):
+
+```cmd
+copy .env.local.example apps\web\.env.local
+```
+
+Required in `apps/web/.env.local` (and root examples):
+
+| Variable | Where | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | browser + server | Local: `http://127.0.0.1:54321` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | Publishable / anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Service-role key. Needed for account closure (`deleteAccountAction` → Auth `admin.deleteUser` and archive-vault writes). Never prefix with `NEXT_PUBLIC_`. Never commit a real value. |
+
 ```cmd
 cd apps\web
 pnpm install          # first time only

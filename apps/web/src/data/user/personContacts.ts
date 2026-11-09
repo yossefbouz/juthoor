@@ -13,8 +13,8 @@ export type PersonContact = {
 };
 
 /**
- * Load contact fields from person_profiles (Wave 3 D3 columns).
- * Returns null when the row is missing or RLS denies read.
+ * Load contact fields via get_person_contact (SECURITY DEFINER).
+ * Contact email/phone are not granted on person_profiles SELECT.
  */
 export async function loadPersonContact(
   personId: string,
@@ -22,47 +22,41 @@ export async function loadPersonContact(
   const uid = await getCachedLoggedInUserIdOrNull();
   if (!uid) return null;
   const supabase = await createJuthoorSupabaseClient();
-  const { data, error } = await supabase
-    .from('person_profiles')
-    .select('person_id, contact_email, contact_phone, contact_consent')
-    .eq('person_id', personId)
-    .maybeSingle();
-  if (error || !data) return null;
 
-  const row = data as {
-    person_id: string;
+  const { data, error } = await supabase.rpc('get_person_contact', {
+    p_person_id: personId,
+  });
+  if (error) return null;
+
+  const rows = (Array.isArray(data) ? data : data ? [data] : []) as Array<{
     contact_email: string | null;
     contact_phone: string | null;
     contact_consent: boolean;
-  };
-
-  let canManage = false;
-  if (!row.contact_consent) {
-    const { data: person } = await supabase
-      .from('persons')
-      .select('tree_id')
-      .eq('id', personId)
+  }>;
+  if (rows.length === 0) {
+    // Still surface consent flag from non-contact columns when present.
+    const { data: profile } = await supabase
+      .from('person_profiles')
+      .select('person_id, contact_consent')
+      .eq('person_id', personId)
       .maybeSingle();
-    const treeId = (person as { tree_id: string } | null)?.tree_id;
-    if (treeId) {
-      const [{ data: write }, { data: profile }] = await Promise.all([
-        supabase.rpc('can_write_tree', { p_tree_id: treeId }),
-        supabase
-          .from('profiles')
-          .select('is_admin, is_moderator')
-          .eq('id', uid)
-          .maybeSingle(),
-      ]);
-      const staff = profile as { is_admin?: boolean; is_moderator?: boolean } | null;
-      canManage = Boolean(write) || Boolean(staff?.is_admin) || Boolean(staff?.is_moderator);
-    }
+    if (!profile) return null;
+    return {
+      person_id: personId,
+      email: null,
+      phone: null,
+      preferred_method: null,
+      consent_share: Boolean(
+        (profile as { contact_consent?: boolean }).contact_consent,
+      ),
+    };
   }
 
-  const allowed = row.contact_consent || canManage;
+  const row = rows[0];
   return {
-    person_id: row.person_id,
-    email: allowed ? row.contact_email : null,
-    phone: allowed ? row.contact_phone : null,
+    person_id: personId,
+    email: row.contact_email ?? null,
+    phone: row.contact_phone ?? null,
     preferred_method: null,
     consent_share: Boolean(row.contact_consent),
   };

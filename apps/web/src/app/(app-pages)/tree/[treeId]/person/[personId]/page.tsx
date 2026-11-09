@@ -96,20 +96,40 @@ export default async function PersonPage({ params }: Props) {
       return Boolean(data);
     })().catch(() => false),
     (async () => {
+      // Field grants: record owner, admin, or tree owner of an unclaimed living person.
       if (!isLiving) return false;
       const supabase = await createJuthoorSupabaseClient();
-      const { data } = await supabase.rpc('is_record_owner', {
-        p_person_id: personId,
-      });
-      if (data) return true;
       const uid = await getCachedLoggedInUserIdOrNull();
       if (!uid) return false;
+
+      const { data: isOwner } = await supabase.rpc('is_record_owner', {
+        p_person_id: personId,
+      });
+      if (isOwner) return true;
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('is_admin')
         .eq('id', uid)
         .maybeSingle();
-      return Boolean((profile as { is_admin?: boolean } | null)?.is_admin);
+      if ((profile as { is_admin?: boolean } | null)?.is_admin) return true;
+
+      const { data: tree } = await supabase
+        .from('trees')
+        .select('owner_id')
+        .eq('id', treeId)
+        .maybeSingle();
+      if ((tree as { owner_id: string } | null)?.owner_id !== uid) return false;
+
+      // Unclaimed: no other (or self) profile has linked_person_id = this person.
+      const { data: claimer } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('linked_person_id', personId)
+        .is('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+      return !claimer;
     })().catch(() => false),
     isLiving
       ? listPersonFieldGrants(personId).catch(() => [])

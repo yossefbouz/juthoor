@@ -65,9 +65,10 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
     let results = await searchMasterTree(parsed.data);
     if (district && !placeId) {
       const villages = await loadVillagesForFilter();
+      const districtKey = district.trim().toLowerCase();
       const allowed = new Set(
         villages
-          .filter((v) => placeMatchesDistrict(v, district.toLowerCase()))
+          .filter((v) => placeMatchesDistrict(v, districtKey))
           .map((v) => v.id),
       );
       results = results.filter(

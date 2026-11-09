@@ -549,6 +549,18 @@ type MutablePersonPrivacyHold = {
   reason: string | null;
 };
 
+/** Pending "is this you?" claim request awaiting tree-owner / admin decision. */
+type MutablePersonClaimRequest = {
+  id: string;
+  person_id: string;
+  requester_user_id: string;
+  tree_id: string;
+  status: 'pending' | 'approved' | 'declined';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
 type MutableNotification = {
   id: string;
   recipient_user_id: string;
@@ -779,6 +791,16 @@ export type Database = {
         Row: MutablePersonPrivacyHold;
         Insert: Partial<MutablePersonPrivacyHold> & { person_id: string };
         Update: Partial<MutablePersonPrivacyHold>;
+        Relationships: [];
+      };
+      person_claim_requests: {
+        Row: MutablePersonClaimRequest;
+        Insert: Partial<MutablePersonClaimRequest> & {
+          person_id: string;
+          requester_user_id: string;
+          tree_id: string;
+        };
+        Update: Partial<MutablePersonClaimRequest>;
         Relationships: [];
       };
       access_log: {
@@ -1012,6 +1034,24 @@ export type Database = {
       claim_linked_person: {
         Args: { p_person_id: string };
         Returns: string;
+      };
+      /** Request flow for "is this you?" on an existing person (pending owner approval). */
+      request_person_claim: {
+        Args: { p_person_id: string };
+        Returns: string;
+      };
+      /** Tree owner / admin approve or decline a pending person claim. */
+      respond_person_claim: {
+        Args: { p_claim_id: string; p_decision: string };
+        Returns: Json;
+      };
+      is_person_claimed: {
+        Args: { p_person_id: string };
+        Returns: boolean;
+      };
+      get_person_contact: {
+        Args: { p_person_id: string };
+        Returns: Json;
       };
       respond_contact_relay: {
         Args: { p_relay_id: string; p_status: string };

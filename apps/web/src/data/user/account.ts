@@ -64,13 +64,14 @@ export async function deleteAccountAction(): Promise<void> {
     treesArchived += 1;
 
     // Keep the closed user out of membership; vault owns the tree.
-    await admin
+    const { error: delOwnerMemErr } = await admin
       .from('tree_members')
       .delete()
       .eq('tree_id', tree.id)
       .eq('user_id', userId);
+    if (delOwnerMemErr) throw new Error(delOwnerMemErr.message);
 
-    await admin.from('tree_members').upsert(
+    const { error: upsertVaultErr } = await admin.from('tree_members').upsert(
       {
         tree_id: tree.id,
         user_id: ARCHIVE_VAULT_USER_ID,
@@ -79,10 +80,15 @@ export async function deleteAccountAction(): Promise<void> {
       },
       { onConflict: 'tree_id,user_id' },
     );
+    if (upsertVaultErr) throw new Error(upsertVaultErr.message);
   }
 
   // Other memberships (collaborator / read-only on someone else's tree).
-  await admin.from('tree_members').delete().eq('user_id', userId);
+  const { error: delAllMemErr } = await admin
+    .from('tree_members')
+    .delete()
+    .eq('user_id', userId);
+  if (delAllMemErr) throw new Error(delAllMemErr.message);
 
   const { error: softErr } = await juthoor
     .from('profiles')

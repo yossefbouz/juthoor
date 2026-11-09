@@ -16,10 +16,11 @@ export type PersonProfile = {
   contribution_consent: boolean;
 };
 
+/** Contact columns are not granted on SELECT; use get_person_contact for those. */
 const PROFILE_COLS =
-  'person_id, achievements_ar, achievements_en, contribution_ar, contribution_en, contact_consent, contact_email, contact_phone, contribution_consent';
+  'person_id, achievements_ar, achievements_en, contribution_ar, contribution_en, contact_consent, contribution_consent';
 
-async function viewerMaySeeContact(personId: string): Promise<boolean> {
+async function viewerMayManageOptional(personId: string): Promise<boolean> {
   const uid = await getCachedLoggedInUserIdOrNull();
   if (!uid) return false;
   const supabase = await createJuthoorSupabaseClient();
@@ -32,30 +33,54 @@ async function viewerMaySeeContact(personId: string): Promise<boolean> {
 }
 
 /** Narrative enrichment (achievements, contribution) for a person.
- *  Contact email/phone are only returned to record owners, optional-field
- *  editors, or admins. Other viewers get consent flags without the values. */
+ *  Living people without contribution_consent: strip achievements/contribution
+ *  unless the viewer manages the record. Contact email/phone only for managers. */
 export async function loadPersonProfile(
   personId: string,
 ): Promise<PersonProfile | null> {
   const supabase = await createJuthoorSupabaseClient();
-  const maySeeContact = await viewerMaySeeContact(personId);
-  const { data, error } = await supabase
-    .from('person_profiles')
-    .select(PROFILE_COLS)
-    .eq('person_id', personId)
-    .maybeSingle();
+  const mayManage = await viewerMayManageOptional(personId);
+  const [{ data, error }, { data: person }] = await Promise.all([
+    supabase
+      .from('person_profiles')
+      .select(PROFILE_COLS)
+      .eq('person_id', personId)
+      .maybeSingle(),
+    supabase
+      .from('persons')
+      .select('is_living')
+      .eq('id', personId)
+      .maybeSingle(),
+  ]);
   if (error) return null; // table missing / not yet migrated — degrade silently
   if (!data) return null;
   const row = data as PersonProfile;
+  const isLiving = Boolean((person as { is_living?: boolean } | null)?.is_living);
+  const hideStory =
+    isLiving && !Boolean(row.contribution_consent) && !mayManage;
+
+  let contactEmail: string | null = null;
+  let contactPhone: string | null = null;
+  if (mayManage) {
+    const { data: contactRows } = await supabase.rpc('get_person_contact', {
+      p_person_id: personId,
+    });
+    const first = (Array.isArray(contactRows) ? contactRows[0] : contactRows) as
+      | { contact_email?: string | null; contact_phone?: string | null }
+      | null;
+    contactEmail = first?.contact_email ?? null;
+    contactPhone = first?.contact_phone ?? null;
+  }
+
   return {
     person_id: row.person_id,
-    achievements_ar: row.achievements_ar ?? null,
-    achievements_en: row.achievements_en ?? null,
-    contribution_ar: row.contribution_ar ?? null,
-    contribution_en: row.contribution_en ?? null,
+    achievements_ar: hideStory ? null : (row.achievements_ar ?? null),
+    achievements_en: hideStory ? null : (row.achievements_en ?? null),
+    contribution_ar: hideStory ? null : (row.contribution_ar ?? null),
+    contribution_en: hideStory ? null : (row.contribution_en ?? null),
     contact_consent: Boolean(row.contact_consent),
-    contact_email: maySeeContact ? (row.contact_email ?? null) : null,
-    contact_phone: maySeeContact ? (row.contact_phone ?? null) : null,
+    contact_email: contactEmail,
+    contact_phone: contactPhone,
     contribution_consent: Boolean(row.contribution_consent),
   };
 }
@@ -117,8 +142,16 @@ export async function savePersonProfile(
     .single();
   if (error) throw new Error(`Failed to save profile: ${error.message}`);
   const row = data as PersonProfile;
+  const { data: contactRows } = await supabase.rpc('get_person_contact', {
+    p_person_id: parsed.personId,
+  });
+  const first = (Array.isArray(contactRows) ? contactRows[0] : contactRows) as
+    | { contact_email?: string | null; contact_phone?: string | null }
+    | null;
   return {
     ...row,
+    contact_email: first?.contact_email ?? null,
+    contact_phone: first?.contact_phone ?? null,
     contact_consent: Boolean(row.contact_consent),
     contribution_consent: Boolean(row.contribution_consent),
   };

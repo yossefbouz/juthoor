@@ -71,30 +71,41 @@ export async function loadPersonDisplacement(
 
 const SaveSchema = z.object({
   personId: z.string().uuid(),
-  unrwaRegistrationNumber: z.string().trim().max(120).nullable().optional(),
-  familyCard1948Number: z.string().trim().max(120).nullable().optional(),
-  hostCountryFirst: z.string().trim().max(120).nullable().optional(),
-  hostCountryCurrent: z.string().trim().max(120).nullable().optional(),
-  refugeeStatus: z.string().trim().max(120).nullable().optional(),
-  campName: z.string().trim().max(120).nullable().optional(),
+  /** '' clears; omit/undefined keeps (RPC NULL=keep). Form saves should send ''. */
+  unrwaRegistrationNumber: z.string().max(120).nullable().optional(),
+  familyCard1948Number: z.string().max(120).nullable().optional(),
+  hostCountryFirst: z.string().max(120).nullable().optional(),
+  hostCountryCurrent: z.string().max(120).nullable().optional(),
+  refugeeStatus: z.string().max(120).nullable().optional(),
+  campName: z.string().max(120).nullable().optional(),
   displacementYear: z.number().int().min(1900).max(2100).nullable().optional(),
-  displacementWave: z.string().trim().max(120).nullable().optional(),
-  landPropertyNotes: z.string().trim().max(5000).nullable().optional(),
-  oralHistory: z.string().trim().max(10000).nullable().optional(),
-  oralHistoryProvenance: z.string().trim().max(2000).nullable().optional(),
-  /** Required when setting/changing UNRWA number (D8 card copy). */
+  displacementWave: z.string().max(120).nullable().optional(),
+  landPropertyNotes: z.string().max(5000).nullable().optional(),
+  oralHistory: z.string().max(10000).nullable().optional(),
+  oralHistoryProvenance: z.string().max(2000).nullable().optional(),
+  /** Required when setting/changing UNRWA number to a non-empty value. */
   unrwaEvidenceAttachmentId: z.string().uuid().nullable().optional(),
 });
 
-const orNull = (v: string | null | undefined): string | null => {
-  const trimmed = (v ?? '').trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
+/**
+ * Pass-through for RPC text args.
+ *  - undefined → omit from RPC args (keep existing)
+ *  - null or '' → pass '' so RPC clears
+ *  - otherwise trimmed string
+ */
+function rpcClearableText(
+  v: string | null | undefined,
+): string | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return '';
+  return v.trim();
+}
 
 /**
  * Save R13 displacement fields. RPC also upserts person_identifiers for
- * UNRWA / family_card_1948 when those values are set. UNRWA requires an
- * uploaded card (evidence_attachment_id) for perfect-match eligibility.
+ * UNRWA / family_card_1948. Convention: '' clears, null/omit keeps for
+ * identifiers; form text fields pass '' to clear so COALESCE keep does not
+ * block clears. UNRWA evidence is required only when setting a non-empty UNRWA.
  */
 export async function savePersonDisplacement(
   input: z.input<typeof SaveSchema>,
@@ -103,24 +114,49 @@ export async function savePersonDisplacement(
   const uid = await getCachedLoggedInUserIdOrNull();
   if (!uid) throw new Error('Not authenticated');
 
-  const unrwa = orNull(parsed.unrwaRegistrationNumber);
   const supabase = await createJuthoorSupabaseClient();
 
-  const { data, error } = await supabase.rpc('upsert_person_displacement', {
+  const unrwaArg = rpcClearableText(parsed.unrwaRegistrationNumber);
+  const settingUnrwa = unrwaArg !== undefined && unrwaArg.length > 0;
+
+  const args: Record<string, unknown> = {
     p_person_id: parsed.personId,
-    p_unrwa_registration_number: unrwa,
-    p_family_card_1948_number: orNull(parsed.familyCard1948Number),
-    p_host_country_first: orNull(parsed.hostCountryFirst),
-    p_host_country_current: orNull(parsed.hostCountryCurrent),
-    p_refugee_status: orNull(parsed.refugeeStatus),
-    p_camp_name: orNull(parsed.campName),
-    p_displacement_year: parsed.displacementYear ?? null,
-    p_displacement_wave: orNull(parsed.displacementWave),
-    p_land_property_notes: orNull(parsed.landPropertyNotes),
-    p_oral_history: orNull(parsed.oralHistory),
-    p_oral_history_provenance: orNull(parsed.oralHistoryProvenance),
-    p_unrwa_evidence_attachment_id: parsed.unrwaEvidenceAttachmentId ?? null,
-  });
+  };
+  if (unrwaArg !== undefined) args.p_unrwa_registration_number = unrwaArg;
+  const cardArg = rpcClearableText(parsed.familyCard1948Number);
+  if (cardArg !== undefined) args.p_family_card_1948_number = cardArg;
+
+  const hostFirst = rpcClearableText(parsed.hostCountryFirst);
+  if (hostFirst !== undefined) args.p_host_country_first = hostFirst;
+  const hostCurrent = rpcClearableText(parsed.hostCountryCurrent);
+  if (hostCurrent !== undefined) args.p_host_country_current = hostCurrent;
+  const refugee = rpcClearableText(parsed.refugeeStatus);
+  if (refugee !== undefined) args.p_refugee_status = refugee;
+  const camp = rpcClearableText(parsed.campName);
+  if (camp !== undefined) args.p_camp_name = camp;
+  if (parsed.displacementYear !== undefined) {
+    args.p_displacement_year = parsed.displacementYear;
+  }
+  const wave = rpcClearableText(parsed.displacementWave);
+  if (wave !== undefined) args.p_displacement_wave = wave;
+  const land = rpcClearableText(parsed.landPropertyNotes);
+  if (land !== undefined) args.p_land_property_notes = land;
+  const oral = rpcClearableText(parsed.oralHistory);
+  if (oral !== undefined) args.p_oral_history = oral;
+  const oralProv = rpcClearableText(parsed.oralHistoryProvenance);
+  if (oralProv !== undefined) args.p_oral_history_provenance = oralProv;
+
+  // Evidence only when setting a non-empty UNRWA. Omit on clear/keep so RPC
+  // does not demand a card when only camp/oral history changed.
+  if (settingUnrwa) {
+    args.p_unrwa_evidence_attachment_id =
+      parsed.unrwaEvidenceAttachmentId ?? null;
+  }
+
+  const { data, error } = await supabase.rpc(
+    'upsert_person_displacement',
+    args as never,
+  );
 
   if (error) {
     if (/unrwa_evidence/i.test(error.message)) {

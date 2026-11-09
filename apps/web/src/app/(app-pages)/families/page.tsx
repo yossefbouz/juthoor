@@ -17,7 +17,8 @@ async function FamiliesContainer({
   searchParams: Promise<Record<string, SearchParamsValue>>;
 }) {
   const params = await searchParams;
-  const district = firstString(params.district) ?? null;
+  const districtRaw = firstString(params.district) ?? null;
+  const district = districtRaw ? districtRaw.trim().toLowerCase() : null;
   const [rows, places] = await Promise.all([
     loadTopSurnames(120, district),
     loadAllPlaces().catch(() => []),

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import { signOutAction } from '@/data/auth/sign-out';
 import { deleteAccountAction } from '@/data/user/account';
+import { clearClientAuthCaches } from '@/lib/auth/clearClientCaches';
 import { useLocale } from '@/contexts/LocaleContext';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { ModeToggle } from '@/components/ui/mode-toggle';
@@ -41,6 +42,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTransition } from 'react';
+import { toast } from 'sonner';
 
 export function AppSidebarContent({
   userEmail,
@@ -83,6 +85,7 @@ export function AppSidebarContent({
 
   function handleSignOut() {
     startTransition(async () => {
+      await clearClientAuthCaches();
       await signOutAction();
     });
   }
@@ -96,7 +99,16 @@ export function AppSidebarContent({
     );
     if (!ok) return;
     startTransition(async () => {
-      await deleteAccountAction();
+      try {
+        await clearClientAuthCaches();
+        await deleteAccountAction();
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t('تعذّر إغلاق الحساب', 'Could not close account'),
+        );
+      }
     });
   }
 

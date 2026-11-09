@@ -84,7 +84,13 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('closed', '1');
-      return NextResponse.redirect(url);
+      const redirect = NextResponse.redirect(url);
+      // Copy refreshed auth cookies from supabaseResponse onto the redirect
+      // so the browser actually drops the closed session.
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirect.cookies.set(cookie);
+      });
+      return redirect;
     }
   }
 

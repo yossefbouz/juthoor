@@ -22,7 +22,8 @@ export async function loadTopSurnames(
   const supabase = await createJuthoorSupabaseClient();
 
   let allowedPersonIds: Set<string> | null = null;
-  if (districtKey) {
+  const normalizedDistrict = districtKey?.trim().toLowerCase() || null;
+  if (normalizedDistrict) {
     const { data: places, error: pErr } = await supabase
       .from('places')
       .select('id, district_ar, district_en');
@@ -35,7 +36,7 @@ export async function loadTopSurnames(
       .filter((p) => {
         const ar = (p.district_ar ?? '').trim().toLowerCase();
         const en = (p.district_en ?? '').trim().toLowerCase();
-        return ar === districtKey || en === districtKey;
+        return ar === normalizedDistrict || en === normalizedDistrict;
       })
       .map((p) => p.id);
     if (placeIds.length === 0) return [];

@@ -91,24 +91,31 @@ export function AttachmentUploader({
         .uploadToSignedUrl(path, token, file);
       if (upErr) throw new Error(upErr.message);
 
-      // 3. Record DB row (+ notify IFT Admin / open message thread)
-      const recorded = await recordAttachment({
-        personId,
-        treeId,
-        kind,
-        tag,
-        storagePath: path,
-        mimeType: file.type || (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
-        sizeBytes: file.size,
-        captionAr: captionAr.trim() || undefined,
-        captionEn: captionEn.trim() || undefined,
-        year: year.trim() ? Number(year) : undefined,
-        placeTakenId: placeTakenId || undefined,
-        dateTaken: dateTaken.trim() || undefined,
-        title: title.trim() || undefined,
-        issuingAuthority: issuingAuthority.trim() || undefined,
-        issueDate: issueDate.trim() || undefined,
-      });
+      // 3. Record DB row (+ notify IFT Admin / open message thread).
+      // On insert failure, remove the orphaned storage object.
+      let recorded;
+      try {
+        recorded = await recordAttachment({
+          personId,
+          treeId,
+          kind,
+          tag,
+          storagePath: path,
+          mimeType: file.type || (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
+          sizeBytes: file.size,
+          captionAr: captionAr.trim() || undefined,
+          captionEn: captionEn.trim() || undefined,
+          year: year.trim() ? Number(year) : undefined,
+          placeTakenId: placeTakenId || undefined,
+          dateTaken: dateTaken.trim() || undefined,
+          title: title.trim() || undefined,
+          issuingAuthority: issuingAuthority.trim() || undefined,
+          issueDate: issueDate.trim() || undefined,
+        });
+      } catch (insertErr) {
+        await browser.storage.from('person-attachments').remove([path]).catch(() => undefined);
+        throw insertErr;
+      }
 
       // 4. Reset + notify parent
       setFile(null);

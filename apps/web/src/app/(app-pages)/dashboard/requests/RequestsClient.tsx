@@ -8,16 +8,20 @@ import { Check, X, FileText, Users, ArrowLeft, ArrowRight, Loader2, Sparkles } f
 import { useLocale } from '@/contexts/LocaleContext';
 import { approveAccessRequest, rejectAccessRequest, type AccessRequest } from '@/data/user/access';
 import type { ContactRelayRow } from '@/data/user/contactRelay';
+import type { PersonClaimRequest } from '@/data/user/personLink';
 import { ContactRelaysPanel } from '@/components/search/ContactRelaysPanel';
+import { PersonClaimsPanel } from '@/components/search/PersonClaimsPanel';
 
 export function RequestsClient({
   initialRequests,
   contactOutgoing = [],
   contactIncoming = [],
+  personClaims = [],
 }: {
   initialRequests: AccessRequest[];
   contactOutgoing?: ContactRelayRow[];
   contactIncoming?: ContactRelayRow[];
+  personClaims?: PersonClaimRequest[];
 }) {
   const { t, locale, dir } = useLocale();
   const router = useRouter();
@@ -210,6 +214,7 @@ export function RequestsClient({
         )}
       </div>
 
+        <PersonClaimsPanel incoming={personClaims} />
         <ContactRelaysPanel outgoing={contactOutgoing} incoming={contactIncoming} />
     </div>
   );

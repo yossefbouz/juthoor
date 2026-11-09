@@ -106,9 +106,9 @@ SELECT is((SELECT (breakdown->'meta'->>'threshold')::numeric FROM public.score_p
 SELECT is((SELECT breakdown->'meta'->>'decision' FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000e1','f0000000-0000-0000-0000-0000000000e2')),
   'review', 'a sparse pair with all of its few fields agreeing stays in review');
-SELECT cmp_ok((SELECT (breakdown->'meta'->>'score_pct')::numeric FROM public.score_pair(
+SELECT is((SELECT (breakdown->'meta'->>'score_pct')::numeric FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000e1','f0000000-0000-0000-0000-0000000000e2')),
-  '<=', 0.6, 'its score stays well below the auto-link band on the AIO-100 scale');
+  0.580, 'sparse agreeing fields score_pct is 0.580 on the AIO-100 scale');
 SELECT is((SELECT (breakdown->'meta'->>'full_scale')::int FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000c1','f0000000-0000-0000-0000-0000000000c2')),
   86, 'living pairs use full_scale 86 (death fields excluded)');

@@ -31,7 +31,7 @@ import {
   districtsFromPlaces,
   placeMatchesDistrict,
 } from '@/components/search/DistrictSelect';
-import type { DegreesResult } from '@/data/user/degrees';
+import { isDegreesOk, type DegreesResult } from '@/data/user/degrees';
 import { kinshipLabel } from '@/lib/search/relationLabels';
 import { Lock } from 'lucide-react';
 
@@ -437,7 +437,11 @@ function searchResultToPersonView(result: SearchResult): PersonView {
     displayNameEn: result.display_name_en,
     isPlaceholder: false,
     birthYear: result.birth_year,
+    // Do not hardcode deathYear: null — that made hover show "present" for
+    // long-dead people when only birth_year is known from search.
     deathYear: null,
+    hasDeath: false,
+    isLiving: undefined,
     placeOfOriginId: result.origin_place_id,
     birthPlaceAr: result.origin_name_ar,
   };
@@ -576,7 +580,7 @@ function ResultCard({
                 {t('أنت', 'You')}
               </span>
             )}
-            {!isSelf && degrees && (
+            {!isSelf && isDegreesOk(degrees) && (
               <DegreeChip
                 degrees={degrees.degrees}
                 label={kinshipLabel(degrees.degrees, degrees.path, locale)}
@@ -584,6 +588,11 @@ function ResultCard({
                 ariaLabel={t('عرض صلة القرابة', 'Show relation')}
               />
             )}
+            {!isSelf && degrees && 'error' in degrees && degrees.error ? (
+              <span className="text-[10px] font-semibold text-[var(--jt-terra-600)]">
+                {t('تعذّر حساب الصلة', 'Could not compute relation')}
+              </span>
+            ) : null}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 text-end">

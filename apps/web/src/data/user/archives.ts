@@ -68,7 +68,13 @@ type AttachmentRow = {
   tag: string | null;
 };
 
-const IDENTITY_DOC_TAGS = new Set(['id_card', 'unrwa_card', 'family_card']);
+/** Identity docs excluded from public picture/document archives. */
+const IDENTITY_DOC_TAGS = new Set([
+  'id_card',
+  'family_card',
+  'passport',
+  'unrwa_card',
+]);
 
 function isPublicArchiveRow(row: AttachmentRow): boolean {
   return !IDENTITY_DOC_TAGS.has((row.tag ?? '').toLowerCase());

@@ -1,5 +1,5 @@
-/* Juthoor PWA service worker — network-first navigations, cache-first static shell. */
-const CACHE = 'juthoor-shell-v1';
+/* Juthoor PWA service worker — navigations network-only; cache static shell only. */
+const CACHE = 'juthoor-shell-v2';
 const PRECACHE = ['/offline.html', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -29,24 +29,18 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // App navigations: try network, fall back to offline page.
+  // App navigations: network-only, offline.html fallback. Never cache.put HTML.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          return cached || caches.match('/offline.html');
-        })
+      fetch(request).catch(async () => {
+        const offline = await caches.match('/offline.html');
+        return offline || new Response('Offline', { status: 503, statusText: 'Offline' });
+      })
     );
     return;
   }
 
-  // Same-origin static assets: cache-first.
+  // Same-origin static assets only: cache-first for offline shell.
   if (
     url.pathname.startsWith('/icons/') ||
     url.pathname.startsWith('/_next/static/') ||

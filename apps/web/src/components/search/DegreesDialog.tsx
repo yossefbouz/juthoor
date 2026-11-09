@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GitBranch, Route } from 'lucide-react';
 import { PathGraph } from './PathGraph';
-import { computeAllPathsTo, type AllPathsResult, type DegreesResult } from '@/data/user/degrees';
+import {
+  computeAllPathsTo,
+  isDegreesOk,
+  type AllPathsResult,
+  type DegreesOk,
+  type DegreesResult,
+} from '@/data/user/degrees';
 import { kinshipLabel } from '@/lib/search/relationLabels';
 
 export function DegreesDialog({
@@ -20,17 +26,18 @@ export function DegreesDialog({
   locale: 'ar' | 'en';
   t: <T extends string>(ar: T, en: T) => T;
 }) {
+  const ok: DegreesOk | null = isDegreesOk(data) ? data : null;
   const [allPaths, setAllPaths] = useState<AllPathsResult>(null);
   const [loadingPaths, setLoadingPaths] = useState(false);
   const [selectedPathIdx, setSelectedPathIdx] = useState(0);
 
   useEffect(() => {
-    if (!open || !data?.path?.length) {
+    if (!open || !ok?.path?.length) {
       setAllPaths(null);
       setSelectedPathIdx(0);
       return;
     }
-    const targetId = data.path[data.path.length - 1]?.person_id;
+    const targetId = ok.path[ok.path.length - 1]?.person_id;
     if (!targetId) return;
     let cancelled = false;
     setLoadingPaths(true);
@@ -47,19 +54,19 @@ export function DegreesDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, data]);
+  }, [open, ok]);
 
   const alternatePaths = allPaths?.paths ?? [];
   const activePath =
     alternatePaths[selectedPathIdx]?.path ??
-    data?.path ??
+    ok?.path ??
     [];
   const activeDegrees =
-    alternatePaths[selectedPathIdx]?.degrees ?? data?.degrees ?? 0;
+    alternatePaths[selectedPathIdx]?.degrees ?? ok?.degrees ?? 0;
 
   return (
     <AnimatePresence>
-      {open && data && (
+      {open && ok && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

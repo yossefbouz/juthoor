@@ -85,22 +85,6 @@ export async function openThreadFromContactAccept(input: {
   return threadId as string;
 }
 
-/** Dispute a relationship (family): notify via messaging with IFT Admin. */
-export async function openThreadFromRelationshipDispute(input: {
-  familyId: string;
-  counterpartUserId?: string;
-  note?: string;
-}): Promise<string> {
-  const familyId = z.string().uuid().parse(input.familyId);
-  const note = input.note?.trim() || 'Relationship disputed.';
-  return openOrCreateMessageThread({
-    contextType: 'relationship_dispute',
-    contextId: familyId,
-    counterpartUserId: input.counterpartUserId,
-    initialBody: note,
-  });
-}
-
 export async function listMyMessageThreads(): Promise<MessageThreadSummary[]> {
   const uid = await getCachedLoggedInUserIdOrNull();
   if (!uid) return [];

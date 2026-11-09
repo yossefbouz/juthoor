@@ -138,7 +138,9 @@ export function FamilyChart({
     );
     const HALF_W = CHART_NODE_WIDTH / 2;
     const HALF_H = CHART_NODE_HEIGHT / 2;
-    const BUS_RISE = 48;
+    // Must stay ≤ inter-column gap (~40px) so the vertical bus sits in the
+    // gutter beside the child column, not inside the parent column.
+    const BUS_RISE = 24;
     const vertical = layout === 'vertical';
 
     const spouseEdges: {

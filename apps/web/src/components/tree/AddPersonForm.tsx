@@ -874,18 +874,23 @@ async function uploadIdentifierCard(input: {
     .from('person-attachments')
     .uploadToSignedUrl(path, token, input.file);
   if (error) throw new Error(error.message);
-  const recorded = await recordAttachment({
-    personId: input.personId,
-    treeId: input.treeId,
-    kind,
-    tag: 'id_card',
-    storagePath: path,
-    mimeType:
-      input.file.type ||
-      (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
-    sizeBytes: input.file.size,
-    title: 'UNRWA registration card',
-    openMessageThread: false,
-  });
-  return recorded.id;
+  try {
+    const recorded = await recordAttachment({
+      personId: input.personId,
+      treeId: input.treeId,
+      kind,
+      tag: 'id_card',
+      storagePath: path,
+      mimeType:
+        input.file.type ||
+        (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
+      sizeBytes: input.file.size,
+      title: 'UNRWA registration card',
+      openMessageThread: false,
+    });
+    return recorded.id;
+  } catch (insertErr) {
+    await browser.storage.from('person-attachments').remove([path]).catch(() => undefined);
+    throw insertErr;
+  }
 }

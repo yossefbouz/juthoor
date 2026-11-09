@@ -111,18 +111,23 @@ export function DisplacementPanel({
       .from('person-attachments')
       .uploadToSignedUrl(path, token, file);
     if (upErr) throw new Error(upErr.message);
-    const recorded = await recordAttachment({
-      personId,
-      treeId,
-      kind,
-      tag: 'id_card',
-      storagePath: path,
-      mimeType: file.type || (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
-      sizeBytes: file.size,
-      title: 'UNRWA registration card',
-      openMessageThread: false,
-    });
-    return recorded.id;
+    try {
+      const recorded = await recordAttachment({
+        personId,
+        treeId,
+        kind,
+        tag: 'id_card',
+        storagePath: path,
+        mimeType: file.type || (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
+        sizeBytes: file.size,
+        title: 'UNRWA registration card',
+        openMessageThread: false,
+      });
+      return recorded.id;
+    } catch (insertErr) {
+      await browser.storage.from('person-attachments').remove([path]).catch(() => undefined);
+      throw insertErr;
+    }
   }
 
   async function handleSave() {
@@ -135,13 +140,20 @@ export function DisplacementPanel({
         throw new Error(t('سنة النزوح غير صالحة', 'Invalid displacement year'));
       }
 
+      // '' clears identifier/text fields (RPC NULL = keep; '' = clear).
       const unrwaValue = unrwa.trim();
+      const priorUnrwa = (row?.unrwa_registration_number ?? '').trim();
+      const unrwaChangingToNonEmpty =
+        unrwaValue.length > 0 && unrwaValue !== priorUnrwa;
+
       let evidenceId = existingEvidenceId;
-      if (unrwaValue) {
+      if (unrwaValue.length > 0) {
         if (unrwaCardFile) {
           evidenceId = await uploadUnrwaCard(unrwaCardFile);
         }
-        if (!evidenceId) {
+        // Evidence required when setting/changing UNRWA to a non-empty value.
+        // Unchanged UNRWA may reuse existing evidence on file.
+        if ((unrwaChangingToNonEmpty || !priorUnrwa) && !evidenceId) {
           throw new Error(
             t(
               'رقم الأونروا يتطلب رفع صورة أو ملف البطاقة.',
@@ -149,25 +161,30 @@ export function DisplacementPanel({
             ),
           );
         }
+        if (!evidenceId && priorUnrwa === unrwaValue && existingEvidenceId) {
+          evidenceId = existingEvidenceId;
+        }
       }
 
       const updated = await savePersonDisplacement({
         personId,
-        unrwaRegistrationNumber: unrwaValue || null,
-        familyCard1948Number: familyCard || null,
-        hostCountryFirst: hostFirst || null,
-        hostCountryCurrent: hostCurrent || null,
-        refugeeStatus: refugeeStatus || null,
-        campName: campName || null,
+        unrwaRegistrationNumber: unrwaValue,
+        familyCard1948Number: familyCard.trim(),
+        hostCountryFirst: hostFirst.trim(),
+        hostCountryCurrent: hostCurrent.trim(),
+        refugeeStatus: refugeeStatus.trim(),
+        campName: campName.trim(),
         displacementYear: year,
-        displacementWave: dispWave || null,
-        landPropertyNotes: landNotes || null,
-        oralHistory: oralHistory || null,
-        oralHistoryProvenance: oralProv || null,
-        unrwaEvidenceAttachmentId: unrwaValue ? evidenceId : null,
+        displacementWave: dispWave.trim(),
+        landPropertyNotes: landNotes.trim(),
+        oralHistory: oralHistory.trim(),
+        oralHistoryProvenance: oralProv.trim(),
+        unrwaEvidenceAttachmentId:
+          unrwaValue.length > 0 ? (evidenceId ?? null) : null,
       });
       setRow(updated);
       if (evidenceId) setExistingEvidenceId(evidenceId);
+      if (!unrwaValue) setExistingEvidenceId(null);
       setEditing(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('تعذّر الحفظ', 'Could not save'));

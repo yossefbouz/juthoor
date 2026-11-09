@@ -40,8 +40,8 @@ export function IsThisYouPanel({
         <div className="flex items-center gap-2 font-medium">
           <UserCheck className="h-4 w-4" />
           {t(
-            'تم ربط حسابك بشخص في الشجرة الرئيسية.',
-            'Your account is linked to a person in the master tree.',
+            'تم إرسال أو تأكيد ربط حسابك بشخص في الشجرة.',
+            'Your account link to a person is requested or confirmed.',
           )}
         </div>
       </div>
@@ -74,7 +74,12 @@ export function IsThisYouPanel({
         return;
       }
       setLinkedId(personId);
-      toast.success(t('تم ربط حسابك بهذا الشخص', 'Your account is now linked to this person'));
+      toast.success(
+        t(
+          'تم إرسال طلب الربط لمالك الشجرة للموافقة.',
+          'Claim request sent to the tree owner for approval.',
+        ),
+      );
     });
   }
 

@@ -206,6 +206,19 @@ describe('concurrentSpouseIdsOf — widowhood/divorce-aware counting', () => {
     expect(concurrentSpouseIdsOf(WIDOW, 'WID')).toEqual([]);
   });
 
+  it('excludes a spouse with hasDeath but no deathYear (undated DEAT)', () => {
+    const snap: TreeSnapshot = {
+      persons: [
+        p('MAN', 'M'),
+        { ...p('w1', 'F'), hasDeath: true, deathYear: null },
+        p('w2', 'F'),
+      ],
+      families: [fam('m1', 'MAN', 'w1'), fam('m2', 'MAN', 'w2')],
+      familyChildren: [],
+    };
+    expect(concurrentSpouseIdsOf(snap, 'MAN')).toEqual(['w2']);
+  });
+
   it('excludes a divorced spouse from the concurrent set', () => {
     expect(concurrentSpouseIdsOf(POLY_DIVORCED, 'MAN').sort()).toEqual(
       ['w1', 'w2', 'w3'].sort(),

@@ -170,6 +170,8 @@ function toPersonView(
     isPlaceholder: p.notes === 'placeholder',
     birthYear: hide ? null : facts.birthYear,
     deathYear: facts.deathYear,
+    hasDeath: facts.hasDeath,
+    isLiving: !facts.hasDeath && p.is_living,
     placeOfOriginId: hide ? null : facts.birthPlaceId,
     birthPlaceAr: hide ? null : facts.birthPlaceAr,
   };

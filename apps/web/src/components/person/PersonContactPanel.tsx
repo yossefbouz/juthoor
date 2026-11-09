@@ -56,6 +56,10 @@ export function PersonContactPanel({ personId }: { readonly personId: string }) 
         </h2>
       </header>
 
+      {error ? (
+        <p className="mb-3 text-sm text-[var(--jt-terra-700)]">{error}</p>
+      ) : null}
+
       {!revealed ? (
         <div className="space-y-3">
           <p className="text-sm text-[var(--jt-stone-600)]" style={{ lineHeight: 1.7 }}>
@@ -78,8 +82,6 @@ export function PersonContactPanel({ personId }: { readonly personId: string }) 
             {t('عرض بيانات التواصل', 'Show contact details')}
           </button>
         </div>
-      ) : error ? (
-        <p className="text-sm text-[var(--jt-terra-700)]">{error}</p>
       ) : !hasValues ? (
         <div className="space-y-3">
           <p className="text-sm text-[var(--jt-stone-600)]">
