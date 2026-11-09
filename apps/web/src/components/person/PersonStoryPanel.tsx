@@ -10,6 +10,23 @@ import {
   type PersonProfile,
 } from '@/data/user/personProfiles';
 
+const CURRENT_COUNTRY_OPTIONS = [
+  { value: 'Jordan', ar: 'الأردن', en: 'Jordan' },
+  { value: 'Lebanon', ar: 'لبنان', en: 'Lebanon' },
+  { value: 'Syria', ar: 'سوريا', en: 'Syria' },
+  { value: 'Egypt', ar: 'مصر', en: 'Egypt' },
+  { value: 'Gaza Strip', ar: 'قطاع غزة', en: 'Gaza Strip' },
+  { value: 'West Bank', ar: 'الضفة الغربية', en: 'West Bank' },
+  { value: 'Other', ar: 'أخرى', en: 'Other' },
+] as const;
+
+const PREFERRED_CONTACT_OPTIONS = [
+  { value: 'email', ar: 'البريد', en: 'Email' },
+  { value: 'mobile', ar: 'الجوال', en: 'Mobile' },
+  { value: 'messaging', ar: 'الرسائل', en: 'Messaging' },
+  { value: 'do_not_contact', ar: 'عدم التواصل', en: 'Do not contact' },
+] as const;
+
 /**
  * "Achievements" + "Contribution to the cause" for the 360° person view
  * (design flow 4.X.1.1.4 / 4.X.1.1.5). Read for everyone who can see the person;
@@ -41,6 +58,12 @@ export function PersonStoryPanel({
   const [contactConsent, setContactConsent] = useState(Boolean(initialProfile?.contact_consent));
   const [contactEmail, setContactEmail] = useState(initialProfile?.contact_email ?? '');
   const [contactPhone, setContactPhone] = useState(initialProfile?.contact_phone ?? '');
+  const [currentCountry, setCurrentCountry] = useState(initialProfile?.current_country ?? '');
+  const [currentCity, setCurrentCity] = useState(initialProfile?.current_city ?? '');
+  const [currentAddress, setCurrentAddress] = useState(initialProfile?.current_address ?? '');
+  const [preferredMethod, setPreferredMethod] = useState(
+    initialProfile?.preferred_contact_method ?? '',
+  );
 
   const achievements = isAR
     ? profile?.achievements_ar ?? profile?.achievements_en
@@ -67,6 +90,10 @@ export function PersonStoryPanel({
     setContactConsent(Boolean(profile?.contact_consent));
     setContactEmail(profile?.contact_email ?? '');
     setContactPhone(profile?.contact_phone ?? '');
+    setCurrentCountry(profile?.current_country ?? '');
+    setCurrentCity(profile?.current_city ?? '');
+    setCurrentAddress(profile?.current_address ?? '');
+    setPreferredMethod(profile?.preferred_contact_method ?? '');
     setError(null);
     setEditing(true);
   }
@@ -86,6 +113,16 @@ export function PersonStoryPanel({
         contactConsent,
         contactEmail: contactEmail || null,
         contactPhone: contactPhone || null,
+        currentCountry: currentCountry || null,
+        currentCity: currentCity || null,
+        currentAddress: currentAddress || null,
+        preferredContactMethod: (preferredMethod || null) as
+          | 'email'
+          | 'mobile'
+          | 'messaging'
+          | 'do_not_contact'
+          | ''
+          | null,
       });
       setProfile(updated);
       setEditing(false);
@@ -95,6 +132,11 @@ export function PersonStoryPanel({
       setSaving(false);
     }
   }
+
+  const selectClass =
+    'rounded-xl border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]';
+  const inputClass =
+    'rounded-xl border border-[var(--jt-stone-200)] px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]';
 
   return (
     <Card>
@@ -159,15 +201,73 @@ export function PersonStoryPanel({
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder={t('البريد', 'Email')}
-                  className="rounded-xl border border-[var(--jt-stone-200)] px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]"
+                  className={inputClass}
                 />
                 <input
                   type="tel"
                   value={contactPhone}
                   onChange={(e) => setContactPhone(e.target.value)}
                   placeholder={t('الهاتف', 'Phone')}
-                  className="rounded-xl border border-[var(--jt-stone-200)] px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]"
+                  className={inputClass}
                 />
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                    {t('البلد الحالي', 'Current country')}
+                  </span>
+                  <select
+                    value={currentCountry}
+                    onChange={(e) => setCurrentCountry(e.target.value)}
+                    className={`w-full ${selectClass}`}
+                  >
+                    <option value="">{t('— اختر —', '— Select —')}</option>
+                    {CURRENT_COUNTRY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {isAR ? opt.ar : opt.en}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                    {t('المدينة الحالية', 'Current city')}
+                  </span>
+                  <input
+                    type="text"
+                    value={currentCity}
+                    onChange={(e) => setCurrentCity(e.target.value)}
+                    placeholder={t('المدينة', 'City')}
+                    className={`w-full ${inputClass}`}
+                  />
+                </label>
+                <label className="block space-y-1 md:col-span-2">
+                  <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                    {t('العنوان الحالي', 'Current address')}
+                  </span>
+                  <input
+                    type="text"
+                    value={currentAddress}
+                    onChange={(e) => setCurrentAddress(e.target.value)}
+                    placeholder={t('العنوان', 'Address')}
+                    className={`w-full ${inputClass}`}
+                  />
+                </label>
+                <label className="block space-y-1 md:col-span-2">
+                  <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                    {t('طريقة التواصل المفضلة', 'Preferred contact method')}
+                  </span>
+                  <select
+                    value={preferredMethod}
+                    onChange={(e) => setPreferredMethod(e.target.value)}
+                    className={`w-full ${selectClass}`}
+                  >
+                    <option value="">{t('— اختر —', '— Select —')}</option>
+                    {PREFERRED_CONTACT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {isAR ? opt.ar : opt.en}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             )}
             {error && (

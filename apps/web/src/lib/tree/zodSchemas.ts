@@ -36,8 +36,21 @@ export function hasText(value: string | undefined): boolean {
 /** Gender limited to M/F in the UI; schema must also reject X/U. */
 export const genderUIEnum = z.enum(['M', 'F']);
 
+/** person_names.name_type values (primary female must be maiden, never married). */
+export const nameTypeEnum = z.enum([
+  'birth',
+  'married',
+  'immigrant',
+  'aka',
+  'professional',
+  'maiden',
+]);
+
 /** Pedigree values allowed on a child link. */
 export const pedigreeEnum = z.enum(['birth', 'adopted', 'foster']);
+
+export const FEMALE_MAIDEN_SURNAME_MESSAGE =
+  'Female surname must be maiden (birth) surname';
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
 
@@ -76,6 +89,8 @@ export const personInputSchema = z
     // Optional D8 identifiers (saved after create).
     unrwaRegistrationNumber: optionalTrimmedString(120),
     familyCard1948Number: optionalTrimmedString(120),
+    /** Optional; women must not use married as primary (FRS hard rule). */
+    nameType: nameTypeEnum.optional(),
   })
   .refine(
     (input) => hasText(input.arGivenName) || hasText(input.enGivenName),
@@ -93,6 +108,13 @@ export const personInputSchema = z
     {
       message: 'Death year cannot be before birth year',
       path: ['deathYear'],
+    }
+  )
+  .refine(
+    (input) => !(input.gender === 'F' && input.nameType === 'married'),
+    {
+      message: FEMALE_MAIDEN_SURNAME_MESSAGE,
+      path: ['nameType'],
     }
   );
 

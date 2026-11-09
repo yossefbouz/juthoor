@@ -1,36 +1,95 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition, type FormEvent } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Search, Users, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Search, Users, X } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { FamilyIndexRow } from '@/data/user/families-index';
-import { DistrictSelect, type DistrictOption } from '@/components/search/DistrictSelect';
+import type { PlaceListItem } from '@/data/user/places';
+import {
+  DistrictSelect,
+  placeMatchesDistrict,
+  type DistrictOption,
+} from '@/components/search/DistrictSelect';
+import { VillageCombobox } from '@/components/search/VillageCombobox';
 import { useRouter } from 'next/navigation';
+
+function buildFamiliesHref(opts: {
+  q?: string | null;
+  district?: string | null;
+  placeId?: string | null;
+}): string {
+  const params = new URLSearchParams();
+  if (opts.q?.trim()) params.set('q', opts.q.trim());
+  if (opts.district) params.set('district', opts.district);
+  if (opts.placeId) params.set('placeId', opts.placeId);
+  const qs = params.toString();
+  return qs ? `/families?${qs}` : '/families';
+}
+
+function familyDetailHref(
+  surname: string,
+  filters: { district?: string | null; placeId?: string | null },
+): string {
+  const params = new URLSearchParams();
+  if (filters.district) params.set('district', filters.district);
+  if (filters.placeId) params.set('placeId', filters.placeId);
+  const base = `/families/${encodeURIComponent(surname)}`;
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
 
 export function FamiliesIndexClient({
   rows,
+  places = [],
   districts = [],
+  initialQ = null,
   initialDistrict = null,
+  initialPlaceId = null,
 }: {
   rows: FamilyIndexRow[];
+  places?: PlaceListItem[];
   districts?: DistrictOption[];
+  initialQ?: string | null;
   initialDistrict?: string | null;
+  initialPlaceId?: string | null;
 }) {
   const { t, locale, dir } = useLocale();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQ ?? '');
   const [district, setDistrict] = useState<string | null>(initialDistrict);
+  const [placeId, setPlaceId] = useState<string | null>(initialPlaceId);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => r.surname.toLowerCase().includes(q));
-  }, [rows, query]);
+  const villagesInDistrict = useMemo(
+    () => places.filter((p) => placeMatchesDistrict(p, district)),
+    [places, district],
+  );
+
+  function navigate(next: {
+    q?: string | null;
+    district?: string | null;
+    placeId?: string | null;
+  }) {
+    const href = buildFamiliesHref({
+      q: next.q !== undefined ? next.q : query,
+      district: next.district !== undefined ? next.district : district,
+      placeId: next.placeId !== undefined ? next.placeId : placeId,
+    });
+    startTransition(() => {
+      router.push(href);
+    });
+  }
+
+  function onSurnameSubmit(e: FormEvent) {
+    e.preventDefault();
+    navigate({ q: query });
+  }
 
   const totalPersons = rows.reduce((sum, r) => sum + r.count, 0);
+  const hasActiveFilters = Boolean(query.trim() || district || placeId);
 
   return (
     <div dir={dir} className="relative min-h-full bg-[var(--background)]">
@@ -63,58 +122,112 @@ export function FamiliesIndexClient({
           </p>
         </motion.header>
 
-        {/* Search */}
-        <div className="relative mb-8">
+        <form onSubmit={onSurnameSubmit} className="relative mb-6">
           <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--jt-stone-500)]" />
           <input
             type="search"
+            name="q"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t(
               'ابحث: العجرمي، الخوري، Khoury...',
               'Search: Al-Ajrami, Khoury, Bouz…',
             )}
-            className="w-full rounded-2xl border border-[var(--jt-olive-200)]/60 bg-[var(--card)] py-3.5 ps-12 pe-12 text-base text-[var(--jt-stone-900)] placeholder:text-[var(--jt-stone-400)] shadow-[var(--jt-shadow-sm)] focus:border-[var(--jt-olive-500)] focus:outline-none focus:ring-2 focus:ring-[var(--jt-olive-300)]/40"
+            className="w-full rounded-2xl border border-[var(--jt-olive-200)]/60 bg-[var(--card)] py-3.5 ps-12 pe-28 text-base text-[var(--jt-stone-900)] placeholder:text-[var(--jt-stone-400)] shadow-[var(--jt-shadow-sm)] focus:border-[var(--jt-olive-500)] focus:outline-none focus:ring-2 focus:ring-[var(--jt-olive-300)]/40"
+            aria-label={t('اللقب', 'Surname')}
           />
-          {query && (
+          <div className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  navigate({ q: '' });
+                }}
+                className="rounded-full p-1 text-[var(--jt-stone-500)] hover:bg-[var(--jt-stone-100)]"
+                aria-label={t('مسح', 'Clear')}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             <button
-              onClick={() => setQuery('')}
-              className="absolute end-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--jt-stone-500)] hover:bg-[var(--jt-stone-100)]"
-              aria-label={t('مسح', 'Clear')}
+              type="submit"
+              disabled={isPending}
+              className="rounded-full bg-[var(--jt-olive-700)] px-3 py-1.5 text-xs font-bold text-[var(--jt-stone-50)] hover:bg-[var(--jt-olive-800)] disabled:opacity-60"
             >
-              <X className="h-4 w-4" />
+              {t('بحث', 'Search')}
             </button>
-          )}
+          </div>
+        </form>
+
+        <div className="mb-6 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+              <MapPin className="h-3 w-3" />
+              {t('اللواء / القضاء', 'District')}
+            </label>
+            <DistrictSelect
+              districts={districts}
+              value={district}
+              onChange={(key) => {
+                const clearedPlace =
+                  key &&
+                  placeId &&
+                  !places.filter((p) => placeMatchesDistrict(p, key)).some((v) => v.id === placeId)
+                    ? null
+                    : placeId;
+                setDistrict(key);
+                setPlaceId(clearedPlace);
+                navigate({ district: key, placeId: clearedPlace });
+              }}
+              locale={locale}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+              <MapPin className="h-3 w-3" />
+              {t('القرية / المكان (VCC)', 'Village / place (VCC)')}
+            </label>
+            <VillageCombobox
+              villages={villagesInDistrict}
+              value={placeId}
+              onChange={(id) => {
+                setPlaceId(id);
+                navigate({ placeId: id });
+              }}
+              locale={locale}
+              placeholder={t('ابحث عن قرية...', 'Search a village…')}
+            />
+          </div>
         </div>
 
-        <div className="mb-6 max-w-sm">
-          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
-            {t('اللواء / القضاء', 'District')}
-          </label>
-          <DistrictSelect
-            districts={districts}
-            value={district}
-            onChange={(key) => {
-              setDistrict(key);
-              const params = new URLSearchParams();
-              if (key) params.set('district', key);
-              router.push(params.toString() ? `/families?${params}` : '/families');
-            }}
-            locale={locale}
-          />
-        </div>
+        {hasActiveFilters && (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setDistrict(null);
+                setPlaceId(null);
+                startTransition(() => router.push('/families'));
+              }}
+              className="text-xs font-semibold text-[var(--jt-olive-700)] hover:text-[var(--jt-olive-900)]"
+            >
+              {t('مسح كل المرشّحات', 'Clear all filters')}
+            </button>
+          </div>
+        )}
 
-        {/* Direct entry — let user jump to a surname not yet in the top list */}
-        {query && filtered.length === 0 && (
+        {query.trim() && rows.length === 0 && (
           <div className="mb-6 rounded-2xl border border-[var(--jt-gold-400)]/40 bg-[var(--jt-gold-100)]/40 p-4 text-sm">
             <p className="text-[var(--jt-stone-800)]">
               {t(
-                'لم نجد هذا اللقب بين الأكثر شيوعًا. تستطيع الذهاب مباشرةً إلى صفحته:',
-                'Not in the top list — but you can jump straight to its page:',
+                'لم نجد هذا اللقب بهذه المرشّحات. تستطيع الذهاب مباشرةً إلى صفحته:',
+                'No matches with these filters — you can still open the surname page:',
               )}
             </p>
             <Link
-              href={`/families/${encodeURIComponent(query.trim())}`}
+              href={familyDetailHref(query.trim(), { district, placeId })}
               className="mt-2 inline-flex items-center gap-2 rounded-full bg-[var(--jt-olive-700)] px-4 py-2 text-xs font-bold text-[var(--jt-stone-50)] hover:bg-[var(--jt-olive-800)]"
             >
               {t(`اذهب إلى "${query.trim()}"`, `Go to "${query.trim()}"`)}
@@ -123,25 +236,26 @@ export function FamiliesIndexClient({
           </div>
         )}
 
-        {/* Grid */}
-        {filtered.length === 0 && !query ? (
+        {rows.length === 0 && !query.trim() ? (
           <div className="rounded-3xl border border-dashed border-[var(--jt-olive-300)]/60 bg-[var(--jt-olive-50)]/40 p-10 text-center text-sm text-[var(--jt-stone-700)]">
             {t(
-              'لم تُسجَّل أي عائلة بعد. ابدأ بإضافة شخص لشجرتك.',
-              'No families recorded yet. Add someone to your tree to get started.',
+              hasActiveFilters
+                ? 'لا عائلات تطابق هذه المرشّحات.'
+                : 'لم تُسجَّل أي عائلة بعد. ابدأ بإضافة شخص لشجرتك.',
+              hasActiveFilters
+                ? 'No families match these filters.'
+                : 'No families recorded yet. Add someone to your tree to get started.',
             )}
           </div>
         ) : (
           <p className="mb-4 text-xs text-[var(--jt-stone-500)]">
-            {t(
-              `يعرض ${filtered.length} من ${rows.length} لقبًا`,
-              `Showing ${filtered.length} of ${rows.length}`,
-            )}
+            {t(`يعرض ${rows.length} لقبًا`, `Showing ${rows.length} surnames`)}
+            {isPending ? t(' · جارٍ التحديث…', ' · Updating…') : ''}
           </p>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((row, i) => (
+          {rows.map((row, i) => (
             <motion.div
               key={row.surname}
               initial={{ opacity: 0, y: 8 }}
@@ -149,7 +263,7 @@ export function FamiliesIndexClient({
               transition={{ duration: 0.35, delay: Math.min(i * 0.015, 0.5) }}
             >
               <Link
-                href={`/families/${encodeURIComponent(row.surname)}`}
+                href={familyDetailHref(row.surname, { district, placeId })}
                 className="group flex items-center justify-between gap-4 rounded-2xl border border-[var(--jt-stone-200)] bg-[var(--card)] p-5 shadow-[var(--jt-shadow-sm)] transition-all hover:-translate-y-0.5 hover:border-[var(--jt-olive-400)] hover:shadow-[var(--jt-shadow-md)]"
               >
                 <div className="min-w-0 flex-1">

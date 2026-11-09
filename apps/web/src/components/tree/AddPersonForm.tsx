@@ -3,7 +3,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type MutableRefObject,
+} from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -40,6 +47,8 @@ import { addRelativeAction } from '@/data/user/relatives';
 import { personInputSchema } from '@/lib/tree/zodSchemas';
 import type { FamilyView } from '@/lib/tree/types';
 import type { Person } from '@/types/database';
+
+import { toEnglishPhonetic } from '@/lib/search/phonetic';
 
 import { FieldHint } from './FieldHint';
 import { PlaceCombobox } from './PlaceCombobox';
@@ -106,6 +115,9 @@ export function AddPersonForm({
   });
   const [motherChoice, setMotherChoice] = useState<string | null>(null);
   const [unrwaCardFile, setUnrwaCardFile] = useState<File | null>(null);
+  /** Last EN values we auto-filled from Arabic — do not overwrite user-typed EN. */
+  const autoFilledEnGivenRef = useRef<string | null>(null);
+  const autoFilledEnSurnameRef = useRef<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(personInputSchema) as Resolver<FormValues>,
@@ -257,6 +269,19 @@ export function AddPersonForm({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveMotherChoice]);
+
+  function syncEnFromArabic(
+    arValue: string,
+    enField: 'enGivenName' | 'enSurname',
+    autoRef: MutableRefObject<string | null>,
+  ) {
+    const currentEn = form.getValues(enField) ?? '';
+    const lastAuto = autoRef.current;
+    if (currentEn.trim() && currentEn !== lastAuto) return;
+    const phonetic = toEnglishPhonetic(arValue);
+    form.setValue(enField, phonetic, { shouldDirty: true });
+    autoRef.current = phonetic;
+  }
 
   function handleSubmit(values: FormValues) {
     // Block save when a relationship was picked but no anchor was chosen.
@@ -461,7 +486,14 @@ export function AddPersonForm({
                       dir="rtl"
                       placeholder="أحمد"
                       value={field.value ?? ''}
-                      onChange={field.onChange}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        syncEnFromArabic(
+                          e.target.value,
+                          'enGivenName',
+                          autoFilledEnGivenRef,
+                        );
+                      }}
                       onBlur={field.onBlur}
                       name={field.name}
                     />
@@ -485,7 +517,14 @@ export function AddPersonForm({
                       dir="rtl"
                       placeholder="البوز"
                       value={field.value ?? ''}
-                      onChange={field.onChange}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        syncEnFromArabic(
+                          e.target.value,
+                          'enSurname',
+                          autoFilledEnSurnameRef,
+                        );
+                      }}
                       onBlur={field.onBlur}
                       name={field.name}
                     />
@@ -799,7 +838,10 @@ export function AddPersonForm({
               name="unrwaRegistrationNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('رقم تسجيل الأونروا', 'UNRWA registration #')}</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>{t('رقم تسجيل الأونروا', 'UNRWA registration #')}</FormLabel>
+                    <FieldHint fieldKey="unrwaNumber" />
+                  </div>
                   <FormControl>
                     <Input value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
                   </FormControl>
@@ -812,7 +854,10 @@ export function AddPersonForm({
               name="familyCard1948Number"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('رقم بطاقة العائلة 1948', '1948 family card #')}</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>{t('رقم بطاقة العائلة 1948', '1948 family card #')}</FormLabel>
+                    <FieldHint fieldKey="familyCard1948" />
+                  </div>
                   <FormControl>
                     <Input value={field.value ?? ''} onChange={field.onChange} onBlur={field.onBlur} name={field.name} />
                   </FormControl>

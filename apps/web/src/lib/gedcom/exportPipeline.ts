@@ -1,6 +1,6 @@
 /**
  * Build a `GedcomSnapshot` from all rows in a Supabase tree, ready to
- * feed to `serializeGedcom`.
+ * feed to `serializeGedcom` (GEDCOM 7.0).
  *
  * Uses existing `gedcom_xref` columns when present (round-trip
  * preservation); synthesises stable xrefs otherwise so a tree that
@@ -13,8 +13,9 @@
  * from death/birth events), not `persons.is_living`.
  *
  * IFT Admin full export (`maskLivingPeople: false`) also emits:
- *   - person_identifiers as REFN + NOTE (UNRWA / family_card)
- *   - match-relevant fields already on the person: NAME records and
+ *   - person_identifiers as IDNO + TYPE (UNRWA / HOSTCARD1948 / …) and NOTE
+ *   - person_displacement as EVEN TYPE DISPLACEMENT / CAMPREGN when present
+ *   - match-relevant fields already on the person: NAME + TRAN/ROMN and
  *     origin via BIRT PLAC (and an ORIGIN NOTE when a place is known)
  * Living-mask behaviour above stays unchanged (identifiers withheld).
  */
@@ -35,10 +36,21 @@ import type {
   GedcomChildLink,
   GedcomEvent,
   GedcomFamily,
+  GedcomIdno,
   GedcomName,
   GedcomPerson,
   GedcomSnapshot,
 } from './types';
+
+interface DisplacementRow {
+  readonly person_id: string;
+  readonly host_country_first: string | null;
+  readonly host_country_current: string | null;
+  readonly refugee_status: string | null;
+  readonly camp_name: string | null;
+  readonly displacement_year: number | null;
+  readonly displacement_wave: string | null;
+}
 
 export interface ExportOptions {
   readonly maskLivingPeople?: boolean;
@@ -82,7 +94,7 @@ export async function exportTreeToSnapshot(
   // family; on their own, those tables hold every tree the user can read.
   const includeIdentifiers = options.maskLivingPeople !== true;
 
-  const [persons, families, childRows, names, personEvents, familyEvents, places, identifierRows] =
+  const [persons, families, childRows, names, personEvents, familyEvents, places, identifierRows, displacementRows] =
     await Promise.all([
       readAll<Person>((from, to) =>
         supabase
@@ -158,6 +170,18 @@ export async function exportTreeToSnapshot(
         : Promise.resolve(
             [] as { person_id: string; id_type: string; id_value: string }[]
           ),
+      includeIdentifiers
+        ? readAll<DisplacementRow>((from, to) =>
+            supabase
+              .from('person_displacement')
+              .select(
+                'person_id, host_country_first, host_country_current, refugee_status, camp_name, displacement_year, displacement_wave, persons!inner(tree_id)'
+              )
+              .eq('persons.tree_id', treeId)
+              .order('person_id')
+              .range(from, to)
+          )
+        : Promise.resolve([] as DisplacementRow[]),
     ]);
 
   // strip the joined `families` so we only keep the child-link fields
@@ -247,6 +271,11 @@ export async function exportTreeToSnapshot(
     identifiersByPerson.set(row.person_id, list);
   }
 
+  const displacementByPerson = new Map<string, DisplacementRow>();
+  for (const row of displacementRows) {
+    displacementByPerson.set(row.person_id, row);
+  }
+
   // ---- Build persons ----
   const gedcomPersons: GedcomPerson[] = persons.map((p: Person) => {
     const personNames = names
@@ -260,52 +289,35 @@ export async function exportTreeToSnapshot(
       ? []
       : events.filter((e: Event) => e.person_id === p.id);
 
-    const mappedNames: GedcomName[] =
-      personNames.length > 0
-        ? personNames.map((n: PersonName) => ({
-            nameType: n.name_type,
-            given: n.given_name ?? undefined,
-            surname: n.surname ?? undefined,
-            raw: n.gedcom_name ?? undefined,
-            lang: (n.lang === 'ar' ? 'ar' : 'en') as 'ar' | 'en',
-          }))
-        : [
-            {
-              nameType: 'birth' as const,
-              given:
-                p.display_name_ar ?? p.display_name_en ?? undefined,
-              lang: p.display_name_ar ? ('ar' as const) : ('en' as const),
-            },
-          ];
+    const mappedNames = buildPersonNames(p, personNames);
 
     const gedEvents = personEvents.map((e: Event) =>
       toGedcomEvent(e, placeLookup)
     );
 
     // Match-relevant fields already exported for every person:
-    //   - names → NAME records (above)
+    //   - names → NAME + TRAN/ROMN (above)
     //   - origin → BIRT PLAC when a birth event has a place
-    // IFT Admin full export also attaches identifiers + an ORIGIN NOTE.
+    // IFT Admin full export also attaches IDNO + displacement EVEN + ORIGIN NOTE.
     const extraNotes: string[] = [];
-    const refns: { type: string; value: string }[] = [];
+    const idnos: GedcomIdno[] = [];
     if (!masked && includeIdentifiers) {
       const ids = identifiersByPerson.get(p.id) ?? [];
       for (const id of ids) {
-        const refType =
-          id.id_type === 'unrwa_registration'
-            ? 'unrwa_registration'
-            : id.id_type === 'family_card_1948'
-              ? 'family_card'
-              : id.id_type;
-        refns.push({ type: refType, value: id.id_value });
-        if (id.id_type === 'unrwa_registration') {
-          extraNotes.push(`UNRWA: ${id.id_value}`);
-        } else if (id.id_type === 'family_card_1948') {
-          extraNotes.push(`family_card: ${id.id_value}`);
-        } else {
-          extraNotes.push(`${id.id_type}: ${id.id_value}`);
-        }
+        const idnoType = mapIdTypeToIdno(id.id_type);
+        idnos.push({
+          type: idnoType,
+          value: id.id_value,
+          note: idnoType === 'ILID' ? 'restricted' : undefined,
+        });
+        extraNotes.push(`${idnoType}: ${id.id_value}`);
       }
+
+      const disp = displacementByPerson.get(p.id);
+      if (disp) {
+        gedEvents.push(...displacementToEvents(disp));
+      }
+
       const birthPlace = gedEvents.find(
         (e) => e.eventType === 'BIRT' && e.place
       )?.place;
@@ -320,7 +332,7 @@ export async function exportTreeToSnapshot(
       names: mappedNames,
       events: gedEvents,
       notes: masked ? undefined : (p.notes ?? undefined),
-      refns: refns.length > 0 ? refns : undefined,
+      idnos: idnos.length > 0 ? idnos : undefined,
       extraNotes: extraNotes.length > 0 ? extraNotes : undefined,
     };
   });
@@ -366,7 +378,7 @@ export async function exportTreeToSnapshot(
   return {
     persons: gedcomPersons,
     families: gedcomFamilies,
-    header: { source: 'Juthoor', charset: 'UTF-8' },
+    header: { source: 'Juthoor', charset: 'UTF-8', version: '7.0' },
   };
 }
 
@@ -376,11 +388,140 @@ function toGedcomEvent(
 ): GedcomEvent {
   return {
     eventType: row.event_type as EventType,
+    typeDetail: row.description ?? undefined,
     dateRaw: row.date_value ?? undefined,
     year: row.date_year ?? undefined,
     place:
       (row.place_id && placeLookup.get(row.place_id)) ??
       row.place_name ??
       undefined,
+    note: row.notes ?? undefined,
   };
+}
+
+function formatNameBody(given?: string | null, surname?: string | null): string {
+  return [given ?? '', surname ? `/${surname}/` : '']
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+}
+
+/**
+ * One NAME record per person_names row, with TRAN (Arabic) / ROMN
+ * (English phonetic) attached when both scripts are available.
+ */
+function buildPersonNames(
+  p: Person,
+  personNames: readonly PersonName[]
+): GedcomName[] {
+  if (personNames.length === 0) {
+    const ar = p.display_name_ar ?? undefined;
+    const en = p.display_name_en ?? undefined;
+    const primary = ar ?? en;
+    return [
+      {
+        nameType: 'birth' as const,
+        given: primary,
+        lang: ar ? ('ar' as const) : ('en' as const),
+        raw: primary,
+        tran: ar,
+        romn: en && en !== ar ? en : undefined,
+      },
+    ];
+  }
+
+  const arRow = personNames.find((n) => n.lang === 'ar');
+  const enRow = personNames.find((n) => n.lang === 'en');
+  const displayEn = p.display_name_en ?? undefined;
+  const displayAr = p.display_name_ar ?? undefined;
+
+  return personNames.map((n) => {
+    const lang = (n.lang === 'ar' ? 'ar' : 'en') as 'ar' | 'en';
+    const body =
+      n.gedcom_name ??
+      (formatNameBody(n.given_name, n.surname) || undefined);
+    const arBody =
+      (arRow
+        ? arRow.gedcom_name ??
+          (formatNameBody(arRow.given_name, arRow.surname) || undefined)
+        : undefined) ?? displayAr;
+    const enBody =
+      (enRow
+        ? enRow.gedcom_name ??
+          (formatNameBody(enRow.given_name, enRow.surname) || undefined)
+        : undefined) ?? displayEn;
+
+    const isArabicScript = lang === 'ar' || /[\u0600-\u06FF]/.test(body ?? '');
+    return {
+      nameType: n.name_type,
+      given: n.given_name ?? undefined,
+      surname: n.surname ?? undefined,
+      raw: n.gedcom_name ?? undefined,
+      lang,
+      tran: isArabicScript ? body ?? arBody ?? undefined : arBody ?? undefined,
+      romn: !isArabicScript
+        ? body ?? enBody ?? undefined
+        : enBody && enBody !== body
+          ? enBody
+          : undefined,
+    };
+  });
+}
+
+/** Map `person_identifiers.id_type` → AIO2 IDNO TYPE. */
+export function mapIdTypeToIdno(idType: string): string {
+  const t = idType.trim().toLowerCase();
+  if (t === 'unrwa_registration' || t === 'unrwa') return 'UNRWA';
+  if (t === 'family_card_1948' || t === 'family_card' || t === 'hostcard1948') {
+    return 'HOSTCARD1948';
+  }
+  if (t === 'pa_id' || t === 'palestinian_id' || t === 'paid') return 'PAID';
+  if (t === 'pa_passport' || t === 'passport' || t === 'papassport') {
+    return 'PAPASSPORT';
+  }
+  if (t === 'il_id' || t === 'israeli_id' || t === 'ilid') return 'ILID';
+  return idType.replace(/\s+/g, '_').toUpperCase();
+}
+
+function displacementToEvents(disp: DisplacementRow): GedcomEvent[] {
+  const out: GedcomEvent[] = [];
+  const hasDisplacement =
+    disp.displacement_year != null ||
+    !!disp.displacement_wave ||
+    !!disp.host_country_first ||
+    !!disp.host_country_current ||
+    !!disp.refugee_status;
+
+  if (hasDisplacement) {
+    const noteParts = [
+      disp.displacement_wave ? `wave: ${disp.displacement_wave}` : null,
+      disp.refugee_status ? `status: ${disp.refugee_status}` : null,
+      disp.host_country_current &&
+      disp.host_country_current !== disp.host_country_first
+        ? `current host: ${disp.host_country_current}`
+        : null,
+    ].filter(Boolean) as string[];
+
+    out.push({
+      eventType: 'EVEN',
+      typeDetail: 'DISPLACEMENT',
+      year: disp.displacement_year ?? undefined,
+      dateRaw:
+        disp.displacement_year != null
+          ? String(disp.displacement_year)
+          : undefined,
+      place: disp.host_country_first ?? disp.host_country_current ?? undefined,
+      note: noteParts.length > 0 ? noteParts.join('; ') : undefined,
+    });
+  }
+
+  if (disp.camp_name) {
+    out.push({
+      eventType: 'EVEN',
+      typeDetail: 'CAMPREGN',
+      place: disp.camp_name,
+    });
+  }
+
+  return out;
 }

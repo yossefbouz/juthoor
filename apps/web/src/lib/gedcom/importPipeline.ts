@@ -76,10 +76,21 @@ export async function importGedcomSnapshot(
     xrefToPersonId.set(p.xref, inserted.id);
     personsInserted++;
 
-    // Primary name row
+    // Primary name row. FRS: female primary must be maiden, never married.
+    // If GEDCOM marks a woman's primary NAME as married, store maiden as
+    // primary and keep the married form as a secondary searchable row.
+    const rawPrimaryType = primary?.nameType ?? 'birth';
+    const femaleMarriedPrimary =
+      p.gender === 'F' && rawPrimaryType === 'married';
+    const primaryNameType = femaleMarriedPrimary
+      ? 'maiden'
+      : p.gender === 'F' && (rawPrimaryType === 'birth' || !primary?.nameType)
+        ? 'maiden'
+        : rawPrimaryType;
+
     await supabase.from('person_names').insert({
       person_id: inserted.id,
-      name_type: primary?.nameType ?? 'birth',
+      name_type: primaryNameType,
       is_primary: true,
       lang: primary?.lang ?? 'en',
       given_name: given,
@@ -87,7 +98,19 @@ export async function importGedcomSnapshot(
       gedcom_name: primary?.raw ?? null,
     });
 
-    // Events
+    if (femaleMarriedPrimary && primary) {
+      await supabase.from('person_names').insert({
+        person_id: inserted.id,
+        name_type: 'married',
+        is_primary: false,
+        lang: primary.lang ?? 'en',
+        given_name: given,
+        surname,
+        gedcom_name: primary.raw ?? null,
+      });
+    }
+
+    // Events (EVEN.TYPE → events.description; NOTE → events.notes)
     for (const ev of p.events) {
       const match = matchPlace(ev.place, places);
       if (ev.place && match.placeId === null) {
@@ -100,6 +123,8 @@ export async function importGedcomSnapshot(
         date_year: ev.year ?? null,
         place_id: match.placeId,
         place_name: match.placeId === null ? match.rawName || null : null,
+        description: ev.typeDetail ?? null,
+        notes: ev.note ?? null,
       });
       eventsInserted++;
     }
@@ -145,6 +170,8 @@ export async function importGedcomSnapshot(
         date_year: ev.year ?? null,
         place_id: match.placeId,
         place_name: match.placeId === null ? match.rawName || null : null,
+        description: ev.typeDetail ?? null,
+        notes: ev.note ?? null,
       });
       eventsInserted++;
     }
@@ -189,7 +216,8 @@ export async function importGedcomSnapshot(
 
 /**
  * Pick the best name for a display field in the requested language.
- * Falls back to the primary name when no language-specific one exists.
+ * Prefers lang-tagged NAME rows, then TRAN (ar) / ROMN (en), then the
+ * primary NAME when its script matches.
  */
 function joinName(
   given: string | null | undefined,
@@ -203,6 +231,13 @@ function joinName(
     const s = langMatch.surname ?? '';
     return `${g} ${s}`.trim() || null;
   }
+
+  // GEDCOM 7: TRAN carries Arabic script; ROMN carries phonetic/English.
+  for (const n of names) {
+    if (lang === 'ar' && n.tran) return n.tran.trim() || null;
+    if (lang === 'en' && n.romn) return n.romn.trim() || null;
+  }
+
   // Only fall back if the primary matches the target lang family.
   // Prevents Arabic primary name from landing in display_name_en.
   const g = given ?? '';

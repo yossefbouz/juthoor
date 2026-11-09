@@ -1,10 +1,18 @@
 /**
- * GEDCOM 5.5.1 → Juthoor snapshot parser.
+ * GEDCOM 5.5.1 / 7.0 → Juthoor snapshot parser.
  *
  * Wraps `parse-gedcom` (which returns a unist AST) and walks the tree
  * extracting INDI and FAM records into our flat `GedcomSnapshot`
  * shape. We deliberately do NOT use `compact()` from parse-gedcom
  * because it discards xref pointers we need for linking.
+ *
+ * Detects GEDC VERS from HEAD (defaults to 5.5.1 when absent). Export
+ * always writes 7.0; import accepts both. GEDCOM 7 extras understood:
+ *   - HEAD.SCHMA (optional)
+ *   - INDI.IDNO + TYPE
+ *   - NAME.TRAN / NAME.ROMN
+ *   - EVEN.TYPE (DISPLACEMENT / CAMPREGN)
+ *   - CONT continuation lines under NOTE / IDNO
  *
  * Why roll our own walker:
  *   - We must preserve the `@I1@`/`@F1@` xrefs (for gedcom_xref column).
@@ -27,6 +35,7 @@ import type {
   GedcomChildLink,
   GedcomEvent,
   GedcomFamily,
+  GedcomIdno,
   GedcomName,
   GedcomPerson,
   GedcomSnapshot,
@@ -79,14 +88,41 @@ export function parseGedcom(raw: string): GedcomSnapshot {
 // ============================================================================
 
 function parseHeader(node: AstNode): GedcomSnapshot['header'] {
-  const header: { source?: string; submitter?: string; charset?: string } = {};
+  const header: {
+    source?: string;
+    submitter?: string;
+    charset?: string;
+    version?: string;
+    schemaTags?: string[];
+  } = {};
+
   for (const child of node.children ?? []) {
     const tag = tagOf(child);
     const value = valueOf(child);
     if (tag === 'SOUR' && value) header.source = value;
     if (tag === 'SUBM' && value) header.submitter = value;
     if (tag === 'CHAR' && value) header.charset = value;
+    if (tag === 'GEDC') {
+      for (const g of child.children ?? []) {
+        if (tagOf(g) === 'VERS') {
+          const v = valueOf(g);
+          if (v) header.version = v;
+        }
+      }
+    }
+    if (tag === 'SCHMA') {
+      const tags: string[] = [];
+      for (const s of child.children ?? []) {
+        if (tagOf(s) === 'TAG') {
+          const tv = valueOf(s);
+          if (tv) tags.push(tv);
+        }
+      }
+      if (tags.length > 0) header.schemaTags = tags;
+    }
   }
+
+  if (!header.version) header.version = '5.5.1';
   return header;
 }
 
@@ -100,25 +136,75 @@ function parseIndividual(node: AstNode): GedcomPerson | null {
 
   const names: GedcomName[] = [];
   const events: GedcomEvent[] = [];
+  const idnos: GedcomIdno[] = [];
+  const refns: { type: string; value: string }[] = [];
   let gender: GenderType = 'U';
   let notes: string | undefined;
 
   for (const child of node.children ?? []) {
     const tag = tagOf(child);
-    const value = valueOf(child);
+    const value = joinedValue(child);
 
     if (tag === 'NAME' && value) {
-      names.push(parseNameLine(value, nameTypeOf(child)));
+      names.push(parseName(child, value));
     } else if (tag === 'SEX') {
       gender = normaliseGender(value);
     } else if (tag === 'NOTE' && value) {
       notes = value;
+    } else if (tag === 'IDNO' && value) {
+      const idno = parseIdno(child, value);
+      if (idno) idnos.push(idno);
+    } else if (tag === 'REFN' && value) {
+      // Legacy 5.5.1: `REFN type:value`
+      const colon = value.indexOf(':');
+      if (colon > 0) {
+        refns.push({
+          type: value.slice(0, colon).trim(),
+          value: value.slice(colon + 1).trim(),
+        });
+      } else {
+        refns.push({ type: 'REFN', value });
+      }
     } else if (tag && KNOWN_EVENT_TYPES.has(tag as EventType)) {
       events.push(parseEvent(child, tag as EventType));
     }
   }
 
-  return { xref, gender, names, events, notes };
+  return {
+    xref,
+    gender,
+    names,
+    events,
+    notes,
+    idnos: idnos.length > 0 ? idnos : undefined,
+    refns: refns.length > 0 ? refns : undefined,
+  };
+}
+
+function parseName(node: AstNode, raw: string): GedcomName {
+  const base = parseNameLine(raw, nameTypeOf(node));
+  let tran: string | undefined;
+  let romn: string | undefined;
+  let lang = base.lang;
+
+  for (const child of node.children ?? []) {
+    const tag = tagOf(child);
+    const value = joinedValue(child);
+    if (tag === 'TRAN' && value) {
+      tran = value;
+      for (const g of child.children ?? []) {
+        if (tagOf(g) === 'LANG') {
+          const lv = valueOf(g)?.toLowerCase();
+          if (lv === 'ar' || lv === 'en') lang = lv;
+        }
+      }
+      if (!lang) lang = detectLang(value);
+    } else if (tag === 'ROMN' && value) {
+      romn = value;
+    }
+  }
+
+  return { ...base, lang, tran, romn };
 }
 
 function parseNameLine(raw: string, nameType: NameType): GedcomName {
@@ -132,6 +218,19 @@ function parseNameLine(raw: string, nameType: NameType): GedcomName {
   }
   // No slashes: treat the whole thing as given name.
   return { given: raw.trim() || undefined, nameType, raw, lang: detectLang(raw) };
+}
+
+function parseIdno(node: AstNode, value: string): GedcomIdno | null {
+  let type = 'IDNO';
+  let note: string | undefined;
+  for (const child of node.children ?? []) {
+    const tag = tagOf(child);
+    const v = joinedValue(child);
+    if (tag === 'TYPE' && v) type = v.trim().toUpperCase();
+    if (tag === 'NOTE' && v) note = v;
+  }
+  if (!value.trim()) return null;
+  return { type, value: value.trim(), note };
 }
 
 function nameTypeOf(node: AstNode): NameType {
@@ -208,19 +307,25 @@ function parseEvent(node: AstNode, eventType: EventType): GedcomEvent {
   let dateRaw: string | undefined;
   let year: number | undefined;
   let place: string | undefined;
+  let typeDetail: string | undefined;
+  let note: string | undefined;
 
   for (const child of node.children ?? []) {
     const tag = tagOf(child);
-    const value = valueOf(child);
+    const value = joinedValue(child);
     if (tag === 'DATE' && value) {
       dateRaw = value;
       year = extractYear(value);
     } else if (tag === 'PLAC' && value) {
       place = value;
+    } else if (tag === 'TYPE' && value) {
+      typeDetail = value;
+    } else if (tag === 'NOTE' && value) {
+      note = value;
     }
   }
 
-  return { eventType, dateRaw, year, place };
+  return { eventType, typeDetail, dateRaw, year, place, note };
 }
 
 function extractYear(dateRaw: string): number | undefined {
@@ -268,6 +373,21 @@ function valueOf(node: AstNode): string | undefined {
     return node.value;
   }
   return undefined;
+}
+
+/** Payload plus any CONT continuation lines under the node. */
+function joinedValue(node: AstNode): string | undefined {
+  const base = valueOf(node) ?? '';
+  const contParts: string[] = [];
+  for (const child of node.children ?? []) {
+    if (tagOf(child) === 'CONT') {
+      // CONT may carry an empty string (explicit blank line).
+      contParts.push(typeof child.value === 'string' ? child.value : (valueOf(child) ?? ''));
+    }
+  }
+  if (!base && contParts.length === 0) return undefined;
+  if (contParts.length === 0) return base || undefined;
+  return [base, ...contParts].join('\n');
 }
 
 function xrefOf(node: AstNode): string | undefined {

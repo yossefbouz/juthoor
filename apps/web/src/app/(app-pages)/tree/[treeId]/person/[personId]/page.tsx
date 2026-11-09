@@ -157,7 +157,21 @@ export default async function PersonPage({ params }: Props) {
       displacement?.displacement_wave ||
       displacement?.land_property_notes ||
       displacement?.oral_history ||
-      displacement?.oral_history_provenance,
+      displacement?.oral_history_provenance ||
+      displacement?.unrwa_field_of_operations ||
+      displacement?.unrwa_registration_date ||
+      displacement?.unrwa_registration_status ||
+      displacement?.unrwa_services_area ||
+      displacement?.host_travel_document_number ||
+      displacement?.host_id_residency_number ||
+      displacement?.pa_id_number ||
+      displacement?.palestinian_passport_number ||
+      displacement?.other_identity_document ||
+      displacement?.land_record_reference ||
+      displacement?.land_registry ||
+      displacement?.property_location ||
+      displacement?.ownership_nature ||
+      (canEditOptional && displacement?.israeli_id_number),
   );
   const hasStoryContent = Boolean(
     personProfile?.achievements_ar ||

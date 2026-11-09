@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { toArabicSync, transliterateLatinTokenToArabic } from '../phonetic';
+import {
+  toArabicSync,
+  toEnglishPhonetic,
+  transliterateLatinTokenToArabic,
+} from '../phonetic';
 
 /**
  * Parity with SQL transliterate_to_arabic /
@@ -48,5 +52,35 @@ describe('transliterateLatinTokenToArabic digraphs', () => {
   it('maps kh/sh digraphs', () => {
     expect(transliterateLatinTokenToArabic('khatib')).toBe('ختيب');
     expect(transliterateLatinTokenToArabic('sharif')).toBe('شريف');
+  });
+});
+
+describe('toEnglishPhonetic', () => {
+  it('romanizes common Arabic letters and digraphs', () => {
+    // Simple letter map (no short-vowel insertion): أحمد → Ahmd, not Ahmad.
+    expect(toEnglishPhonetic('أحمد')).toBe('Ahmd');
+    expect(toEnglishPhonetic('خالد')).toBe('Khald');
+    expect(toEnglishPhonetic('شريف')).toBe('Shryf');
+    expect(toEnglishPhonetic('ثابت')).toBe('Thabt');
+    expect(toEnglishPhonetic('ذاكر')).toBe('Dhakr');
+    expect(toEnglishPhonetic('غسان')).toBe('Ghsan');
+    expect(toEnglishPhonetic('قاسم')).toBe('Qasm');
+  });
+
+  it('maps ع/ء to apostrophe and ة to a/h', () => {
+    expect(toEnglishPhonetic('عمر')).toBe("'mr");
+    expect(toEnglishPhonetic('فاطمة')).toBe('Fatma');
+    expect(toEnglishPhonetic('شاء')).toBe("Sha'");
+  });
+
+  it('prefixes ال as al-', () => {
+    expect(toEnglishPhonetic('الحاج')).toBe('al-Haj');
+    expect(toEnglishPhonetic('البوز')).toBe('al-Bwz');
+  });
+
+  it('handles multi-token names and empty input', () => {
+    expect(toEnglishPhonetic('')).toBe('');
+    expect(toEnglishPhonetic('  ')).toBe('');
+    expect(toEnglishPhonetic('أحمد خالد')).toBe('Ahmd Khald');
   });
 });

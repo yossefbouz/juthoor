@@ -4,6 +4,7 @@
  * receive an already-authenticated Supabase client from the caller.
  */
 
+import { toEnglishPhonetic } from '@/lib/search/phonetic';
 import type { FatherInheritanceDefaults } from '@/lib/tree/inheritance';
 import type { PersonInput } from '@/lib/tree/zodSchemas';
 import type { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
@@ -164,6 +165,40 @@ export function applyUnknownNameDefaults(
   return { arGiven, arSurname, enGiven, enSurname };
 }
 
+/**
+ * Resolve primary name_type. Women always use maiden; a married type
+ * passed for gender F is coerced (FRS hard rule).
+ */
+export function resolvePrimaryNameType(
+  gender: PersonInput['gender'],
+  requested?: PersonInput['nameType']
+): NonNullable<PersonInput['nameType']> {
+  if (gender === 'F') return 'maiden';
+  if (!requested || requested === 'maiden' || requested === 'married') {
+    return 'birth';
+  }
+  return requested;
+}
+
+/** Prefer explicit EN; otherwise romanize AR for display_name_en. */
+export function englishDisplayFromParts(
+  enGiven: string | undefined,
+  enSurname: string | undefined,
+  arGiven: string | undefined,
+  arSurname: string | undefined
+): string | null {
+  const explicit = joinDisplay(enGiven, enSurname);
+  if (explicit) return explicit;
+
+  const romGiven =
+    arGiven && arGiven !== UNKNOWN_AR ? toEnglishPhonetic(arGiven) : undefined;
+  const romSurname =
+    arSurname && arSurname !== UNKNOWN_AR
+      ? toEnglishPhonetic(arSurname)
+      : undefined;
+  return joinDisplay(romGiven || undefined, romSurname || undefined);
+}
+
 export async function createPersonWithPrimaryName(
   supabase: SupabaseServerClient,
   input: PersonInput,
@@ -176,8 +211,8 @@ export async function createPersonWithPrimaryName(
   );
 
   const arDisplay = joinDisplay(arGiven, arSurname);
-  const enDisplay = joinDisplay(enGiven, enSurname);
-  const nameType = input.gender === 'F' ? 'maiden' : 'birth';
+  const enDisplay = englishDisplayFromParts(enGiven, enSurname, arGiven, arSurname);
+  const nameType = resolvePrimaryNameType(input.gender, input.nameType);
 
   const fatherGivenAr = blankToUndefined(input.fatherGivenAr);
   const fatherSurnameAr = blankToUndefined(input.fatherSurnameAr);

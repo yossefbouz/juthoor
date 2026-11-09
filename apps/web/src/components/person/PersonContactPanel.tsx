@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Loader2, Mail, Phone, Shield } from 'lucide-react';
+import { Eye, Loader2, Mail, MapPin, Phone, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 import { useLocale } from '@/contexts/LocaleContext';
@@ -10,12 +10,20 @@ import {
 } from '@/data/user/personContacts';
 import { createContactRelayAction } from '@/data/user/contactRelay';
 
+const PREFERRED_LABELS: Record<string, { ar: string; en: string }> = {
+  email: { ar: 'البريد', en: 'Email' },
+  mobile: { ar: 'الجوال', en: 'Mobile' },
+  messaging: { ar: 'الرسائل', en: 'Messaging' },
+  do_not_contact: { ar: 'عدم التواصل', en: 'Do not contact' },
+};
+
 /**
  * Consent-gated contact fields. Revealing values writes an access_log row.
  * Empty / denied contacts render a short privacy note (no logging).
  */
 export function PersonContactPanel({ personId }: { readonly personId: string }) {
-  const { t, dir } = useLocale();
+  const { t, dir, locale } = useLocale();
+  const isAR = locale === 'ar';
   const [contact, setContact] = useState<PersonContact | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,7 +45,18 @@ export function PersonContactPanel({ personId }: { readonly personId: string }) 
     }
   }
 
-  const hasValues = Boolean(contact?.email || contact?.phone);
+  const hasValues = Boolean(
+    contact?.email ||
+      contact?.phone ||
+      contact?.current_address ||
+      contact?.current_country ||
+      contact?.current_city ||
+      contact?.preferred_method,
+  );
+
+  const preferredLabel = contact?.preferred_method
+    ? PREFERRED_LABELS[contact.preferred_method]
+    : null;
 
   return (
     <section
@@ -136,6 +155,29 @@ export function PersonContactPanel({ personId }: { readonly personId: string }) 
             <li className="flex items-center gap-2">
               <Phone className="h-3.5 w-3.5 text-[var(--jt-olive-700)]" aria-hidden />
               <span dir="ltr">{contact.phone}</span>
+            </li>
+          ) : null}
+          {contact?.current_country || contact?.current_city || contact?.current_address ? (
+            <li className="flex items-start gap-2">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--jt-olive-700)]" aria-hidden />
+              <span>
+                {[contact.current_city, contact.current_country]
+                  .filter(Boolean)
+                  .join(', ')}
+                {contact.current_address ? (
+                  <>
+                    {(contact.current_city || contact.current_country) ? (
+                      <br />
+                    ) : null}
+                    {contact.current_address}
+                  </>
+                ) : null}
+              </span>
+            </li>
+          ) : null}
+          {preferredLabel ? (
+            <li className="text-xs text-[var(--jt-stone-600)]">
+              {t('المفضلة', 'Preferred')}: {isAR ? preferredLabel.ar : preferredLabel.en}
             </li>
           ) : null}
         </ul>

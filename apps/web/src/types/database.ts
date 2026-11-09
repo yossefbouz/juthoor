@@ -273,6 +273,13 @@ type MutablePersonProfile = {
   contact_consent: boolean;
   contact_email: string | null;
   contact_phone: string | null;
+  current_country: string | null;
+  current_city: string | null;
+  current_address: string | null;
+  preferred_contact_method: string | null;
+  contact_email_enc: string | null;
+  contact_phone_enc: string | null;
+  current_address_enc: string | null;
   contribution_consent: boolean;
   updated_at: string;
   updated_by: string | null;
@@ -291,6 +298,20 @@ type MutablePersonDisplacement = {
   land_property_notes: string | null;
   oral_history: string | null;
   oral_history_provenance: string | null;
+  unrwa_field_of_operations: string | null;
+  unrwa_registration_date: number | null;
+  unrwa_registration_status: string | null;
+  unrwa_services_area: string | null;
+  host_travel_document_number: string | null;
+  host_id_residency_number: string | null;
+  pa_id_number: string | null;
+  palestinian_passport_number: string | null;
+  israeli_id_number: string | null;
+  other_identity_document: string | null;
+  land_record_reference: string | null;
+  land_registry: string | null;
+  property_location: string | null;
+  ownership_nature: string | null;
   updated_at: string;
   updated_by: string | null;
 };
@@ -390,7 +411,14 @@ type MutablePerson = {
 type MutablePersonIdentifier = {
   id: string;
   person_id: string;
-  id_type: 'unrwa_registration' | 'family_card_1948';
+  id_type:
+    | 'unrwa_registration'
+    | 'family_card_1948'
+    | 'pa_id'
+    | 'pa_passport'
+    | 'host_travel_doc'
+    | 'host_id_residency'
+    | 'israeli_id';
   id_value: string;
   evidence_attachment_id: string | null;
   created_at: string;
@@ -640,7 +668,7 @@ export type Database = {
         Row: MutablePersonIdentifier;
         Insert: Partial<MutablePersonIdentifier> & {
           person_id: string;
-          id_type: 'unrwa_registration' | 'family_card_1948';
+          id_type: MutablePersonIdentifier['id_type'];
           id_value: string;
         };
         Update: Partial<MutablePersonIdentifier>;
@@ -1051,7 +1079,15 @@ export type Database = {
       };
       get_person_contact: {
         Args: { p_person_id: string };
-        Returns: Json;
+        Returns: {
+          contact_email: string | null;
+          contact_phone: string | null;
+          contact_consent: boolean;
+          current_country: string | null;
+          current_city: string | null;
+          current_address: string | null;
+          preferred_contact_method: string | null;
+        }[];
       };
       respond_contact_relay: {
         Args: { p_relay_id: string; p_status: string };
@@ -1090,6 +1126,20 @@ export type Database = {
           p_oral_history?: string | null;
           p_oral_history_provenance?: string | null;
           p_unrwa_evidence_attachment_id?: string | null;
+          p_unrwa_field_of_operations?: string | null;
+          p_unrwa_registration_date?: number | null;
+          p_unrwa_registration_status?: string | null;
+          p_unrwa_services_area?: string | null;
+          p_host_travel_document_number?: string | null;
+          p_host_id_residency_number?: string | null;
+          p_pa_id_number?: string | null;
+          p_palestinian_passport_number?: string | null;
+          p_israeli_id_number?: string | null;
+          p_other_identity_document?: string | null;
+          p_land_record_reference?: string | null;
+          p_land_registry?: string | null;
+          p_property_location?: string | null;
+          p_ownership_nature?: string | null;
         };
         Returns: MutablePersonDisplacement;
       };

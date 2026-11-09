@@ -68,6 +68,8 @@ Required in `apps/web/.env.local` (and root examples):
 | `NEXT_PUBLIC_SUPABASE_URL` | browser + server | Local: `http://127.0.0.1:54321` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | Publishable / anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Service-role key. Needed for account closure (`deleteAccountAction` → Auth `admin.deleteUser` and archive-vault writes). Never prefix with `NEXT_PUBLIC_`. Never commit a real value. |
+| `CONTACT_ENCRYPTION_KEY` | **server only** | Required in any environment that accepts contact-form submissions. Symmetric secret used to encrypt contact payloads at rest. Generate a long random value (32+ bytes). Never prefix with `NEXT_PUBLIC_`. Never commit a real value. |
+| `NEXT_PUBLIC_PRIVACY_EMAIL` | browser + server | Privacy / data-protection contact shown on the privacy policy. Default: `privacy@juthoor.app`. |
 
 ```cmd
 cd apps\web
@@ -138,7 +140,7 @@ On `/tree/<id>/person/<personId>` you see 5 slots (Parents up, Siblings right in
 
 ### Phase 4 — GEDCOM export + import ✅
 
-**Export** — click **تصدير GEDCOM** (top of tree landing). Browser downloads `juthoor-tree-<id>.ged` with valid GEDCOM 5.5.1 (unique xrefs; collision-free even when some rows came from an earlier import).
+**Export** — click **تصدير GEDCOM 7** (top of tree landing). Browser downloads `juthoor-tree-<id>.ged` as GEDCOM 7.0 (unique xrefs; collision-free even when some rows came from an earlier import). Import still accepts both 5.5.1 and 7.0.
 
 **Import** — click **استيراد GEDCOM** → pick any `.ged` file up to 5 MB → Import → dialog reports counts (persons, families, events, unmatchedPlaces).
 
@@ -259,3 +261,19 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 A backup with those values lives at `apps/web/.env.local.remote-backup`.
 
 Remote is already migrated through `20260417140000` and has 263 seeded villages. To push future migrations to remote without the Supabase CLI link, use the Management API helper pattern documented in `apps/database/README.md` (or ask me — I'll apply it with the Management API token).
+
+---
+
+## 9. Staging vs production (ops)
+
+Keep **staging** and **production** as separate Supabase projects (and separate web env files). Do not reuse production URL, anon, or service-role keys in staging. Staging Auth redirect URLs and email templates must point at the staging web origin only.
+
+Checklist and smoke items: [`docs/OPS_STAGING.md`](docs/OPS_STAGING.md).
+
+### Backup / disaster recovery
+
+Before treating an environment as production-ready, work through the backup and restore checklist in [`docs/OPS_BACKUP_DR.md`](docs/OPS_BACKUP_DR.md) (automated backups, storage policy, env inventory, restore drill).
+
+### Contact encryption key
+
+Any deploy that accepts contact-form traffic must set `CONTACT_ENCRYPTION_KEY` in server env (see `.env.local.example`). Without it, contact payloads cannot be stored encrypted. Rotate the key deliberately and keep the old value available only if you still need to decrypt historical rows.

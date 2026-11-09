@@ -262,3 +262,102 @@ export function toArabicSync(input: string): TransliteratedInput {
   if (containsArabic(trimmed)) return { original: trimmed, arabic: trimmed };
   return { original: trimmed, arabic: fallbackTransliterate(trimmed) };
 }
+
+/** Strip Arabic combining marks (tashkeel / tatweel) before romanization. */
+const ARABIC_MARKS = /[\u064B-\u065F\u0670\u0640]/g;
+
+/**
+ * Simple Arabic → Latin romanization for English phonetic auto-fill.
+ * Digraphs: خ=kh, ش=sh, ث=th, ذ=dh, غ=gh, ق=q, ع=', ء=', ة=a/h, ال=al-.
+ */
+export function toEnglishPhonetic(arabic: string): string {
+  const trimmed = arabic.trim().replace(ARABIC_MARKS, '');
+  if (!trimmed) return '';
+
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  return tokens.map(romanizeArabicToken).filter(Boolean).join(' ');
+}
+
+function romanizeArabicToken(token: string): string {
+  let i = 0;
+  let out = '';
+
+  if (token.startsWith('ال') && token.length > 2) {
+    out += 'al-';
+    i = 2;
+  }
+
+  while (i < token.length) {
+    const ch = token[i];
+    const digraphs: Record<string, string> = {
+      خ: 'kh',
+      ش: 'sh',
+      ث: 'th',
+      ذ: 'dh',
+      غ: 'gh',
+    };
+    if (ch in digraphs) {
+      out += digraphs[ch];
+      i += 1;
+      continue;
+    }
+
+    if (ch === 'ة') {
+      // Word-final ta marbuta → a; otherwise h.
+      out += i === token.length - 1 ? 'a' : 'h';
+      i += 1;
+      continue;
+    }
+
+    const letters: Record<string, string> = {
+      ا: 'a',
+      أ: 'a',
+      إ: 'i',
+      آ: 'a',
+      ب: 'b',
+      ت: 't',
+      ج: 'j',
+      ح: 'h',
+      د: 'd',
+      ر: 'r',
+      ز: 'z',
+      س: 's',
+      ص: 's',
+      ض: 'd',
+      ط: 't',
+      ظ: 'z',
+      ع: "'",
+      ف: 'f',
+      ق: 'q',
+      ك: 'k',
+      ل: 'l',
+      م: 'm',
+      ن: 'n',
+      ه: 'h',
+      و: 'w',
+      ي: 'y',
+      ى: 'a',
+      ء: "'",
+      ؤ: "'",
+      ئ: "'",
+      ة: 'a',
+    };
+    if (ch in letters) {
+      out += letters[ch];
+    } else if (/[A-Za-z0-9'-]/.test(ch)) {
+      out += ch;
+    }
+    i += 1;
+  }
+
+  return capitalizePhoneticToken(out);
+}
+
+function capitalizePhoneticToken(token: string): string {
+  if (!token) return '';
+  // Keep al- lowercase article; capitalize the rest.
+  if (token.startsWith('al-') && token.length > 3) {
+    return `al-${token[3].toUpperCase()}${token.slice(4)}`;
+  }
+  return token[0].toUpperCase() + token.slice(1);
+}

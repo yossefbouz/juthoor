@@ -12,12 +12,29 @@ function looksArabic(s: string | null): boolean {
   return /[؀-ۿ]/.test(s);
 }
 
-export function FamilyClient({ overview, gallery = [] }: { overview: FamilySurnameOverview; gallery?: FamilyGalleryItem[] }) {
+function familiesIndexHref(filters: { district?: string | null; placeId?: string | null }): string {
+  const params = new URLSearchParams();
+  if (filters.district) params.set('district', filters.district);
+  if (filters.placeId) params.set('placeId', filters.placeId);
+  const qs = params.toString();
+  return qs ? `/families?${qs}` : '/families';
+}
+
+export function FamilyClient({
+  overview,
+  gallery = [],
+  filters = {},
+}: {
+  overview: FamilySurnameOverview;
+  gallery?: FamilyGalleryItem[];
+  filters?: { district?: string | null; placeId?: string | null };
+}) {
   const { t, locale, dir } = useLocale();
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   const Back = locale === 'ar' ? ChevronLeft : ArrowLeft;
 
   const isAr = looksArabic(overview.surname);
+  const hasPlaceFilter = Boolean(filters.district || filters.placeId);
 
   return (
     <div dir={dir} className="relative min-h-full bg-[var(--background)]">
@@ -29,11 +46,11 @@ export function FamilyClient({ overview, gallery = [] }: { overview: FamilySurna
         </div>
         <div className="relative mx-auto max-w-5xl px-6 py-10 md:px-10 md:py-14">
           <Link
-            href="/search"
+            href={familiesIndexHref(filters)}
             className="mb-6 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--jt-olive-700)] hover:text-[var(--jt-olive-900)]"
           >
             <Back className="h-3.5 w-3.5" />
-            {t('عودة للبحث', 'Back to search')}
+            {t('عودة للعائلات', 'Back to families')}
           </Link>
 
           <motion.div
@@ -55,8 +72,12 @@ export function FamilyClient({ overview, gallery = [] }: { overview: FamilySurna
             </h1>
             <p className="mt-3 max-w-2xl text-[var(--jt-stone-600)] md:text-lg">
               {t(
-                'كل من يحمل هذا اللقب — مصنّفًا حسب القرية والشجرة. عائلات ربما لم تلتقِ من قبل قد تكون ذات جذرٍ واحد.',
-                'Everyone bearing this surname — grouped by village and tree. Families that never met may share a root.',
+                hasPlaceFilter
+                  ? 'حاملو هذا اللقب ضمن المرشّحات المختارة (قضاء / قرية) — مصنّفون حسب القرية والشجرة.'
+                  : 'كل من يحمل هذا اللقب — مصنّفًا حسب القرية والشجرة. عائلات ربما لم تلتقِ من قبل قد تكون ذات جذرٍ واحد.',
+                hasPlaceFilter
+                  ? 'People with this surname within your district / village filters — grouped by village and tree.'
+                  : 'Everyone bearing this surname — grouped by village and tree. Families that never met may share a root.',
               )}
             </p>
           </motion.div>

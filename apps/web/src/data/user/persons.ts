@@ -5,15 +5,19 @@ import { z } from 'zod';
 
 import { authActionClient } from '@/lib/safe-action';
 import {
+  FEMALE_MAIDEN_SURNAME_MESSAGE,
   genderUIEnum,
+  nameTypeEnum,
   personInputSchema,
 } from '@/lib/tree/zodSchemas';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 
 import {
   createPersonWithPrimaryName,
+  englishDisplayFromParts,
   joinDisplay,
   loadFatherInheritanceDefaults,
+  resolvePrimaryNameType,
   toUserFacingDbError,
   type SupabaseServerClient,
 } from './personCreate';
@@ -195,6 +199,7 @@ const upgradePlaceholderPersonSchema = z
     enGivenName: z.string().trim().min(1).max(100).optional(),
     enSurname: z.string().trim().max(100).optional(),
     gender: genderUIEnum,
+    nameType: nameTypeEnum.optional(),
     birthYear: yearSchema.optional(),
     deathYear: yearSchema.optional(),
     placeOfOriginId: z.string().uuid().optional(),
@@ -210,6 +215,13 @@ const upgradePlaceholderPersonSchema = z
       input.deathYear === undefined ||
       input.deathYear >= input.birthYear,
     { message: 'Death year cannot be before birth year', path: ['deathYear'] }
+  )
+  .refine(
+    (input) => !(input.gender === 'F' && input.nameType === 'married'),
+    {
+      message: FEMALE_MAIDEN_SURNAME_MESSAGE,
+      path: ['nameType'],
+    }
   );
 
 export const upgradePlaceholderPersonAction = authActionClient
@@ -233,10 +245,18 @@ export const upgradePlaceholderPersonAction = authActionClient
       throw new Error('Tree mismatch');
     }
 
+    if (parsedInput.gender === 'F' && parsedInput.nameType === 'married') {
+      throw new Error(FEMALE_MAIDEN_SURNAME_MESSAGE);
+    }
+
     const arDisplay =
       joinDisplay(parsedInput.arGivenName, parsedInput.arSurname) ?? null;
-    const enDisplay =
-      joinDisplay(parsedInput.enGivenName, parsedInput.enSurname) ?? null;
+    const enDisplay = englishDisplayFromParts(
+      parsedInput.enGivenName,
+      parsedInput.enSurname,
+      parsedInput.arGivenName,
+      parsedInput.arSurname
+    );
 
     // Years and place live on `events` (GEDCOM BIRT/DEAT), NOT on the
     // persons row — the persons table has no birth_year/death_year/
@@ -271,7 +291,11 @@ export const upgradePlaceholderPersonAction = authActionClient
     }
 
     // Replace the primary person_names row with the real name.
-    const nameType = parsedInput.gender === 'F' ? 'maiden' : 'birth';
+    // Women always maiden; coerce married → maiden if it slipped through.
+    const nameType = resolvePrimaryNameType(
+      parsedInput.gender,
+      parsedInput.nameType
+    );
     const { error: nameErr } = await supabase
       .from('person_names')
       .update({

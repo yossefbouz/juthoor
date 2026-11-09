@@ -13,12 +13,25 @@ export type PersonProfile = {
   contact_consent: boolean;
   contact_email: string | null;
   contact_phone: string | null;
+  current_country: string | null;
+  current_city: string | null;
+  current_address: string | null;
+  preferred_contact_method: string | null;
   contribution_consent: boolean;
 };
 
-/** Contact columns are not granted on SELECT; use get_person_contact for those. */
+/** Contact ciphertext cols are not granted on SELECT; use get_person_contact. */
 const PROFILE_COLS =
-  'person_id, achievements_ar, achievements_en, contribution_ar, contribution_en, contact_consent, contribution_consent';
+  'person_id, achievements_ar, achievements_en, contribution_ar, contribution_en, contact_consent, contribution_consent, current_country, current_city, preferred_contact_method';
+
+type PersonContactRpcRow = {
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  current_country?: string | null;
+  current_city?: string | null;
+  current_address?: string | null;
+  preferred_contact_method?: string | null;
+};
 
 async function viewerMayManageOptional(personId: string): Promise<boolean> {
   const uid = await getCachedLoggedInUserIdOrNull();
@@ -61,15 +74,23 @@ export async function loadPersonProfile(
 
   let contactEmail: string | null = null;
   let contactPhone: string | null = null;
+  let currentAddress: string | null = null;
+  let currentCountry = row.current_country ?? null;
+  let currentCity = row.current_city ?? null;
+  let preferredMethod = row.preferred_contact_method ?? null;
   if (mayManage) {
     const { data: contactRows } = await supabase.rpc('get_person_contact', {
       p_person_id: personId,
     });
     const first = (Array.isArray(contactRows) ? contactRows[0] : contactRows) as
-      | { contact_email?: string | null; contact_phone?: string | null }
+      | PersonContactRpcRow
       | null;
     contactEmail = first?.contact_email ?? null;
     contactPhone = first?.contact_phone ?? null;
+    currentAddress = first?.current_address ?? null;
+    currentCountry = first?.current_country ?? currentCountry;
+    currentCity = first?.current_city ?? currentCity;
+    preferredMethod = first?.preferred_contact_method ?? preferredMethod;
   }
 
   return {
@@ -81,9 +102,20 @@ export async function loadPersonProfile(
     contact_consent: Boolean(row.contact_consent),
     contact_email: contactEmail,
     contact_phone: contactPhone,
+    current_country: currentCountry,
+    current_city: currentCity,
+    current_address: currentAddress,
+    preferred_contact_method: preferredMethod,
     contribution_consent: Boolean(row.contribution_consent),
   };
 }
+
+const PREFERRED_CONTACT_METHODS = [
+  'email',
+  'mobile',
+  'messaging',
+  'do_not_contact',
+] as const;
 
 const SaveSchema = z.object({
   personId: z.string().uuid(),
@@ -94,6 +126,12 @@ const SaveSchema = z.object({
   contactConsent: z.boolean().optional(),
   contactEmail: z.union([z.string().trim().email().max(200), z.literal(''), z.null()]).optional(),
   contactPhone: z.string().trim().max(40).nullable().optional(),
+  currentCountry: z.string().trim().max(120).nullable().optional(),
+  currentCity: z.string().trim().max(120).nullable().optional(),
+  currentAddress: z.string().trim().max(500).nullable().optional(),
+  preferredContactMethod: z
+    .union([z.enum(PREFERRED_CONTACT_METHODS), z.literal(''), z.null()])
+    .optional(),
   contributionConsent: z.boolean().optional(),
 });
 
@@ -130,6 +168,18 @@ export async function savePersonProfile(
         ...(parsed.contactPhone !== undefined
           ? { contact_phone: orNull(parsed.contactPhone) }
           : {}),
+        ...(parsed.currentCountry !== undefined
+          ? { current_country: orNull(parsed.currentCountry) }
+          : {}),
+        ...(parsed.currentCity !== undefined
+          ? { current_city: orNull(parsed.currentCity) }
+          : {}),
+        ...(parsed.currentAddress !== undefined
+          ? { current_address: orNull(parsed.currentAddress) }
+          : {}),
+        ...(parsed.preferredContactMethod !== undefined
+          ? { preferred_contact_method: orNull(parsed.preferredContactMethod) }
+          : {}),
         ...(parsed.contributionConsent !== undefined
           ? { contribution_consent: parsed.contributionConsent }
           : {}),
@@ -146,12 +196,17 @@ export async function savePersonProfile(
     p_person_id: parsed.personId,
   });
   const first = (Array.isArray(contactRows) ? contactRows[0] : contactRows) as
-    | { contact_email?: string | null; contact_phone?: string | null }
+    | PersonContactRpcRow
     | null;
   return {
     ...row,
     contact_email: first?.contact_email ?? null,
     contact_phone: first?.contact_phone ?? null,
+    current_country: first?.current_country ?? row.current_country ?? null,
+    current_city: first?.current_city ?? row.current_city ?? null,
+    current_address: first?.current_address ?? null,
+    preferred_contact_method:
+      first?.preferred_contact_method ?? row.preferred_contact_method ?? null,
     contact_consent: Boolean(row.contact_consent),
     contribution_consent: Boolean(row.contribution_consent),
   };

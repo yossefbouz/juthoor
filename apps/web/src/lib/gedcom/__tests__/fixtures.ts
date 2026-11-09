@@ -72,3 +72,27 @@ export const ARABIC_UTF8_GEDCOM = `0 HEAD
 1 SEX M
 0 TRLR
 `;
+
+/** Minimal GEDCOM 7.0 fixture with SCHMA, TRAN/ROMN, IDNO, EVEN TYPE. */
+export const GEDCOM7_MINIMAL = `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG https://juthoor.org/gedcom/IDNO-UNRWA UNRWA
+2 TAG https://juthoor.org/gedcom/EVEN-DISPLACEMENT DISPLACEMENT
+1 SOUR Juthoor
+0 @I1@ INDI
+1 NAME أحمد /البوز/
+2 TRAN أحمد /البوز/
+3 LANG ar
+2 ROMN Ahmad /Bouz/
+1 SEX M
+1 IDNO UNRWA-42
+2 TYPE UNRWA
+1 EVEN
+2 TYPE DISPLACEMENT
+2 DATE 1948
+2 PLAC Lebanon
+1 NOTE Short note
+0 TRLR
+`;

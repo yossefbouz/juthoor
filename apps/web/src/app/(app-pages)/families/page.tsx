@@ -17,18 +17,25 @@ async function FamiliesContainer({
   searchParams: Promise<Record<string, SearchParamsValue>>;
 }) {
   const params = await searchParams;
+  const q = (firstString(params.q) ?? '').trim() || null;
   const districtRaw = firstString(params.district) ?? null;
   const district = districtRaw ? districtRaw.trim().toLowerCase() : null;
+  const placeId = (firstString(params.placeId) ?? '').trim() || null;
+
+  const hasFilters = Boolean(q || district || placeId);
   const [rows, places] = await Promise.all([
-    loadTopSurnames(120, district),
+    loadTopSurnames(hasFilters ? 400 : 120, { surname: q, district, placeId }),
     loadAllPlaces().catch(() => []),
   ]);
   const districts = districtsFromPlaces(places);
   return (
     <FamiliesIndexClient
       rows={rows}
+      places={places}
       districts={districts}
+      initialQ={q}
       initialDistrict={district}
+      initialPlaceId={placeId}
     />
   );
 }

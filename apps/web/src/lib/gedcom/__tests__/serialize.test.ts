@@ -60,10 +60,66 @@ describe('serializeGedcom — output format', () => {
     expect(nonEmpty[nonEmpty.length - 1]).toMatch(/^0 TRLR$/);
   });
 
+  it('exports GEDCOM 7.0 (VERS 7.0, SCHMA, no FORM LINEAGE-LINKED)', () => {
+    const parsed = parseGedcom(MINIMAL_GEDCOM);
+    const out = serializeGedcom(parsed);
+    expect(out).toContain('2 VERS 7.0');
+    expect(out).toContain('1 SCHMA');
+    expect(out).toContain('2 TAG https://juthoor.org/gedcom/IDNO-UNRWA UNRWA');
+    expect(out).not.toContain('FORM LINEAGE-LINKED');
+    expect(out).not.toContain('VERS 5.5.1');
+  });
+
   it('uses CRLF-safe line separator: every line terminated by \\n', () => {
     const parsed = parseGedcom(MINIMAL_GEDCOM);
     const out = serializeGedcom(parsed);
     // All lines end with \n; no \r\n pairs (we emit LF-only, consumers handle both).
     expect(out.includes('\r')).toBe(false);
+  });
+
+  it('splits long notes with CONT lines', () => {
+    const snap = parseGedcom(MINIMAL_GEDCOM);
+    const longNote = 'A'.repeat(90) + ' ' + 'B'.repeat(90);
+    const withNote = {
+      ...snap,
+      persons: snap.persons.map((p, i) =>
+        i === 0 ? { ...p, notes: longNote } : p
+      ),
+    };
+    const out = serializeGedcom(withNote);
+    expect(out).toMatch(/1 NOTE A+/);
+    expect(out).toMatch(/2 CONT /);
+  });
+
+  it('emits TRAN/ROMN and IDNO TYPE on GEDCOM 7 names/identifiers', () => {
+    const out = serializeGedcom({
+      header: { source: 'Juthoor' },
+      families: [],
+      persons: [
+        {
+          xref: '@I1@',
+          gender: 'M',
+          names: [
+            {
+              nameType: 'birth',
+              given: 'أحمد',
+              surname: 'البوز',
+              raw: 'أحمد /البوز/',
+              lang: 'ar',
+              tran: 'أحمد /البوز/',
+              romn: 'Ahmad /Bouz/',
+            },
+          ],
+          events: [],
+          idnos: [{ type: 'UNRWA', value: 'R-1' }],
+        },
+      ],
+    });
+    expect(out).toContain('1 NAME أحمد /البوز/');
+    expect(out).toContain('2 TRAN أحمد /البوز/');
+    expect(out).toContain('3 LANG ar');
+    expect(out).toContain('2 ROMN Ahmad /Bouz/');
+    expect(out).toContain('1 IDNO R-1');
+    expect(out).toContain('2 TYPE UNRWA');
   });
 });

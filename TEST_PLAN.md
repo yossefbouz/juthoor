@@ -147,7 +147,7 @@ Hover any person tile → Radix HoverCard pops up with year, gender badge.
 ### 4.6 GEDCOM export
 1. Back on `/tree/[treeId]` click **تصدير GEDCOM** (top-right)
 2. A file `juthoor-tree-<id>.ged` downloads
-3. Open it — should be valid GEDCOM 5.5.1 with `0 HEAD` … `0 TRLR` and all your persons/families
+3. Open it — should be valid GEDCOM 7.0 with `0 HEAD`, `2 VERS 7.0`, `1 SCHMA`, … `0 TRLR` and all your persons/families
 
 ### 4.7 GEDCOM import
 1. Click **استيراد GEDCOM** → dialog opens
@@ -209,7 +209,7 @@ pnpm lint
 | `lib/tree/__tests__/relationships.test.ts` | 360° neighbour solver — parents/siblings/spouses/childrenByFamily across multi-spouse, placeholder-mother, solo-parent, orphan cases | 9 |
 | `lib/tree/__tests__/zodSchemas.test.ts` | AddPerson Zod rules — AR or EN name required, year bounds, death≥birth, UUID validation, M/F-only gender, mother required | 12 |
 | `lib/tree/__tests__/inheritance.test.ts` | Surname/village auto-inherit from father, maiden-name display for women, placeholder number scoping | 13 |
-| `lib/gedcom/__tests__/parse.test.ts` | GEDCOM 5.5.1 → snapshot (nuclear, multi-spouse, Arabic UTF-8, error cases) | 11 |
+| `lib/gedcom/__tests__/parse.test.ts` | GEDCOM 5.5.1/7.0 → snapshot (nuclear, multi-spouse, Arabic UTF-8, error cases) | 11 |
 | `lib/gedcom/__tests__/serialize.test.ts` | Snapshot → GEDCOM including **round-trip** (parse → serialize → parse) | 5 |
 | `lib/gedcom/__tests__/placeMatching.test.ts` | AR/EN exact + substring match, multi-segment "Jerusalem, Palestine", graceful undefined | 5 |
 

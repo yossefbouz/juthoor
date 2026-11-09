@@ -257,7 +257,7 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
     expect(ged).toContain('2 PLAC Safad');
   });
 
-  it('emits person_identifiers and ORIGIN notes on IFT Admin full export', async () => {
+  it('emits person_identifiers as IDNO and ORIGIN notes on IFT Admin full export', async () => {
     const rows: Record<string, readonly Row[]> = {
       ...ROWS,
       person_identifiers: [
@@ -272,28 +272,61 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
           id_value: 'FC-9',
         },
       ],
+      person_displacement: [
+        {
+          person_id: 'p-grandfather',
+          host_country_first: 'Lebanon',
+          host_country_current: 'Lebanon',
+          refugee_status: 'registered',
+          camp_name: 'Ain al-Hilweh',
+          displacement_year: 1948,
+          displacement_wave: 'Nakba',
+        },
+      ],
     };
     const snap = await exportTreeToSnapshot(fakeSupabase(rows), 't', {
       maskLivingPeople: false,
     });
     const gf = snap.persons.find((p) => p.xref === '@I1@')!;
-    expect(gf.refns).toEqual(
+    expect(gf.idnos).toEqual(
       expect.arrayContaining([
-        { type: 'unrwa_registration', value: 'UNRWA-123' },
-        { type: 'family_card', value: 'FC-9' },
+        expect.objectContaining({ type: 'UNRWA', value: 'UNRWA-123' }),
+        expect.objectContaining({ type: 'HOSTCARD1948', value: 'FC-9' }),
       ])
     );
     expect(gf.extraNotes).toEqual(
       expect.arrayContaining([
         'UNRWA: UNRWA-123',
-        'family_card: FC-9',
+        'HOSTCARD1948: FC-9',
         'ORIGIN: Safad',
       ])
     );
+    expect(gf.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventType: 'EVEN',
+          typeDetail: 'DISPLACEMENT',
+          year: 1948,
+          place: 'Lebanon',
+        }),
+        expect.objectContaining({
+          eventType: 'EVEN',
+          typeDetail: 'CAMPREGN',
+          place: 'Ain al-Hilweh',
+        }),
+      ])
+    );
     const ged = serializeGedcom(snap);
-    expect(ged).toContain('1 REFN unrwa_registration:UNRWA-123');
-    expect(ged).toContain('1 REFN family_card:FC-9');
+    expect(ged).toContain('2 VERS 7.0');
+    expect(ged).toContain('1 SCHMA');
+    expect(ged).not.toContain('FORM LINEAGE-LINKED');
+    expect(ged).toContain('1 IDNO UNRWA-123');
+    expect(ged).toContain('2 TYPE UNRWA');
+    expect(ged).toContain('1 IDNO FC-9');
+    expect(ged).toContain('2 TYPE HOSTCARD1948');
     expect(ged).toContain('1 NOTE UNRWA: UNRWA-123');
+    expect(ged).toContain('2 TYPE DISPLACEMENT');
+    expect(ged).toContain('2 TYPE CAMPREGN');
   });
 
   it('withholds identifiers when maskLivingPeople is true', async () => {
@@ -311,6 +344,7 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
       maskLivingPeople: true,
     });
     for (const p of snap.persons) {
+      expect(p.idnos).toBeUndefined();
       expect(p.refns).toBeUndefined();
       expect(p.extraNotes).toBeUndefined();
     }
