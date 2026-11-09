@@ -31,7 +31,7 @@ import {
   districtsFromPlaces,
   placeMatchesDistrict,
 } from '@/components/search/DistrictSelect';
-import { isDegreesOk, type DegreesResult } from '@/data/user/degrees';
+import { isDegreesOk, type DegreesResult } from '@/data/user/degrees-types';
 import { kinshipLabel } from '@/lib/search/relationLabels';
 import { Lock } from 'lucide-react';
 

@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, GitBranch, Route } from 'lucide-react';
 import { PathGraph } from './PathGraph';
+import { computeAllPathsTo } from '@/data/user/degrees';
 import {
-  computeAllPathsTo,
   isDegreesOk,
   type AllPathsResult,
   type DegreesOk,
   type DegreesResult,
-} from '@/data/user/degrees';
+} from '@/data/user/degrees-types';
 import { kinshipLabel } from '@/lib/search/relationLabels';
 
 export function DegreesDialog({

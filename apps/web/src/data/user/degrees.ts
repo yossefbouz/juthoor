@@ -2,27 +2,9 @@
 
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
+import type { AllPathsResult, DegreesOk, DegreesResult } from './degrees-types';
 
-export type PathNode = {
-  person_id: string;
-  relation: 'self' | 'parent' | 'child' | 'spouse' | 'sibling';
-  name_ar: string | null;
-  name_en: string | null;
-  gender: 'M' | 'F' | 'X' | 'U' | null;
-};
-
-export type DegreesOk = {
-  degrees: number;
-  path: PathNode[];
-  cached?: boolean;
-};
-
-/** null = inaccessible / no self / same person. Prefer throw for real RPC errors. */
-export type DegreesResult = DegreesOk | { error: string } | null;
-
-export function isDegreesOk(d: DegreesResult): d is DegreesOk {
-  return d != null && 'degrees' in d && typeof (d as DegreesOk).degrees === 'number';
-}
+export type { AllPathsResult, DegreesOk, DegreesResult, PathNode } from './degrees-types';
 
 /**
  * Resolve the viewer's self-person id from their profile. Returns null if the
@@ -55,7 +37,6 @@ export async function computeDegreesTo(targetPersonId: string): Promise<DegreesR
   });
   if (error) {
     console.error('compute_degrees failed:', error.message);
-    // Permission / not-found style errors stay null so the UI can say "no path".
     if (/42501|P0002|not.?found|permission|access/i.test(error.message)) {
       return null;
     }
@@ -64,13 +45,6 @@ export async function computeDegreesTo(targetPersonId: string): Promise<DegreesR
   if (!data) return null;
   return data as DegreesOk;
 }
-
-export type AllPathsResult = {
-  paths: Array<{ degrees: number; path: PathNode[] }>;
-  max_paths?: number;
-  note?: string;
-  error?: string;
-} | null;
 
 /** W3.3 / D12: up to N alternate connection paths (default 5). */
 export async function computeAllPathsTo(
