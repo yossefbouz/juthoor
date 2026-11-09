@@ -49,8 +49,11 @@ setup('create test user', async ({ page }) => {
   const userId = ((await res.json()) as { id: string }).id;
   await ctx.dispose();
 
+  await page.addInitScript(() => {
+    window.localStorage.setItem('juthoor.locale', 'en');
+  });
   await page.goto('/login');
-  await page.getByRole('tab', { name: /Password/i }).click();
+  await page.getByRole('tab', { name: /Password|كلمة السر/i }).click();
   await page.locator('#sign-in-email').fill(email);
   await page.locator('#sign-in-password').fill(password);
   await page.getByRole('button', { name: /^Login$|تسجيل الدخول/ }).click();
@@ -58,6 +61,7 @@ setup('create test user', async ({ page }) => {
 
   const authDir = path.dirname(authFile);
   if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
+  await page.evaluate(() => window.localStorage.setItem('juthoor.locale', 'en'));
   await page.context().storageState({ path: authFile });
   // persist the uid so owner-facing specs can seed data owned by this user
   fs.writeFileSync(path.join(authDir, 'user_1.meta.json'), JSON.stringify({ userId, email }));

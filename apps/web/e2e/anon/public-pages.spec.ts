@@ -10,10 +10,10 @@ test.describe.parallel('Anonymous user public pages', () => {
   test('login page shows Password + OTP tabs and no Magic Link', async ({ page }) => {
     await page.goto('/login');
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole('tab', { name: /Password/i })).toBeVisible();
-    await expect(page.getByRole('tab', { name: /OTP Code/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Password|كلمة السر/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /OTP Code|رمز التحقق/i })).toBeVisible();
     // the Magic Link tab was removed — it must not reappear
-    await expect(page.getByRole('tab', { name: /Magic Link/i })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: /Magic Link|رابط سحري/i })).toHaveCount(0);
   });
 
   test('sign-up page shows the display-name + email fields', async ({ page }) => {

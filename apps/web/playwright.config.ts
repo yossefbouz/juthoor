@@ -80,6 +80,10 @@ const config: PlaywrightTestConfig = {
     {
       name: 'with-user-setup',
       testMatch: '_setups/user.setup.ts',
+      // App defaults to Arabic; English storage keeps Password-tab selectors stable.
+      use: {
+        storageState: 'playwright/locale-en.json',
+      },
     },
     {
       name: 'logged-in-users',
@@ -98,11 +102,15 @@ const config: PlaywrightTestConfig = {
       grep: /Anonymous user/,
       use: {
         ...devices['Desktop Chrome'],
+        storageState: 'playwright/locale-en.json',
       },
     },
     {
       name: 'admin-setup',
       testMatch: '_setups/admin.setup.ts',
+      use: {
+        storageState: 'playwright/locale-en.json',
+      },
     },
     {
       name: 'admin-users',
