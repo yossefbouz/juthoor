@@ -81,55 +81,31 @@ export async function listIncomingPersonClaims(): Promise<PersonClaimRequest[]> 
   if (!uid) return [];
   const supabase = await createJuthoorSupabaseClient();
 
-  const { data, error } = await supabase
-    .from('person_claim_requests')
-    .select('id, person_id, requester_user_id, tree_id, status, created_at')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const { data, error } = await supabase.rpc('list_incoming_person_claims');
   if (error || !data) return [];
 
-  const rows = data as PersonClaimRequest[];
-  if (rows.length === 0) return rows;
-
-  const personIds = Array.from(new Set(rows.map((r) => r.person_id)));
-  const requesterIds = Array.from(new Set(rows.map((r) => r.requester_user_id)));
-
-  const [{ data: persons }, { data: profiles }] = await Promise.all([
-    supabase
-      .from('persons')
-      .select('id, display_name_ar, display_name_en')
-      .in('id', personIds),
-    supabase
-      .from('profiles')
-      .select('id, display_name, display_name_ar')
-      .in('id', requesterIds),
-  ]);
-
-  const personById = new Map(
-    ((persons ?? []) as Array<{
-      id: string;
-      display_name_ar: string | null;
-      display_name_en: string | null;
-    }>).map((p) => [p.id, p]),
-  );
-  const nameById = new Map(
-    ((profiles ?? []) as Array<{
-      id: string;
-      display_name: string | null;
-      display_name_ar: string | null;
-    }>).map((p) => [p.id, p.display_name_ar || p.display_name || null]),
-  );
-
-  return rows.map((r) => {
-    const person = personById.get(r.person_id);
-    return {
-      ...r,
-      person_name_ar: person?.display_name_ar ?? null,
-      person_name_en: person?.display_name_en ?? null,
-      requester_name: nameById.get(r.requester_user_id) ?? null,
-    };
-  });
+  return (data as Array<{
+    id: string;
+    person_id: string;
+    requester_user_id: string;
+    tree_id: string | null;
+    status: string;
+    created_at: string;
+    person_name_ar: string | null;
+    person_name_en: string | null;
+    requester_name: string | null;
+    requester_verified?: boolean;
+  }>).map((r) => ({
+    id: r.id,
+    person_id: r.person_id,
+    requester_user_id: r.requester_user_id,
+    tree_id: r.tree_id,
+    status: r.status,
+    created_at: r.created_at,
+    person_name_ar: r.person_name_ar,
+    person_name_en: r.person_name_en,
+    requester_name: r.requester_name,
+  }));
 }
 
 /** Read the current user's linked person id, or null. */

@@ -43,31 +43,8 @@ export async function loadPersonContact(
 
   const rows = (Array.isArray(data) ? data : data ? [data] : []) as PersonContactRpcRow[];
   if (rows.length === 0) {
-    // Still surface consent flag / non-sensitive location cols when present.
-    const { data: profile } = await supabase
-      .from('person_profiles')
-      .select(
-        'person_id, contact_consent, current_country, current_city, preferred_contact_method',
-      )
-      .eq('person_id', personId)
-      .maybeSingle();
-    if (!profile) return null;
-    const p = profile as {
-      contact_consent?: boolean;
-      current_country?: string | null;
-      current_city?: string | null;
-      preferred_contact_method?: string | null;
-    };
-    return {
-      person_id: personId,
-      email: null,
-      phone: null,
-      current_country: p.current_country ?? null,
-      current_city: p.current_city ?? null,
-      current_address: null,
-      preferred_method: p.preferred_contact_method ?? null,
-      consent_share: Boolean(p.contact_consent),
-    };
+    // get_person_contact denied access: do not fall back to REST location cols.
+    return null;
   }
 
   const row = rows[0];

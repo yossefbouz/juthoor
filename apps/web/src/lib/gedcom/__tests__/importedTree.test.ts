@@ -78,6 +78,16 @@ function recordingSupabase() {
         });
       },
     }),
+    rpc: (fn: string, args: Record<string, unknown>) => {
+      if (fn === 'upsert_person_note') {
+        (tables.person_notes ??= []).push({
+          person_id: args.p_person_id,
+          body: args.p_body,
+        });
+        return Promise.resolve({ data: null, error: null });
+      }
+      return Promise.resolve({ data: null, error: { message: `unexpected rpc ${fn}` } });
+    },
   } as unknown as SupabaseClient<Database>;
 
   function rowsForExport(): Record<string, readonly Row[]> {

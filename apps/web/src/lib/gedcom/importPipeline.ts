@@ -76,18 +76,15 @@ export async function importGedcomSnapshot(
     xrefToPersonId.set(p.xref, inserted.id);
     personsInserted++;
 
-    // Free-text notes live on person_notes (D1), not persons.notes.
+    // Free-text notes live on person_notes (D1). No persons.notes fallback
+    // (that column is readable by every tree viewer).
     if (p.notes && p.notes.trim() !== '' && p.notes !== 'placeholder') {
-      const { error: noteErr } = await supabase.from('person_notes').insert({
-        person_id: inserted.id,
-        body: p.notes,
+      const { error: noteErr } = await supabase.rpc('upsert_person_note', {
+        p_person_id: inserted.id,
+        p_body: p.notes,
       });
       if (noteErr) {
-        // Fallback for older schemas / test fakes without person_notes.
-        await supabase
-          .from('persons')
-          .update({ notes: p.notes })
-          .eq('id', inserted.id);
+        errors.push(`Note skipped for ${p.xref}: ${noteErr.message}`);
       }
     }
 
