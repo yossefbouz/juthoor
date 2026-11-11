@@ -129,6 +129,12 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                   {t('المطابقات', 'Matches')}
                 </Link>
                 <Link
+                  href="/admin/card-check"
+                  className="rounded-full border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--jt-olive-800)] hover:bg-[var(--jt-olive-100)]"
+                >
+                  {t('البطاقات', 'Card check')}
+                </Link>
+                <Link
                   href="/admin/moderators"
                   className="rounded-full border border-[var(--jt-stone-200)] bg-[var(--card)] px-3 py-1 text-xs font-semibold text-[var(--jt-olive-800)] hover:bg-[var(--jt-olive-100)]"
                 >
@@ -272,7 +278,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                 />
                 <QuickAction
                   icon={Upload}
-                  label={t('استورد GEDCOM', 'Import GEDCOM')}
+                  label={t('استيراد شجرة من منصة أخرى', 'Import a tree from another platform')}
                   href={`/tree/${data.treeId}`}
                 />
                 <QuickAction

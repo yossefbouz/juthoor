@@ -421,7 +421,18 @@ type MutablePersonIdentifier = {
     | 'israeli_id';
   id_value: string;
   evidence_attachment_id: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  verified_attachment_id: string | null;
+  rejected_at: string | null;
   created_at: string;
+};
+
+type MutablePersonNote = {
+  person_id: string;
+  body: string;
+  updated_by: string | null;
+  updated_at: string;
 };
 
 type MutablePersonAttachment = {
@@ -672,6 +683,15 @@ export type Database = {
           id_value: string;
         };
         Update: Partial<MutablePersonIdentifier>;
+        Relationships: [];
+      };
+      person_notes: {
+        Row: MutablePersonNote;
+        Insert: Partial<MutablePersonNote> & {
+          person_id: string;
+          body: string;
+        };
+        Update: Partial<MutablePersonNote>;
         Relationships: [];
       };
       identity_verifications: {
@@ -1100,6 +1120,35 @@ export type Database = {
       can_edit_optional_person_fields: {
         Args: { p_person_id: string };
         Returns: boolean;
+      };
+      upsert_person_note: {
+        Args: { p_person_id: string; p_body: string };
+        Returns: undefined;
+      };
+      verify_identifier: {
+        Args: { p_person: string; p_id_type: string; p_attachment: string };
+        Returns: undefined;
+      };
+      reject_identifier: {
+        Args: { p_person: string; p_id_type: string };
+        Returns: undefined;
+      };
+      list_identifier_queue: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          person_id: string;
+          id_type: string;
+          tree_name: string | null;
+          person_name: string | null;
+          value: string;
+          attachment_id: string;
+          storage_path: string;
+          uploaded_at: string;
+        }>;
+      };
+      run_matching_scheduled: {
+        Args: { p_full?: boolean };
+        Returns: string | null;
       };
       update_person_optional_profile: {
         Args: {

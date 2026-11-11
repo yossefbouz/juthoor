@@ -94,7 +94,7 @@ export async function exportTreeToSnapshot(
   // family; on their own, those tables hold every tree the user can read.
   const includeIdentifiers = options.maskLivingPeople !== true;
 
-  const [persons, families, childRows, names, personEvents, familyEvents, places, identifierRows, displacementRows] =
+  const [persons, families, childRows, names, personEvents, familyEvents, places, identifierRows, displacementRows, noteRows] =
     await Promise.all([
       readAll<Person>((from, to) =>
         supabase
@@ -182,11 +182,23 @@ export async function exportTreeToSnapshot(
               .range(from, to)
           )
         : Promise.resolve([] as DisplacementRow[]),
+      readAll<{ person_id: string; body: string }>((from, to) =>
+        supabase
+          .from('person_notes')
+          .select('person_id, body, persons!inner(tree_id)')
+          .eq('persons.tree_id', treeId)
+          .order('person_id')
+          .range(from, to)
+      ).catch(() => [] as { person_id: string; body: string }[]),
     ]);
 
   // strip the joined `families` so we only keep the child-link fields
   const childLinks = childRows.map(({ families: _omit, ...rest }) => rest);
   const events = [...personEvents, ...familyEvents];
+  const notesByPerson = new Map<string, string>();
+  for (const n of noteRows) {
+    if (n.body && n.body !== 'placeholder') notesByPerson.set(n.person_id, n.body);
+  }
 
   const placeLookup = new Map<string, string>();
   for (const p of places) {
@@ -331,7 +343,10 @@ export async function exportTreeToSnapshot(
       gender: p.gender,
       names: mappedNames,
       events: gedEvents,
-      notes: masked ? undefined : (p.notes ?? undefined),
+      notes: masked
+        ? undefined
+        : (notesByPerson.get(p.id) ??
+          (p.notes && p.notes !== 'placeholder' ? p.notes : undefined)),
       idnos: idnos.length > 0 ? idnos : undefined,
       extraNotes: extraNotes.length > 0 ? extraNotes : undefined,
     };

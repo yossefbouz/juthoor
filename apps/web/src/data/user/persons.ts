@@ -267,11 +267,19 @@ export const upgradePlaceholderPersonAction = authActionClient
         gender: parsedInput.gender,
         display_name_ar: arDisplay,
         display_name_en: enDisplay,
-        notes: parsedInput.notes ?? null, // clears the 'placeholder' tag
+        notes: null, // clears the 'placeholder' tag
       })
       .eq('id', parsedInput.placeholderId);
 
     if (updateErr) throw new Error(toUserFacingDbError(updateErr.message));
+
+    if (parsedInput.notes && parsedInput.notes.trim() !== '') {
+      const { error: noteErr } = await supabase.rpc('upsert_person_note', {
+        p_person_id: parsedInput.placeholderId,
+        p_body: parsedInput.notes,
+      });
+      if (noteErr) throw new Error(toUserFacingDbError(noteErr.message));
+    }
 
     if (parsedInput.birthYear !== undefined) {
       await upsertPersonYearEvent(supabase, {

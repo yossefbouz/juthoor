@@ -65,7 +65,7 @@ export async function importGedcomSnapshot(
         display_name_ar: displayAr,
         display_name_en: displayEn,
         gedcom_xref: p.xref,
-        notes: p.notes ?? null,
+        notes: null,
       })
       .select('id')
       .single();
@@ -75,6 +75,21 @@ export async function importGedcomSnapshot(
     }
     xrefToPersonId.set(p.xref, inserted.id);
     personsInserted++;
+
+    // Free-text notes live on person_notes (D1), not persons.notes.
+    if (p.notes && p.notes.trim() !== '' && p.notes !== 'placeholder') {
+      const { error: noteErr } = await supabase.from('person_notes').insert({
+        person_id: inserted.id,
+        body: p.notes,
+      });
+      if (noteErr) {
+        // Fallback for older schemas / test fakes without person_notes.
+        await supabase
+          .from('persons')
+          .update({ notes: p.notes })
+          .eq('id', inserted.id);
+      }
+    }
 
     // Primary name row. FRS: female primary must be maiden, never married.
     // If GEDCOM marks a woman's primary NAME as married, store maiden as
