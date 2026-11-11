@@ -11,7 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database, Place } from '@/types/database';
+import type { Database, NameType, Place } from '@/types/database';
 
 import { matchPlace } from './placeMatching';
 import type { GedcomSnapshot } from './types';
@@ -105,11 +105,11 @@ export async function importGedcomSnapshot(
       primarySource?.given ?? given;
     const primarySurname =
       primarySource?.surname ?? surname;
-    const primaryNameType = femaleMarriedPrimary
+    const primaryNameType: NameType = femaleMarriedPrimary
       ? 'maiden'
       : p.gender === 'F' && (rawPrimaryType === 'birth' || !primary?.nameType)
         ? 'maiden'
-        : rawPrimaryType;
+        : asNameType(rawPrimaryType);
 
     await supabase.from('person_names').insert({
       person_id: inserted.id,
@@ -142,7 +142,7 @@ export async function importGedcomSnapshot(
       if (!g && !s) continue;
       await supabase.from('person_names').insert({
         person_id: inserted.id,
-        name_type: (extra.nameType ?? 'aka').toLowerCase(),
+        name_type: asNameType(extra.nameType ?? 'aka'),
         is_primary: false,
         lang: extra.lang ?? 'en',
         given_name: g,
@@ -274,7 +274,16 @@ export async function importGedcomSnapshot(
  * Prefers lang-tagged NAME rows, then TRAN (ar) / ROMN (en), then the
  * primary NAME when its script matches.
  */
-function mapIdnoTypeToDb(type: string): string | null {
+type DbIdType =
+  | 'unrwa_registration'
+  | 'family_card_1948'
+  | 'pa_id'
+  | 'pa_passport'
+  | 'israeli_id'
+  | 'host_travel_doc'
+  | 'host_id_residency';
+
+function mapIdnoTypeToDb(type: string): DbIdType | null {
   const t = type.replace(/^_/, '').toUpperCase();
   if (t === 'UNRWA') return 'unrwa_registration';
   if (t === 'HOSTCARD1948' || t === 'FAMILY_CARD_1948') return 'family_card_1948';
@@ -284,6 +293,21 @@ function mapIdnoTypeToDb(type: string): string | null {
   if (t === 'HOST_TRAVEL_DOC' || t === 'HOSTTRAVELDOC') return 'host_travel_doc';
   if (t === 'HOST_ID_RESIDENCY' || t === 'HOSTIDRESIDENCY') return 'host_id_residency';
   return null;
+}
+
+function asNameType(raw: string): NameType {
+  const v = raw.toLowerCase();
+  if (
+    v === 'birth' ||
+    v === 'married' ||
+    v === 'immigrant' ||
+    v === 'aka' ||
+    v === 'professional' ||
+    v === 'maiden'
+  ) {
+    return v;
+  }
+  return 'aka';
 }
 
 function joinName(

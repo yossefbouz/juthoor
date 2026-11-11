@@ -1097,6 +1097,31 @@ export type Database = {
         Args: { p_person_id: string };
         Returns: boolean;
       };
+      list_incoming_person_claims: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          id: string;
+          person_id: string;
+          requester_user_id: string;
+          tree_id: string | null;
+          status: string;
+          created_at: string;
+          person_name_ar: string | null;
+          person_name_en: string | null;
+          requester_name: string | null;
+          requester_verified: boolean;
+        }>;
+      };
+      get_person_story: {
+        Args: { p_person_id: string };
+        Returns: Array<{
+          achievements_ar: string | null;
+          achievements_en: string | null;
+          contribution_ar: string | null;
+          contribution_en: string | null;
+          contribution_consent: boolean;
+        }>;
+      };
       get_person_contact: {
         Args: { p_person_id: string };
         Returns: {
@@ -1108,6 +1133,10 @@ export type Database = {
           current_address: string | null;
           preferred_contact_method: string | null;
         }[];
+      };
+      delete_person_attachment: {
+        Args: { p_attachment_id: string };
+        Returns: undefined;
       };
       respond_contact_relay: {
         Args: { p_relay_id: string; p_status: string };
@@ -1147,8 +1176,8 @@ export type Database = {
         }>;
       };
       run_matching_scheduled: {
-        Args: { p_full?: boolean };
-        Returns: string | null;
+        Args: { p_force_full?: boolean };
+        Returns: Json;
       };
       update_person_optional_profile: {
         Args: {

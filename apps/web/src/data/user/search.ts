@@ -3,6 +3,7 @@
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { SearchQuerySchema, type SearchQuery, type SearchResult } from '@/lib/search/zodSchemas';
 import { toArabic } from '@/lib/search/phonetic';
+import type { GenderType } from '@/types/database';
 
 /**
  * Search the Master Tree. Runs Latinâ†’Arabic pre-transliteration on each text
@@ -100,7 +101,7 @@ export async function searchMasterTree(raw: SearchQuery): Promise<SearchResult[]
 async function searchByDistrictOnly(
   supabase: Awaited<ReturnType<typeof createJuthoorSupabaseClient>>,
   district: string,
-  gender: string | null,
+  gender: GenderType | null,
   limit: number,
 ): Promise<SearchResult[]> {
   const key = district.trim().toLowerCase();
@@ -154,16 +155,16 @@ async function searchByDistrictOnly(
     tree_id: string;
     display_name_ar: string | null;
     display_name_en: string | null;
-    gender: string | null;
+    gender: GenderType | null;
     is_living: boolean | null;
-  }>).map((p) => {
+  }>).map((p): SearchResult => {
     const birt = birtByPerson.get(p.id);
     const place = birt?.place_id ? placeById.get(birt.place_id) : null;
     const hideOrigin = Boolean(p.is_living);
     return {
       person_id: p.id,
       tree_id: p.tree_id,
-      tree_name: null,
+      tree_name: '',
       tree_is_public: true,
       tree_is_accessible: true,
       display_name_ar: p.display_name_ar,
@@ -176,8 +177,16 @@ async function searchByDistrictOnly(
       origin_name_ar: hideOrigin ? null : (place?.name_ar ?? null),
       origin_name_en: hideOrigin ? null : (place?.name_en ?? null),
       score: 1,
-      breakdown: { district: 1 },
-    } as SearchResult;
+      breakdown: {
+        given: 0,
+        surname: 0,
+        free: 0,
+        father: 0,
+        mother: 0,
+        place: 1,
+        year: 0,
+      },
+    };
   });
 }
 
