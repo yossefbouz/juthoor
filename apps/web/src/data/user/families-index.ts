@@ -103,9 +103,26 @@ export async function loadTopSurnames(
   const { data, error } = await nameQuery;
   if (error) throw new Error(`Failed to load surnames: ${error.message}`);
 
+  // Place filters must not count living people whose villages are masked
+  // elsewhere (same rule as families-search).
+  let livingHidden: Set<string> | null = null;
+  if (allowedPersonIds && allowedPersonIds.size > 0) {
+    const ids = Array.from(allowedPersonIds);
+    const { data: livingRows } = await supabase
+      .from('persons')
+      .select('id, is_living')
+      .in('id', ids.slice(0, 5000));
+    livingHidden = new Set(
+      ((livingRows ?? []) as Array<{ id: string; is_living: boolean | null }>)
+        .filter((p) => p.is_living)
+        .map((p) => p.id),
+    );
+  }
+
   const tally = new Map<string, number>();
   for (const r of (data ?? []) as Array<{ surname: string | null; person_id: string }>) {
     if (allowedPersonIds && !allowedPersonIds.has(r.person_id)) continue;
+    if (livingHidden?.has(r.person_id)) continue;
     const s = (r.surname ?? '').trim();
     if (!s) continue;
     tally.set(s, (tally.get(s) ?? 0) + 1);

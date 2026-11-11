@@ -121,15 +121,10 @@ export default async function PersonPage({ params }: Props) {
         .maybeSingle();
       if ((tree as { owner_id: string } | null)?.owner_id !== uid) return false;
 
-      // Unclaimed: no other (or self) profile has linked_person_id = this person.
-      const { data: claimer } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('linked_person_id', personId)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
-      return !claimer;
+      const { data: claimed } = await supabase.rpc('is_person_claimed', {
+        p_person_id: personId,
+      });
+      return !claimed;
     })().catch(() => false),
     isLiving
       ? listPersonFieldGrants(personId).catch(() => [])
@@ -239,7 +234,22 @@ export default async function PersonPage({ params }: Props) {
       <DisplacementPanel
         personId={personId}
         treeId={treeId}
-        initial={displacement}
+        initial={
+          canEditOptional
+            ? displacement
+            : displacement
+              ? {
+                  ...displacement,
+                  // Managers-only: Israeli / PA / passport numbers stay off the
+                  // page payload for ordinary tree viewers.
+                  israeli_id_number: null,
+                  pa_id_number: null,
+                  palestinian_passport_number: null,
+                  host_travel_document_number: null,
+                  host_id_residency_number: null,
+                }
+              : null
+        }
         canManage={canEditOptional}
         initialUnrwaEvidenceId={unrwaEvidenceId}
       />

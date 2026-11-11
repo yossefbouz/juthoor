@@ -68,7 +68,7 @@ Required in `apps/web/.env.local` (and root examples):
 | `NEXT_PUBLIC_SUPABASE_URL` | browser + server | Local: `http://127.0.0.1:54321` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | browser + server | Publishable / anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server only** | Service-role key. Needed for account closure (`deleteAccountAction` → Auth `admin.deleteUser` and archive-vault writes). Never prefix with `NEXT_PUBLIC_`. Never commit a real value. |
-| `CONTACT_ENCRYPTION_KEY` | **server only** | Required in any environment that accepts contact-form submissions. Symmetric secret used to encrypt contact payloads at rest. Generate a long random value (32+ bytes). Never prefix with `NEXT_PUBLIC_`. Never commit a real value. |
+| `app_settings.contact_crypto_key` | **database** | Symmetric secret for living contact email/phone/address at rest (`pgp_sym_encrypt`). Set in hosted SQL / Studio; never leave blank (code falls back to a public placeholder). The old `CONTACT_ENCRYPTION_KEY` env name is unused by the app. |
 | `NEXT_PUBLIC_PRIVACY_EMAIL` | browser + server | Privacy / data-protection contact shown on the privacy policy. Default: `privacy@juthoor.app`. |
 
 ```cmd
@@ -276,4 +276,4 @@ Before treating an environment as production-ready, work through the backup and 
 
 ### Contact encryption key
 
-Any deploy that accepts contact-form traffic must set `CONTACT_ENCRYPTION_KEY` in server env (see `.env.local.example`). Without it, contact payloads cannot be stored encrypted. Rotate the key deliberately and keep the old value available only if you still need to decrypt historical rows.
+Living contact fields encrypt with `app_settings.contact_crypto_key` (pgcrypto). Rotate by decrypting with the old key and re-encrypting with a new value in one transaction. Never leave the column blank.

@@ -65,7 +65,7 @@ describe('serializeGedcom — output format', () => {
     const out = serializeGedcom(parsed);
     expect(out).toContain('2 VERS 7.0');
     expect(out).toContain('1 SCHMA');
-    expect(out).toContain('2 TAG https://juthoor.org/gedcom/IDNO-UNRWA UNRWA');
+    expect(out).toContain('2 TAG _UNRWA https://juthoor.org/gedcom/IDNO-UNRWA');
     expect(out).not.toContain('FORM LINEAGE-LINKED');
     expect(out).not.toContain('VERS 5.5.1');
   });
@@ -118,7 +118,8 @@ describe('serializeGedcom — output format', () => {
     expect(out).toContain('1 NAME أحمد /البوز/');
     expect(out).toContain('2 TRAN أحمد /البوز/');
     expect(out).toContain('3 LANG ar');
-    expect(out).toContain('2 ROMN Ahmad /Bouz/');
+    expect(out).toContain('2 TRAN Ahmad /Bouz/');
+    expect(out).toContain('3 LANG latn');
     expect(out).toContain('1 IDNO R-1');
     expect(out).toContain('2 TYPE UNRWA');
   });

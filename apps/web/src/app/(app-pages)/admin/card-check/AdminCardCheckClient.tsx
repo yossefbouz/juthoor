@@ -14,11 +14,17 @@ function rowKey(r: IdentifierCardRequest) {
   return `${r.personId}:${r.kind}`;
 }
 
-export function AdminCardCheckClient({ initialRequests }: { initialRequests: IdentifierCardRequest[] }) {
+export function AdminCardCheckClient({
+  initialRequests,
+  loadError = null,
+}: {
+  initialRequests: IdentifierCardRequest[];
+  loadError?: string | null;
+}) {
   const { t, dir, locale } = useLocale();
   const [requests, setRequests] = useState(initialRequests);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(loadError);
 
   async function decide(r: IdentifierCardRequest, approve: boolean) {
     setBusyId(rowKey(r));

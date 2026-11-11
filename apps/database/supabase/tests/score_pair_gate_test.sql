@@ -96,7 +96,7 @@ SELECT is((SELECT breakdown->'meta'->>'decision' FROM public.score_pair(
   'auto_link', 'a living pair auto-links when it meets the living threshold');
 SELECT is((SELECT (breakdown->'meta'->>'threshold')::numeric FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000c1','f0000000-0000-0000-0000-0000000000c2')),
-  76::numeric, 'a living pair is judged against the raw 76-point threshold');
+  76::numeric, 'a living pair is judged against the AIO-100 living threshold (76)');
 UPDATE public.app_settings SET link_threshold_living = 50;
 SELECT is((SELECT (breakdown->'meta'->>'threshold')::numeric FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000c1','f0000000-0000-0000-0000-0000000000c2')),
@@ -108,7 +108,7 @@ SELECT is((SELECT breakdown->'meta'->>'decision' FROM public.score_pair(
   'review', 'a sparse pair with all of its few fields agreeing stays in review');
 SELECT is((SELECT (breakdown->'meta'->>'score_pct')::numeric FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000e1','f0000000-0000-0000-0000-0000000000e2')),
-  0.580, 'sparse agreeing fields score_pct is 0.580 on the AIO-100 scale');
+  0.500, 'sparse agreeing fields score_pct is 0.500 on AIO-100 (num_children 0=0 scores 0)');
 SELECT is((SELECT (breakdown->'meta'->>'full_scale')::int FROM public.score_pair(
     'f0000000-0000-0000-0000-0000000000c1','f0000000-0000-0000-0000-0000000000c2')),
   86, 'living pairs use full_scale 86 (death fields excluded)');

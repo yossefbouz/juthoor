@@ -103,6 +103,17 @@ export function AppSidebarContent({
         await clearClientAuthCaches();
         await deleteAccountAction();
       } catch (err) {
+        // next/navigation redirect() throws; that is success, not a toast.
+        const digest =
+          err && typeof err === 'object' && 'digest' in err
+            ? String((err as { digest?: unknown }).digest ?? '')
+            : '';
+        if (
+          digest.startsWith('NEXT_REDIRECT') ||
+          (err instanceof Error && err.message === 'NEXT_REDIRECT')
+        ) {
+          throw err;
+        }
         toast.error(
           err instanceof Error
             ? err.message

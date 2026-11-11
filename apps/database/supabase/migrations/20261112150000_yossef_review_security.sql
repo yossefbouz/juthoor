@@ -950,8 +950,9 @@ BEGIN
   END IF;
 END $$;
 
+DROP FUNCTION IF EXISTS public.score_pair(uuid, uuid);
 CREATE OR REPLACE FUNCTION public.score_pair(p_a uuid, p_b uuid)
-RETURNS jsonb
+RETURNS TABLE(score int, breakdown jsonb)
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
@@ -961,7 +962,7 @@ BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_admin() THEN
     RAISE EXCEPTION 'not_authorized' USING ERRCODE = '42501';
   END IF;
-  RETURN public.score_pair_impl(p_a, p_b);
+  RETURN QUERY SELECT s.score, s.breakdown FROM public.score_pair_impl(p_a, p_b) s;
 END;
 $$;
 

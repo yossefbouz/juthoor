@@ -10,6 +10,14 @@ export const metadata = {
 export default async function AdminCardCheckPage() {
   // Non-admins get a 404 — the page does not exist for them.
   if (!(await isCurrentUserAdmin())) notFound();
-  const requests = await listIdentifierCardRequests().catch(() => []);
-  return <AdminCardCheckClient initialRequests={requests} />;
+  let requests: Awaited<ReturnType<typeof listIdentifierCardRequests>> = [];
+  let loadError: string | null = null;
+  try {
+    requests = await listIdentifierCardRequests();
+  } catch (err) {
+    loadError = err instanceof Error ? err.message : 'Failed to load card-check queue';
+  }
+  return (
+    <AdminCardCheckClient initialRequests={requests} loadError={loadError} />
+  );
 }

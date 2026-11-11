@@ -322,7 +322,7 @@ export async function exportTreeToSnapshot(
           value: id.id_value,
           note: idnoType === 'ILID' ? 'restricted' : undefined,
         });
-        extraNotes.push(`${idnoType}: ${id.id_value}`);
+        // Identifiers travel as IDNO only (not duplicated into NOTE).
       }
 
       const disp = displacementByPerson.get(p.id);

@@ -250,12 +250,9 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
       ])
     );
     expect(gf.extraNotes).toEqual(
-      expect.arrayContaining([
-        'UNRWA: UNRWA-123',
-        'HOSTCARD1948: FC-9',
-        'ORIGIN: Safad',
-      ])
+      expect.arrayContaining(['ORIGIN: Safad']),
     );
+    expect(gf.extraNotes?.some((n) => n.startsWith('UNRWA:'))).toBe(false);
     expect(gf.events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -279,7 +276,7 @@ describe('exportTreeToSnapshot — living people (decision D5)', () => {
     expect(ged).toContain('2 TYPE UNRWA');
     expect(ged).toContain('1 IDNO FC-9');
     expect(ged).toContain('2 TYPE HOSTCARD1948');
-    expect(ged).toContain('1 NOTE UNRWA: UNRWA-123');
+    expect(ged).not.toContain('1 NOTE UNRWA: UNRWA-123');
     expect(ged).toContain('2 TYPE DISPLACEMENT');
     expect(ged).toContain('2 TYPE CAMPREGN');
   });

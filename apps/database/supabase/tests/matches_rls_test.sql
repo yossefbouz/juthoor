@@ -44,7 +44,9 @@ SELECT set_config('request.jwt.claims',
   '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
 SELECT is(
-  (SELECT count(*)::int FROM public.matches),
+  (SELECT count(*)::int FROM public.matches
+    WHERE person_a_id = '44444444-4444-4444-4444-444444444444'
+      AND person_b_id = '55555555-5555-5555-5555-555555555555'),
   1,
   'admin reads the match row'
 );

@@ -56,31 +56,31 @@ describe('transliterateLatinTokenToArabic digraphs', () => {
 });
 
 describe('toEnglishPhonetic', () => {
-  it('romanizes common Arabic letters and digraphs', () => {
-    // Simple letter map (no short-vowel insertion): أحمد → Ahmd, not Ahmad.
-    expect(toEnglishPhonetic('أحمد')).toBe('Ahmd');
-    expect(toEnglishPhonetic('خالد')).toBe('Khald');
-    expect(toEnglishPhonetic('شريف')).toBe('Shryf');
-    expect(toEnglishPhonetic('ثابت')).toBe('Thabt');
-    expect(toEnglishPhonetic('ذاكر')).toBe('Dhakr');
-    expect(toEnglishPhonetic('غسان')).toBe('Ghsan');
-    expect(toEnglishPhonetic('قاسم')).toBe('Qasm');
+  it('romanizes common Arabic letters and digraphs with readable vowels', () => {
+    // Common given names use the override table; others get implied vowels.
+    expect(toEnglishPhonetic('أحمد')).toBe('Ahmad');
+    expect(toEnglishPhonetic('خالد')).toBe('Khaled');
+    expect(toEnglishPhonetic('شريف')).toBe('Sharif');
+    expect(toEnglishPhonetic('ثابت')).toBe('Thabit');
+    expect(toEnglishPhonetic('ذاكر')).toBe('Dhaker');
+    expect(toEnglishPhonetic('غسان')).toBe('Ghassan');
+    expect(toEnglishPhonetic('قاسم')).toBe('Qasim');
   });
 
   it('maps ع/ء to apostrophe and ة to a/h', () => {
-    expect(toEnglishPhonetic('عمر')).toBe("'mr");
-    expect(toEnglishPhonetic('فاطمة')).toBe('Fatma');
+    expect(toEnglishPhonetic('عمر')).toBe('Omar');
+    expect(toEnglishPhonetic('فاطمة')).toBe('Fatima');
     expect(toEnglishPhonetic('شاء')).toBe("Sha'");
   });
 
   it('prefixes ال as al-', () => {
     expect(toEnglishPhonetic('الحاج')).toBe('al-Haj');
-    expect(toEnglishPhonetic('البوز')).toBe('al-Bwz');
+    expect(toEnglishPhonetic('البوز')).toBe('al-Bawz');
   });
 
   it('handles multi-token names and empty input', () => {
     expect(toEnglishPhonetic('')).toBe('');
     expect(toEnglishPhonetic('  ')).toBe('');
-    expect(toEnglishPhonetic('أحمد خالد')).toBe('Ahmd Khald');
+    expect(toEnglishPhonetic('أحمد خالد')).toBe('Ahmad Khaled');
   });
 });

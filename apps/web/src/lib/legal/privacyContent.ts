@@ -5,7 +5,8 @@ export const PRIVACY_EMAIL =
   (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim()) ||
   'privacy@juthoor.app';
 
-const PRIVACY_MAILTO = `mailto:${PRIVACY_EMAIL}`;
+/** Clickable href only. Never put the mailto: prefix into visible copy. */
+export const PRIVACY_MAILTO = `mailto:${PRIVACY_EMAIL}`;
 
 /**
  * Palestinian Roots Platform — Privacy Policy v1.0.
@@ -29,8 +30,8 @@ export const PRIVACY_POLICY: LegalDocument = {
     'This document is available in Arabic and English. In the event of any inconsistency between the two versions, the Arabic version shall prevail, as Arabic is the official language of this platform.',
   importantNoticeAr:
     'هذه الوثيقة متوفّرة بالعربية والإنجليزية. في حال وجود أي تعارض بين النسختين، تُعتمد النسخة العربية، لأنّ العربية هي اللغة الرسمية لهذه المنصّة.',
-  contactEn: `Questions, rights requests, or complaints: ${PRIVACY_MAILTO}. We aim to respond within 30 days.`,
-  contactAr: `للأسئلة أو طلبات ممارسة حقوقك أو الشكاوى: ${PRIVACY_MAILTO}. نسعى للردّ خلال 30 يومًا.`,
+  contactEn: `Questions, rights requests, or complaints: ${PRIVACY_EMAIL}. We aim to respond within 30 days.`,
+  contactAr: `للأسئلة أو طلبات ممارسة حقوقك أو الشكاوى: ${PRIVACY_EMAIL}. نسعى للردّ خلال 30 يومًا.`,
   sections: [
     {
       id: 'privacy-1',
@@ -384,8 +385,8 @@ export const PRIVACY_POLICY: LegalDocument = {
       blocks: [
         {
           type: 'p',
-          en: `If you have questions about this Policy, wish to exercise your rights, or wish to make a complaint, contact the Data Protection Contact at ${PRIVACY_MAILTO}. We aim to respond to all enquiries within 30 days.`,
-          ar: `إذا كانت لديك أسئلة حول هذه السياسة، أو ترغب في ممارسة حقوقك، أو تقديم شكوى، تواصل مع جهة الاتصال المعنية بحماية البيانات عبر ${PRIVACY_MAILTO}. نسعى للردّ على جميع الاستفسارات خلال 30 يومًا.`,
+          en: `If you have questions about this Policy, wish to exercise your rights, or wish to make a complaint, contact the Data Protection Contact at ${PRIVACY_EMAIL}. We aim to respond to all enquiries within 30 days.`,
+          ar: `إذا كانت لديك أسئلة حول هذه السياسة، أو ترغب في ممارسة حقوقك، أو تقديم شكوى، تواصل مع جهة الاتصال المعنية بحماية البيانات عبر ${PRIVACY_EMAIL}. نسعى للردّ على جميع الاستفسارات خلال 30 يومًا.`,
         },
       ],
     },

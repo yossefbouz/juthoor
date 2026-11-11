@@ -270,12 +270,70 @@ const ARABIC_MARKS = /[\u064B-\u065F\u0670\u0640]/g;
  * Simple Arabic → Latin romanization for English phonetic auto-fill.
  * Digraphs: خ=kh, ش=sh, ث=th, ذ=dh, غ=gh, ق=q, ع=', ء=', ة=a/h, ال=al-.
  */
+/** Common undiacritized Arabic given names → readable English (avoid "Mhmd"). */
+const ARABIC_GIVEN_EN: Record<string, string> = {
+  محمد: 'Muhammad',
+  محمّد: 'Muhammad',
+  احمد: 'Ahmad',
+  أحمد: 'Ahmad',
+  ابراهيم: 'Ibrahim',
+  إبراهيم: 'Ibrahim',
+  يوسف: 'Yusuf',
+  محمود: 'Mahmoud',
+  علي: 'Ali',
+  على: 'Ali',
+  حسن: 'Hasan',
+  حسين: 'Hussein',
+  خليل: 'Khalil',
+  خالد: 'Khaled',
+  شريف: 'Sharif',
+  ثابت: 'Thabit',
+  ذاكر: 'Dhaker',
+  غسان: 'Ghassan',
+  قاسم: 'Qasim',
+  عمر: 'Omar',
+  عثمان: 'Uthman',
+  فاطمة: 'Fatima',
+  مريم: 'Maryam',
+  عائشة: 'Aisha',
+  خديجة: 'Khadija',
+  سارة: 'Sarah',
+  نور: 'Nour',
+  رنا: 'Rana',
+};
+
 export function toEnglishPhonetic(arabic: string): string {
   const trimmed = arabic.trim().replace(ARABIC_MARKS, '');
   if (!trimmed) return '';
 
   const tokens = trimmed.split(/\s+/).filter(Boolean);
-  return tokens.map(romanizeArabicToken).filter(Boolean).join(' ');
+  return tokens
+    .map((token) => {
+      const key = token.replace(ARABIC_MARKS, '');
+      if (ARABIC_GIVEN_EN[key]) return ARABIC_GIVEN_EN[key];
+      return insertImpliedVowels(romanizeArabicToken(token));
+    })
+    .filter(Boolean)
+    .join(' ');
+}
+
+/** Soften consonant clusters so undiacritized names are not vowel-less. */
+function insertImpliedVowels(token: string): string {
+  if (!token || token.length < 3) return token;
+  // Digraph + consonant (Ghsan → Ghasan), then remaining bare pairs (Ahmd → if not overridden).
+  let out = token.replace(
+    /(kh|sh|th|dh|gh)(?=[bcdfghjklmnpqrstvwxyz])/gi,
+    '$1a',
+  );
+  out = out.replace(
+    /([bcdfghjklmnpqrstvwxyz])([bcdfghjklmnpqrstvwxyz])/gi,
+    (full, a: string, b: string) => {
+      const digraph = `${a}${b}`.toLowerCase();
+      if (['kh', 'sh', 'th', 'dh', 'gh'].includes(digraph)) return full;
+      return `${a}a${b}`;
+    },
+  );
+  return out;
 }
 
 function romanizeArabicToken(token: string): string {

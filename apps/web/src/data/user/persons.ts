@@ -89,7 +89,11 @@ export const insertPersonAction = authActionClient
       const { error: linkErr } = await supabase.rpc('claim_linked_person', {
         p_person_id: personId,
       });
-      if (linkErr) throw new Error(linkErr.message);
+      if (linkErr) {
+        // Do not leave an unlinked orphan on someone else's / failed claim path.
+        await supabase.from('persons').delete().eq('id', personId);
+        throw new Error(linkErr.message);
+      }
     }
 
     revalidatePath('/tree');

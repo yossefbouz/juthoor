@@ -44,7 +44,9 @@ export function serializeGedcom(snap: GedcomSnapshot): string {
   lines.push('2 VERS 7.0');
   lines.push('1 SCHMA');
   for (const entry of SCHEMA_TAGS) {
-    lines.push(`2 TAG ${entry.uri} ${entry.tag}`);
+    // GEDCOM 7: TAG then URI; extension tags are _prefixed.
+    const tag = entry.tag.startsWith('_') ? entry.tag : `_${entry.tag}`;
+    lines.push(`2 TAG ${tag} ${entry.uri}`);
   }
   lines.push(`1 SOUR ${snap.header.source ?? 'Juthoor'}`);
   lines.push('2 NAME Juthoor Palestinian Roots Platform');
@@ -112,16 +114,20 @@ function emitName(lines: string[], name: GedcomName): void {
       .join(' ')
       .trim();
 
-  lines.push(`1 NAME ${body}`);
+  const safeBody = body.replace(/[\r\n]+/g, ' ').trim();
+  lines.push(`1 NAME ${safeBody}`);
   if (name.nameType && name.nameType !== 'birth') {
-    lines.push(`2 TYPE ${name.nameType}`);
+    // GEDCOM 7 TYPE payloads are uppercase tokens.
+    lines.push(`2 TYPE ${String(name.nameType).toUpperCase()}`);
   }
   if (name.tran) {
-    lines.push(`2 TRAN ${name.tran}`);
+    lines.push(`2 TRAN ${name.tran.replace(/[\r\n]+/g, ' ').trim()}`);
     lines.push('3 LANG ar');
   }
+  // GEDCOM 7 dropped ROMN as a structure; emit romanization as TRAN/LATN.
   if (name.romn) {
-    lines.push(`2 ROMN ${name.romn}`);
+    lines.push(`2 TRAN ${name.romn.replace(/[\r\n]+/g, ' ').trim()}`);
+    lines.push('3 LANG latn');
   }
 }
 
@@ -146,7 +152,7 @@ function emitFamily(lines: string[], f: GedcomFamily): void {
   for (const child of f.children) {
     lines.push(`1 CHIL ${child.childXref}`);
     if (child.pedigree && child.pedigree !== 'birth') {
-      lines.push(`2 PEDI ${child.pedigree}`);
+      lines.push(`2 PEDI ${String(child.pedigree).toUpperCase()}`);
     }
   }
   for (const event of f.events) {
@@ -157,15 +163,17 @@ function emitFamily(lines: string[], f: GedcomFamily): void {
 function emitEvent(lines: string[], event: GedcomEvent): void {
   lines.push(`1 ${event.eventType}`);
   if (event.typeDetail) {
-    lines.push(`2 TYPE ${event.typeDetail}`);
+    lines.push(
+      `2 TYPE ${String(event.typeDetail).replace(/[\r\n]+/g, ' ').trim()}`,
+    );
   }
   if (event.dateRaw) {
-    lines.push(`2 DATE ${event.dateRaw}`);
+    lines.push(`2 DATE ${String(event.dateRaw).replace(/[\r\n]+/g, ' ').trim()}`);
   } else if (event.year !== undefined) {
     lines.push(`2 DATE ${event.year}`);
   }
   if (event.place) {
-    lines.push(`2 PLAC ${event.place}`);
+    lines.push(`2 PLAC ${event.place.replace(/[\r\n]+/g, ' ').trim()}`);
   }
   if (event.note) {
     emitContiguous(lines, 2, 'NOTE', event.note.replace(/\n/g, ' '));

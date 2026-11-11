@@ -935,7 +935,12 @@ async function uploadIdentifierCard(input: {
     });
     return recorded.id;
   } catch (insertErr) {
-    await browser.storage.from('person-attachments').remove([path]).catch(() => undefined);
+    const { removeOrphanedAttachmentObjectAction } = await import(
+      '@/data/user/attachmentsCleanup'
+    );
+    await removeOrphanedAttachmentObjectAction({ storagePath: path }).catch(
+      () => undefined,
+    );
     throw insertErr;
   }
 }

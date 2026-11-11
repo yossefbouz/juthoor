@@ -36,14 +36,25 @@ INSERT INTO public.events (person_id, event_type) VALUES
 -- 1. the switch is off by default: the batch only queues
 SELECT is((SELECT auto_merge_enabled FROM public.app_settings), false, 'automatic linking is off by default');
 SELECT ok(public.run_matching_batch(true) IS NOT NULL, 'batch runs with automatic linking off');
-SELECT is((SELECT count(*)::int FROM public.matches WHERE status = 'pending'), 2, 'both pairs are queued as pending');
-SELECT is((SELECT count(*)::int FROM public.person_links), 0, 'nothing is linked while the switch is off');
+SELECT is((SELECT count(*)::int FROM public.matches
+  WHERE person_a_id IN (
+    'd1000000-0000-0000-0000-000000000001','f1000000-0000-0000-0000-000000000003')
+    AND status = 'pending'), 2, 'both pairs are queued as pending');
+SELECT is((SELECT count(*)::int FROM public.person_links
+  WHERE person_a_id IN (
+    'd1000000-0000-0000-0000-000000000001','d2000000-0000-0000-0000-000000000002',
+    'f1000000-0000-0000-0000-000000000003','f2000000-0000-0000-0000-000000000004')),
+  0, 'nothing is linked while the switch is off');
 
 -- 2. switch on at the AIO thresholds: these pairs share only a name, birth year and birth place,
 -- which is a small part of the full scale, so they stay in review
 UPDATE public.app_settings SET auto_merge_enabled = true;
 SELECT ok(public.run_matching_batch(true) IS NOT NULL, 'batch runs with automatic linking on at the default thresholds');
-SELECT is((SELECT count(*)::int FROM public.person_links), 0, 'a sparse pair is not linked at raw 90 / 76 on AIO-100');
+SELECT is((SELECT count(*)::int FROM public.person_links
+  WHERE person_a_id IN (
+    'd1000000-0000-0000-0000-000000000001','d2000000-0000-0000-0000-000000000002',
+    'f1000000-0000-0000-0000-000000000003','f2000000-0000-0000-0000-000000000004')),
+  0, 'a sparse pair is not linked at raw 90 / 76 on AIO-100');
 
 -- 3. lower the thresholds for this test so the same pairs link: the rest of the file exercises the
 -- linking, notification and revoke mechanics (the scoring itself is covered in score_pair_gate_test)
