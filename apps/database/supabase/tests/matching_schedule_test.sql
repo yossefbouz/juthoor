@@ -41,12 +41,17 @@ SELECT is(
   'and the failure is recorded in matching_runs'
 );
 
+-- Local/CI often lack pg_cron. CASE short-circuits so we never touch cron.job
+-- when the extension (or relation) is missing.
 SELECT ok(
-  NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron')
-  OR (
-    SELECT count(*) FROM cron.job
-    WHERE jobname IN ('juthoor_nightly_match', 'juthoor_weekly_full')
-  ) = 2,
+  CASE
+    WHEN NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN true
+    WHEN to_regclass('cron.job') IS NULL THEN true
+    ELSE (
+      SELECT count(*)::int FROM cron.job
+      WHERE jobname IN ('juthoor_nightly_match', 'juthoor_weekly_full')
+    ) = 2
+  END,
   'the nightly and weekly jobs are scheduled when pg_cron is available'
 );
 
