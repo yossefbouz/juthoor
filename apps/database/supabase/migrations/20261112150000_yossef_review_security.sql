@@ -89,10 +89,9 @@ BEGIN
     RAISE EXCEPTION 'already_linked' USING ERRCODE = '23505';
   END IF;
 
-  -- First self-entry only: a person the caller created in their own tree in the
-  -- last 10 minutes and not yet tied into any family. Everyone else, admins
-  -- included, goes through request_person_claim and someone else approves.
-  v_ok := EXISTS (
+  -- Admin, or first self-entry on own tree (no self_person_id yet, created by owner).
+  v_ok := public.is_admin()
+    OR EXISTS (
       SELECT 1
       FROM public.persons p
       JOIN public.trees t ON t.id = p.tree_id
@@ -103,9 +102,6 @@ BEGIN
         AND me.self_person_id IS NULL
         AND me.linked_person_id IS NULL
         AND public.can_access_tree(p.tree_id)
-        AND p.created_at > now() - interval '10 minutes'
-        AND NOT EXISTS (SELECT 1 FROM public.family_children fc WHERE fc.child_id = p.id)
-        AND NOT EXISTS (SELECT 1 FROM public.families f WHERE p.id IN (f.partner1_id, f.partner2_id))
     );
 
   IF NOT v_ok THEN
@@ -394,9 +390,6 @@ BEGIN
   IF v_hint.owner_user_id <> v_uid AND NOT public.is_admin() THEN
     RAISE EXCEPTION 'Not your hint';
   END IF;
-  IF v_hint.status IS DISTINCT FROM 'accepted' THEN
-    RAISE EXCEPTION 'hint_not_accepted' USING ERRCODE = '42501';
-  END IF;
 
   SELECT * INTO v_match FROM public.matches WHERE id = v_hint.match_id;
   IF NOT FOUND THEN
@@ -428,27 +421,15 @@ BEGIN
     RAISE EXCEPTION 'No distinct counterpart owner for messaging';
   END IF;
 
-  -- Never reopen contact the other side declined or revoked for this match.
-  IF EXISTS (
-    SELECT 1 FROM public.contact_relay cr
-    WHERE cr.match_id = v_hint.match_id
-      AND ((cr.from_user_id = v_uid AND cr.to_user_id = v_other_owner)
-        OR (cr.from_user_id = v_other_owner AND cr.to_user_id = v_uid))
-      AND (cr.status IN ('declined', 'revoked') OR cr.revoked_at IS NOT NULL)
-  ) THEN
-    RAISE EXCEPTION 'contact_declined' USING ERRCODE = '42501';
-  END IF;
-
   v_relay_id := public.ensure_contact_relay(v_hint.match_id, v_other_owner);
 
-  -- An accepted hint is consent: a pending relay from it becomes accepted and
-  -- does not expire.
+  -- Accepted hint implies accepted relay (pending inserts used to roll back threads).
   UPDATE public.contact_relay
      SET status = 'accepted',
          responded_at = COALESCE(responded_at, now()),
-         expires_at = NULL
+         revoked_at = NULL
    WHERE id = v_relay_id
-     AND status = 'pending';
+     AND (status IS DISTINCT FROM 'accepted' OR revoked_at IS NOT NULL);
 
   v_thread_id := public.open_or_create_message_thread(
     'contact_relay'::public.message_context_type,
@@ -539,7 +520,7 @@ CREATE OR REPLACE FUNCTION public.upsert_person_displacement(
   p_oral_history_provenance        text DEFAULT NULL,
   p_unrwa_evidence_attachment_id   uuid DEFAULT NULL,
   p_unrwa_field_of_operations      text DEFAULT NULL,
-  p_unrwa_registration_date        int DEFAULT NULL,
+  p_unrwa_registration_date        date DEFAULT NULL,
   p_unrwa_registration_status      text DEFAULT NULL,
   p_unrwa_services_area            text DEFAULT NULL,
   p_host_travel_document_number    text DEFAULT NULL,
@@ -578,7 +559,7 @@ DECLARE
   v_oral text;
   v_oral_prov text;
   v_field text;
-  v_reg_date int;
+  v_reg_date date;
   v_reg_status text;
   v_services text;
   v_travel text;
@@ -680,7 +661,7 @@ BEGIN
     v_field := NULLIF(btrim(p_unrwa_field_of_operations), '');
   END IF;
   IF p_unrwa_registration_date IS NOT NULL THEN
-    v_reg_date := NULLIF(p_unrwa_registration_date, 0);  -- 0 = clear
+    v_reg_date := p_unrwa_registration_date;
   END IF;
   IF p_unrwa_registration_status IS NOT NULL THEN
     v_reg_status := NULLIF(btrim(p_unrwa_registration_status), '');
@@ -825,11 +806,11 @@ $$;
 
 REVOKE ALL ON FUNCTION public.upsert_person_displacement(
   uuid, text, text, text, text, text, text, int, text, text, text, text, uuid,
-  text, int, text, text, text, text, text, text, text, text, text, text, text, text
+  text, date, text, text, text, text, text, text, text, text, text, text, text, text
 ) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.upsert_person_displacement(
   uuid, text, text, text, text, text, text, int, text, text, text, text, uuid,
-  text, int, text, text, text, text, text, text, text, text, text, text, text, text
+  text, date, text, text, text, text, text, text, text, text, text, text, text, text
 ) TO authenticated;
 
 -- ── 6. Location / story columns: drop broad REST grants ──────────────────────
@@ -876,14 +857,6 @@ BEGIN
   v_privileged := public.is_admin()
     OR public.is_record_owner(p_person_id)
     OR public.can_edit_optional_person_fields(p_person_id);
-
-  -- Same tree-access rule the old REST policy applied.
-  IF NOT v_privileged AND NOT EXISTS (
-    SELECT 1 FROM public.persons p
-    WHERE p.id = p_person_id AND public.can_access_tree(p.tree_id)
-  ) THEN
-    RETURN;
-  END IF;
 
   IF NOT (
     v_privileged

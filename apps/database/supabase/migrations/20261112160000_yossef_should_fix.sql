@@ -115,23 +115,21 @@ FROM (
   HAVING count(*) = 2
 ) sub
 WHERE mt.id = sub.thread_id
-  AND (mt.participant_low IS NULL OR mt.participant_high IS NULL)
-  AND NOT EXISTS (
-    SELECT 1 FROM public.message_threads d
-    WHERE d.context_type = mt.context_type
-      AND d.context_id = mt.context_id
-      AND d.participant_low = sub.low
-      AND d.participant_high = sub.high
-  );
+  AND (mt.participant_low IS NULL OR mt.participant_high IS NULL);
 
--- expires_at only limits how long a request can wait for an answer. Once a
--- relay is accepted the conversation does not expire. Participants of inactive
--- relay threads are kept: the message policies below hide those messages.
-UPDATE public.contact_relay
-   SET expires_at = NULL
- WHERE status = 'accepted'
-   AND revoked_at IS NULL
-   AND expires_at IS NOT NULL;
+-- Drop participants on contact_relay threads whose relay is not active.
+DELETE FROM public.message_thread_participants mtp
+WHERE mtp.thread_id IN (
+  SELECT mt.id
+  FROM public.message_threads mt
+  JOIN public.contact_relay cr ON cr.id = mt.context_id
+  WHERE mt.context_type = 'contact_relay'
+    AND (
+      cr.status IS DISTINCT FROM 'accepted'
+      OR cr.revoked_at IS NOT NULL
+      OR (cr.expires_at IS NOT NULL AND cr.expires_at < now())
+    )
+);
 
 -- ── 3. Message policies: require active context ──────────────────────────────
 CREATE OR REPLACE FUNCTION public.message_context_is_active(p_thread_id uuid)
@@ -156,7 +154,8 @@ BEGIN
       RETURN false;
     END IF;
     RETURN v_relay.status = 'accepted'
-      AND v_relay.revoked_at IS NULL;
+      AND v_relay.revoked_at IS NULL
+      AND (v_relay.expires_at IS NULL OR v_relay.expires_at >= now());
   END IF;
 
   -- Other contexts stay open while the thread exists and pair keys are set.
@@ -556,7 +555,7 @@ END $$;
 
 -- ── 9. Server-side orphaned attachment cleanup ────────────────────────────────
 CREATE OR REPLACE FUNCTION public.delete_person_attachment(p_attachment_id uuid)
-RETURNS text
+RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
@@ -571,7 +570,7 @@ BEGIN
 
   SELECT * INTO v_row FROM public.person_attachments WHERE id = p_attachment_id;
   IF NOT FOUND THEN
-    RETURN NULL;
+    RETURN;
   END IF;
 
   IF NOT (
@@ -589,52 +588,40 @@ BEGIN
 
   DELETE FROM public.person_attachments WHERE id = p_attachment_id;
 
-  -- The caller removes the file through the Storage API with this path
-  -- (deleting storage.objects rows from SQL does not remove the file).
-  RETURN v_row.storage_path;
+  IF v_row.storage_path IS NOT NULL THEN
+    BEGIN
+      DELETE FROM storage.objects
+      WHERE name = v_row.storage_path
+         OR name LIKE ('%' || v_row.storage_path);
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END IF;
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.delete_person_attachment(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_person_attachment(uuid) TO authenticated;
 
--- Uploaders, record owners and admins may delete an attachment's file (the
--- original policy only allowed the tree owner). Checked through a definer
--- helper so person_attachments RLS does not hide the row from the uploader.
-CREATE OR REPLACE FUNCTION public.can_delete_attachment_object(p_name text)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
+-- ── 10. UNRWA registration date: allow clear via sentinel far-past or empty ──
+-- App will send date '0001-01-01' to mean clear; RPC treats it as clear.
+-- (Handled in app + small note; displacement RPC already keeps on NULL.)
+-- Clear UNRWA registration date when the app sends year 0 / date 0001-01-01.
+CREATE OR REPLACE FUNCTION public.clear_unrwa_registration_date_if_sentinel()
+RETURNS trigger
+LANGUAGE plpgsql
 SET search_path = ''
 AS $$
-  SELECT auth.uid() IS NOT NULL AND (
-    public.is_admin()
-    OR EXISTS (
-      SELECT 1 FROM public.person_attachments a
-      WHERE a.storage_path = p_name
-        AND (a.uploaded_by = auth.uid() OR public.is_record_owner(a.person_id))
-    )
-  );
+BEGIN
+  IF NEW.unrwa_registration_date = DATE '0001-01-01' THEN
+    NEW.unrwa_registration_date := NULL;
+  END IF;
+  RETURN NEW;
+END;
 $$;
 
-REVOKE ALL ON FUNCTION public.can_delete_attachment_object(text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.can_delete_attachment_object(text) TO authenticated;
-
-DROP POLICY IF EXISTS "pa_storage_delete_uploader_or_owner" ON storage.objects;
-CREATE POLICY "pa_storage_delete_uploader_or_owner" ON storage.objects
-  FOR DELETE TO authenticated
-  USING (
-    bucket_id = 'person-attachments'
-    AND public.can_delete_attachment_object(name)
-  );
-
--- ── 10. UNRWA registration year ──────────────────────────────────────────────
--- unrwa_registration_date is an int year. upsert_person_displacement treats 0
--- as "clear" and NULL as "keep", so no trigger is needed.
 DROP TRIGGER IF EXISTS trg_clear_unrwa_reg_date_sentinel ON public.person_displacement;
-DROP FUNCTION IF EXISTS public.clear_unrwa_registration_date_if_sentinel();
-DROP FUNCTION IF EXISTS public.upsert_person_displacement(
-  uuid, text, text, text, text, text, text, int, text, text, text, text, uuid,
-  text, date, text, text, text, text, text, text, text, text, text, text, text, text
-);
+CREATE TRIGGER trg_clear_unrwa_reg_date_sentinel
+  BEFORE INSERT OR UPDATE ON public.person_displacement
+  FOR EACH ROW
+  EXECUTE FUNCTION public.clear_unrwa_registration_date_if_sentinel();
