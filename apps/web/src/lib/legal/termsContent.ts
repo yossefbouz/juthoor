@@ -23,9 +23,9 @@ export const TERMS_AND_CONDITIONS: LegalDocument = {
   importantNoticeAr:
     'هذه الوثيقة متوفّرة بالعربية والإنجليزية. في حال وجود أي تعارض بين النسختين، تُعتمد النسخة العربية، لأنّ العربية هي اللغة الرسمية لهذه المنصّة. يتضمّن كلّ بند ملخّصًا بلغة مبسّطة في إطار مظلّل؛ هذه الملخّصات للمساعدة على الفهم فقط وليست مُلزِمة قانونيًا — النصّ الكامل هو الحاكم في جميع الأحوال.',
   contactEn:
-    'Questions about these Terms: legal@palestinianroots.org (placeholder — to be confirmed upon launch).',
+    'Questions about these Terms: legal@juthoor.app (placeholder — to be confirmed upon launch).',
   contactAr:
-    'للأسئلة حول هذه الشروط: legal@palestinianroots.org (مؤقّت — يُؤكَّد عند الإطلاق).',
+    'للأسئلة حول هذه الشروط: legal@juthoor.app (مؤقّت — يُؤكَّد عند الإطلاق).',
   sections: [
     {
       id: 'terms-art-1',
@@ -322,7 +322,7 @@ export const TERMS_AND_CONDITIONS: LegalDocument = {
             { en: '14.3 Waiver: Our failure to enforce any provision on any occasion does not waive our right to enforce it later.', ar: '14.3 التنازل: عدم تطبيقنا لأي بند في مناسبة ما لا يعني تنازلنا عن حقّنا في تطبيقه لاحقًا.' },
             { en: '14.4 Changes: We may update these Terms from time to time and will notify registered Users of significant changes by email and a notice on the Platform. Continued use after notification constitutes acceptance.', ar: '14.4 التغييرات: يجوز لنا تحديث هذه الشروط من وقتٍ لآخر، وسنُبلغ المستخدمين المسجَّلين بأي تغييرات جوهرية عبر البريد الإلكتروني وإشعار على المنصّة. استمرار الاستخدام بعد الإشعار يُعدّ قبولًا بها.' },
             { en: '14.5 Language: These Terms are available in Arabic and English. In the event of any inconsistency, the Arabic version shall prevail.', ar: '14.5 اللغة: هذه الشروط متوفّرة بالعربية والإنجليزية. في حال وجود أي تعارض، تُعتمد النسخة العربية.' },
-            { en: '14.6 Contact: Questions about these Terms — legal@palestinianroots.org (placeholder — to be confirmed upon launch).', ar: '14.6 التواصل: للأسئلة حول هذه الشروط — legal@palestinianroots.org (عنوان مؤقّت — سيُؤكَّد عند الإطلاق).' },
+            { en: '14.6 Contact: Questions about these Terms — legal@juthoor.app (placeholder — to be confirmed upon launch).', ar: '14.6 التواصل: للأسئلة حول هذه الشروط — legal@juthoor.app (عنوان مؤقّت — سيُؤكَّد عند الإطلاق).' },
           ],
         },
       ],
