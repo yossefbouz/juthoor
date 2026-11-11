@@ -1136,7 +1136,7 @@ export type Database = {
       };
       delete_person_attachment: {
         Args: { p_attachment_id: string };
-        Returns: undefined;
+        Returns: string | null;
       };
       respond_contact_relay: {
         Args: { p_relay_id: string; p_status: string };

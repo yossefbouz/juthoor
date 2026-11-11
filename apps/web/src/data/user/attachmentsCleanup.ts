@@ -23,14 +23,21 @@ export const removeOrphanedAttachmentObjectAction = authActionClient
     return { ok: true as const };
   });
 
-/** Delete attachment row (+ storage) via DEFINER RPC. */
+/** Delete an attachment row via the DEFINER RPC, then its file through the
+ *  Storage API (the RPC returns the path; SQL cannot remove the stored file). */
 export const deletePersonAttachmentAction = authActionClient
   .schema(z.object({ attachmentId: z.string().uuid() }))
   .action(async ({ parsedInput }) => {
     const supabase = await createJuthoorSupabaseClient();
-    const { error } = await supabase.rpc('delete_person_attachment', {
+    const { data: path, error } = await supabase.rpc('delete_person_attachment', {
       p_attachment_id: parsedInput.attachmentId,
     });
     if (error) throw new Error(error.message);
+    if (typeof path === 'string' && path.length > 0) {
+      const { error: removeError } = await supabase.storage
+        .from('person-attachments')
+        .remove([path]);
+      if (removeError) console.error('Failed to remove storage object:', removeError);
+    }
     return { ok: true as const };
   });

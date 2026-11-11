@@ -105,24 +105,27 @@ export async function loadTopSurnames(
 
   // Place filters must not count living people whose villages are masked
   // elsewhere (same rule as families-search).
-  let livingHidden: Set<string> | null = null;
+  // Fail closed: only people confirmed as not living count toward a place filter.
+  let notLiving: Set<string> | null = null;
   if (allowedPersonIds && allowedPersonIds.size > 0) {
+    notLiving = new Set();
     const ids = Array.from(allowedPersonIds);
-    const { data: livingRows } = await supabase
-      .from('persons')
-      .select('id, is_living')
-      .in('id', ids.slice(0, 5000));
-    livingHidden = new Set(
-      ((livingRows ?? []) as Array<{ id: string; is_living: boolean | null }>)
-        .filter((p) => p.is_living)
-        .map((p) => p.id),
-    );
+    for (let i = 0; i < ids.length; i += 300) {
+      const { data: livingRows, error: livingError } = await supabase
+        .from('persons')
+        .select('id, is_living')
+        .in('id', ids.slice(i, i + 300));
+      if (livingError) throw new Error(`Failed to load surnames: ${livingError.message}`);
+      for (const p of (livingRows ?? []) as Array<{ id: string; is_living: boolean | null }>) {
+        if (p.is_living === false) notLiving.add(p.id);
+      }
+    }
   }
 
   const tally = new Map<string, number>();
   for (const r of (data ?? []) as Array<{ surname: string | null; person_id: string }>) {
     if (allowedPersonIds && !allowedPersonIds.has(r.person_id)) continue;
-    if (livingHidden?.has(r.person_id)) continue;
+    if (notLiving && !notLiving.has(r.person_id)) continue;
     const s = (r.surname ?? '').trim();
     if (!s) continue;
     tally.set(s, (tally.get(s) ?? 0) + 1);

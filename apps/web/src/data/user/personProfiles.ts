@@ -151,47 +151,60 @@ export async function savePersonProfile(
   if (!uid) throw new Error('Not authenticated');
   const supabase = await createJuthoorSupabaseClient();
 
-  const { data, error } = await supabase
+  const payload = {
+    achievements_ar: orNull(parsed.achievementsAr),
+    achievements_en: orNull(parsed.achievementsEn),
+    contribution_ar: orNull(parsed.contributionAr),
+    contribution_en: orNull(parsed.contributionEn),
+    ...(parsed.contactConsent !== undefined
+      ? { contact_consent: parsed.contactConsent }
+      : {}),
+    ...(parsed.contactEmail !== undefined
+      ? { contact_email: clearableContact(parsed.contactEmail) }
+      : {}),
+    ...(parsed.contactPhone !== undefined
+      ? { contact_phone: clearableContact(parsed.contactPhone) }
+      : {}),
+    ...(parsed.currentCountry !== undefined
+      ? { current_country: orNull(parsed.currentCountry) }
+      : {}),
+    ...(parsed.currentCity !== undefined
+      ? { current_city: orNull(parsed.currentCity) }
+      : {}),
+    ...(parsed.currentAddress !== undefined
+      ? { current_address: clearableContact(parsed.currentAddress) }
+      : {}),
+    ...(parsed.preferredContactMethod !== undefined
+      ? { preferred_contact_method: orNull(parsed.preferredContactMethod) }
+      : {}),
+    ...(parsed.contributionConsent !== undefined
+      ? { contribution_consent: parsed.contributionConsent }
+      : {}),
+    updated_by: uid,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Plain UPDATE, then INSERT for a new row; not an upsert. On INSERT ... ON
+  // CONFLICT the contact-encryption trigger has already cleared the plaintext in
+  // EXCLUDED, so contact changes to an existing row were silently dropped.
+  const { data: updated, error: updateError } = await supabase
     .from('person_profiles')
-    .upsert(
-      {
-        person_id: parsed.personId,
-        achievements_ar: orNull(parsed.achievementsAr),
-        achievements_en: orNull(parsed.achievementsEn),
-        contribution_ar: orNull(parsed.contributionAr),
-        contribution_en: orNull(parsed.contributionEn),
-        ...(parsed.contactConsent !== undefined
-          ? { contact_consent: parsed.contactConsent }
-          : {}),
-        ...(parsed.contactEmail !== undefined
-          ? { contact_email: clearableContact(parsed.contactEmail) }
-          : {}),
-        ...(parsed.contactPhone !== undefined
-          ? { contact_phone: clearableContact(parsed.contactPhone) }
-          : {}),
-        ...(parsed.currentCountry !== undefined
-          ? { current_country: orNull(parsed.currentCountry) }
-          : {}),
-        ...(parsed.currentCity !== undefined
-          ? { current_city: orNull(parsed.currentCity) }
-          : {}),
-        ...(parsed.currentAddress !== undefined
-          ? { current_address: clearableContact(parsed.currentAddress) }
-          : {}),
-        ...(parsed.preferredContactMethod !== undefined
-          ? { preferred_contact_method: orNull(parsed.preferredContactMethod) }
-          : {}),
-        ...(parsed.contributionConsent !== undefined
-          ? { contribution_consent: parsed.contributionConsent }
-          : {}),
-        updated_by: uid,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'person_id' },
-    )
-    .select(PROFILE_COLS)
-    .single();
-  if (error) throw new Error(`Failed to save profile: ${error.message}`);
+    .update(payload)
+    .eq('person_id', parsed.personId)
+    .select('person_id');
+  if (updateError) throw new Error(`Failed to save profile: ${updateError.message}`);
+  if (!updated || updated.length === 0) {
+    const { error: insertError } = await supabase
+      .from('person_profiles')
+      .insert({ person_id: parsed.personId, ...payload });
+    if (insertError) {
+      throw new Error(
+        insertError.code === '23505'
+          ? 'You do not have permission to edit this profile.'
+          : `Failed to save profile: ${insertError.message}`,
+      );
+    }
+  }
   const reloaded = await loadPersonProfile(parsed.personId);
   if (!reloaded) throw new Error('Failed to reload profile after save');
   return reloaded;

@@ -225,12 +225,8 @@ export async function savePersonDisplacement(
   const fieldOps = rpcClearableText(parsed.unrwaFieldOfOperations);
   if (fieldOps !== undefined) args.p_unrwa_field_of_operations = fieldOps;
   if (parsed.unrwaRegistrationDate !== undefined) {
-    // NULL = clear (sentinel year-date; trigger/RPC maps 0001-01-01 → NULL).
-    // Non-null year becomes Jan 1 of that year for the date column.
-    args.p_unrwa_registration_date =
-      parsed.unrwaRegistrationDate == null
-        ? '0001-01-01'
-        : `${parsed.unrwaRegistrationDate}-01-01`;
+    // The column is an int year. 0 = clear; omitted = keep.
+    args.p_unrwa_registration_date = parsed.unrwaRegistrationDate ?? 0;
   }
   const regStatus = rpcClearableText(parsed.unrwaRegistrationStatus);
   if (regStatus !== undefined) args.p_unrwa_registration_status = regStatus;

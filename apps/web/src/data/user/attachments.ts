@@ -248,16 +248,20 @@ export async function deleteAttachment(attachmentId: string): Promise<void> {
   if (!row) return;
 
   const path = (row as unknown as { storage_path: string }).storage_path;
-  // RLS gates both — DB delete + storage object delete
-  const [{ error: delDbErr }, { error: delStErr }] = await Promise.all([
-      supabase.from('person_attachments').delete().eq('id', attachmentId),
-    supabase.storage.from('person-attachments').remove([path]),
-  ]);
-  if (delDbErr) throw new Error(delDbErr.message);
+  // Remove the file first: the storage delete policy for uploaders and record
+  // owners checks that the attachment row still exists.
+  const { error: delStErr } = await supabase.storage
+    .from('person-attachments')
+    .remove([path]);
   if (delStErr) {
     // Non-fatal — file might be left behind, log only
     console.error('Failed to remove storage object:', delStErr);
   }
+  const { error: delDbErr } = await supabase
+    .from('person_attachments')
+    .delete()
+    .eq('id', attachmentId);
+  if (delDbErr) throw new Error(delDbErr.message);
 }
 
 /**
