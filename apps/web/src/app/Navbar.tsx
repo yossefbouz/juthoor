@@ -42,6 +42,7 @@ export default function Navbar() {
         { label: t('هويتنا', 'Who We Are'), href: '/about' },
         { label: t('أهدافنا', 'Why Are We Doing This'), href: '/why' },
         { label: t('كيف نحقق أهدافنا', 'How Does This Work'), href: '/how' },
+        { label: t('أسئلة شائعة', 'FAQ'), href: '/faq' },
         { label: t('تواصل معنا', 'Contact Us'), href: '/contact' },
       ],
     },

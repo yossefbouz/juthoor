@@ -154,6 +154,32 @@ The engine ships with **auto-merge disabled**. For an initial period (target ≥
 
 ## 4. The FRS Scorecard (concrete)
 
+### Wave 1 shipped: AIO-100 v1 (supersedes the draft 25-param / ~343 table below)
+
+Migration `20261107130000_matching_aio_100.sql` replaces the scorer with the All-in-One **22-field / 100-point** table (`meta.version = 'aio-100-v1'`):
+
+| Field | Points |
+|-------|-------:|
+| First Name + Phonetic First | 4 + 2 |
+| Family Name + Phonetic Family | 4 + 2 |
+| Father + Phonetic Father | 6 + 2 |
+| Mother + Phonetic Mother | 6 + 2 |
+| Paternal Grandfather + Phonetic | 6 + 2 |
+| Maternal Grandfather + Phonetic | 6 + 2 |
+| Date of Birth / Place of Birth | 7 / 7 |
+| Date of Death / Place of Death | 7 / 7 |
+| Spouse First + Phonetic | 4 + 2 |
+| Spouse Family + Phonetic | 8 + 2 |
+| Number of Children | 8 |
+| Village/City/Clan (origin) | 4 |
+| **TOTAL** | **100** |
+
+Literal and phonetic are **separate additive** fields (no collapse). Paternal/maternal grandmother and email are **omitted** from the sum. Missing = 0. Auto-link eligibility uses **raw points**: ≥90 both deceased, ≥76 either living (still gated by vetoes + ≥2 evidence clusters with a non-patriline corroborator). `app_settings.auto_merge_enabled` remains **DEFAULT false** (shadow mode). UNRWA / 1948 family-card rows in `person_identifiers` short-circuit to score 100 (hard vetoes still apply). Nightly `run_matching_batch` is scheduled via `pg_cron` when the extension is available (see `apps/database/supabase/README.md`).
+
+The historical 25-parameter draft table below is retained for provenance only.
+
+---
+
 A pair's `confidence_score` = sum of awarded points across 25 parameters, **after the correlated-feature collapse and with disagreement handling applied**. **Every parameter contributes 0 (never spuriously positive) if either side's value is NULL or sourced from a placeholder.** Literal-name and numeric fields earn *partial* credit; phonetic, exact-place, and email fields are all-or-nothing.
 
 | # | Parameter | Weight | Comparison rule | Partial credit | Missing-data rule |

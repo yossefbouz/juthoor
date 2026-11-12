@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  FEMALE_MAIDEN_SURNAME_MESSAGE,
   childLinkSchema,
   createChildLinkWithPartnersSchema,
   personInputSchema,
@@ -93,6 +94,38 @@ describe('personInputSchema', () => {
       gender: 'M',
     });
     expect(result.success).toBe(false);
+  });
+
+  it('rejects married nameType for female primary (maiden hard rule)', () => {
+    const result = personInputSchema.safeParse({
+      treeId: '11111111-1111-4111-8111-111111111111',
+      arGivenName: 'فاطمة',
+      gender: 'F',
+      nameType: 'married',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message === FEMALE_MAIDEN_SURNAME_MESSAGE)).toBe(
+        true,
+      );
+    }
+  });
+
+  it('allows maiden nameType for female and birth for male', () => {
+    const female = personInputSchema.safeParse({
+      treeId: '11111111-1111-4111-8111-111111111111',
+      arGivenName: 'فاطمة',
+      gender: 'F',
+      nameType: 'maiden',
+    });
+    const male = personInputSchema.safeParse({
+      treeId: '11111111-1111-4111-8111-111111111111',
+      arGivenName: 'أحمد',
+      gender: 'M',
+      nameType: 'birth',
+    });
+    expect(female.success).toBe(true);
+    expect(male.success).toBe(true);
   });
 });
 

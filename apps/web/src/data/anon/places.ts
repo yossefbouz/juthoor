@@ -10,35 +10,51 @@ import type { Place } from '@/types/database';
  * for Latin text and works on Arabic substrings. When pg_trgm indexes
  * are live (see migration 20260417130000), this scales; until then it
  * is an accepted seq scan on 263 rows.
+ *
+ * `districtKey` matches DistrictSelect keys (lowercased district_ar/en).
  */
 export async function searchPlaces(
   query: string,
-  limit = 20
+  limit = 20,
+  districtKey?: string | null,
 ): Promise<readonly Place[]> {
   const supabase = await createJuthoorSupabaseClient();
   const q = query.trim();
+  // Fetch a wider page when filtering by district so client/server
+  // truncation does not hide matches in a large district.
+  const fetchLimit = districtKey ? Math.max(limit, 300) : limit;
 
-  if (q.length === 0) {
-    const { data, error } = await supabase
-      .from('places')
-      .select('*')
-      .order('name_ar', { ascending: true })
-      .limit(limit);
-
-    if (error) throw new Error(`Failed to list places: ${error.message}`);
-    return data ?? [];
-  }
-
-  const pattern = `%${q}%`;
-  const { data, error } = await supabase
+  let builder = supabase
     .from('places')
     .select('*')
-    .or(`name_ar.ilike.${pattern},name_en.ilike.${pattern}`)
     .order('name_ar', { ascending: true })
-    .limit(limit);
+    .limit(fetchLimit);
 
-  if (error) throw new Error(`Failed to search places: ${error.message}`);
-  return data ?? [];
+  if (q.length > 0) {
+    const pattern = `%${q}%`;
+    builder = builder.or(`name_ar.ilike.${pattern},name_en.ilike.${pattern}`);
+  }
+
+  const { data, error } = await builder;
+  if (error) {
+    throw new Error(
+      q.length === 0
+        ? `Failed to list places: ${error.message}`
+        : `Failed to search places: ${error.message}`,
+    );
+  }
+
+  const rows = data ?? [];
+  if (!districtKey) return rows.slice(0, limit);
+
+  const key = districtKey.trim().toLowerCase();
+  return rows
+    .filter((p) => {
+      const ar = (p.district_ar ?? '').trim().toLowerCase();
+      const en = (p.district_en ?? '').trim().toLowerCase();
+      return ar === key || en === key;
+    })
+    .slice(0, limit);
 }
 
 export async function getPlaceById(id: string): Promise<Place | null> {

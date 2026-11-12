@@ -33,8 +33,11 @@ setup('create admin user', async ({ page }) => {
   }
   await ctx.dispose();
 
+  await page.addInitScript(() => {
+    window.localStorage.setItem('juthoor.locale', 'en');
+  });
   await page.goto('/login');
-  await page.getByRole('tab', { name: /Password/i }).click();
+  await page.getByRole('tab', { name: /Password|كلمة السر/i }).click();
   await page.locator('#sign-in-email').fill(email);
   await page.locator('#sign-in-password').fill(password);
   await page.getByRole('button', { name: /^Login$|تسجيل الدخول/ }).click();
@@ -42,5 +45,6 @@ setup('create admin user', async ({ page }) => {
 
   const dir = path.dirname(authFile);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  await page.evaluate(() => window.localStorage.setItem('juthoor.locale', 'en'));
   await page.context().storageState({ path: authFile });
 });

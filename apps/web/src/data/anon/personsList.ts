@@ -1,7 +1,7 @@
 'use server';
 
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
-import { shouldHideLifeData } from '@/lib/privacy/lifeData';
+import { isPresumedLiving, shouldHideLifeData } from '@/lib/privacy/lifeData';
 
 import { viewerHasPrivilegedTreeAccess } from './treeAccess';
 
@@ -108,14 +108,20 @@ export async function getTreePeoplePage(
   return {
     rows: persons.map((p) => {
       const f = facts.get(p.id);
-      const hide = shouldHideLifeData(p.is_living, privileged);
+      // D2: derive living from BIRT/DEAT events (same rule as is_person_living),
+      // not the possibly-stale persons.is_living flag.
+      const living = isPresumedLiving({
+        hasDeath: Boolean(f?.hasDeath),
+        birthYear: f?.birthYear ?? null,
+      });
+      const hide = shouldHideLifeData(living, privileged);
       return {
         id: p.id,
         displayNameAr: p.display_name_ar,
         displayNameEn: p.display_name_en,
         gender: p.gender,
         isPlaceholder: p.notes === 'placeholder',
-        isLiving: p.is_living,
+        isLiving: living,
         birthYear: hide ? null : (f?.birthYear ?? null),
         birthPlaceAr: hide ? null : (f?.birthPlaceAr ?? null),
         deathYear: f?.deathYear ?? null,
@@ -131,6 +137,7 @@ interface LifeFacts {
   readonly birthYear: number | null;
   readonly birthPlaceAr: string | null;
   readonly deathYear: number | null;
+  readonly hasDeath: boolean;
 }
 
 async function getLifeFactsFor(
@@ -161,6 +168,7 @@ async function getLifeFactsFor(
       birthYear: null,
       birthPlaceAr: null,
       deathYear: null,
+      hasDeath: false,
     };
     byPerson.set(
       row.person_id,
@@ -170,7 +178,11 @@ async function getLifeFactsFor(
             birthYear: row.date_year ?? current.birthYear,
             birthPlaceAr: row.places?.name_ar ?? current.birthPlaceAr,
           }
-        : { ...current, deathYear: row.date_year ?? current.deathYear }
+        : {
+            ...current,
+            deathYear: row.date_year ?? current.deathYear,
+            hasDeath: true,
+          }
     );
   }
   return byPerson;

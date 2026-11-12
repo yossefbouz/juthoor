@@ -4,10 +4,14 @@ import { LocaleProvider } from '@/contexts/LocaleContext';
 import { VerifyClient } from '@/app/(app-pages)/verify/VerifyClient';
 import type { IdentityVerification } from '@/data/user/identityVerification';
 
-// Keep the server-only action module out of jsdom.
+// Keep the server-only action modules out of jsdom.
 vi.mock('@/data/user/identityVerification', () => ({
   getVerificationUploadTarget: vi.fn(),
   submitVerification: vi.fn(),
+}));
+vi.mock('@/data/user/appeals', () => ({
+  submitVerificationAppealAction: vi.fn(),
+  getMyOpenAppeal: vi.fn(),
 }));
 
 afterEach(() => cleanup());
@@ -50,6 +54,12 @@ describe('VerifyClient — identity verification states', () => {
   it('shows a verified state when approved', () => {
     renderVerify({ ...base, status: 'approved' });
     expect(screen.queryByText(/تم توثيق هويتك/)).not.toBeNull(); // "Your identity is verified"
+  });
+
+  it('shows appeal UI when verification was rejected', () => {
+    renderVerify({ ...base, status: 'rejected', reviewer_note: 'unclear scan' });
+    expect(screen.getAllByText(/استئناف القرار/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/إرسال الاستئناف/)).not.toBeNull();
   });
 
   it('renders the optional tree picker when trees are provided', () => {

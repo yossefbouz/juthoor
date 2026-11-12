@@ -14,8 +14,11 @@ export async function loginUserHelper({
   page: Page;
   emailAddress: string;
 }): Promise<void> {
+  await page.addInitScript(() => {
+    window.localStorage.setItem('juthoor.locale', 'en');
+  });
   await page.goto('/login');
-  await page.getByRole('tab', { name: /OTP Code/i }).click();
+  await page.getByRole('tab', { name: /OTP Code|رمز التحقق/i }).click();
   await page.locator('#otp-email').fill(emailAddress);
   await page.getByRole('button', { name: /Send .*code|أرسل الرمز/ }).click();
 

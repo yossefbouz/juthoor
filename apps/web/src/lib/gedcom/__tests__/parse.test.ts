@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseGedcom } from '../parse';
 import {
   ARABIC_UTF8_GEDCOM,
+  GEDCOM7_MINIMAL,
   MINIMAL_GEDCOM,
   MULTI_SPOUSE_GEDCOM,
 } from './fixtures';
@@ -60,6 +61,37 @@ describe('parseGedcom — minimal nuclear family', () => {
   it('extracts header metadata', () => {
     expect(snapshot.header.source).toBe('Juthoor');
     expect(snapshot.header.charset).toBe('UTF-8');
+    // Fixtures without GEDC VERS default to 5.5.1 for detection.
+    expect(snapshot.header.version).toBe('5.5.1');
+  });
+});
+
+describe('parseGedcom — GEDCOM 7.0', () => {
+  const snapshot = parseGedcom(GEDCOM7_MINIMAL);
+
+  it('detects VERS 7.0 and optional SCHMA tags', () => {
+    expect(snapshot.header.version).toBe('7.0');
+    expect(snapshot.header.schemaTags?.some((t) => t.includes('UNRWA'))).toBe(
+      true
+    );
+  });
+
+  it('reads TRAN/ROMN under NAME and IDNO TYPE', () => {
+    const p = snapshot.persons[0];
+    expect(p.names[0].tran).toBe('أحمد /البوز/');
+    expect(p.names[0].romn).toBe('Ahmad /Bouz/');
+    expect(p.idnos).toEqual([
+      expect.objectContaining({ type: 'UNRWA', value: 'UNRWA-42' }),
+    ]);
+  });
+
+  it('reads EVEN TYPE DISPLACEMENT', () => {
+    const even = snapshot.persons[0].events.find((e) => e.eventType === 'EVEN');
+    expect(even).toMatchObject({
+      typeDetail: 'DISPLACEMENT',
+      year: 1948,
+      place: 'Lebanon',
+    });
   });
 });
 

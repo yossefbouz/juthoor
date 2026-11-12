@@ -52,10 +52,10 @@ INSERT INTO public.person_names (person_id, is_primary, given_name) VALUES
 SELECT public.refresh_match_features('66600000-0000-0000-0000-00000000000a');
 SELECT public.refresh_match_features('66600000-0000-0000-0000-00000000000b');
 
-SELECT cmp_ok(
+SELECT is(
   (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair(
      '66600000-0000-0000-0000-00000000000a','66600000-0000-0000-0000-00000000000b')),
-  '>=', 10, 'Latin Ibrahim and Arabic ابراهيم score as a given-name match (cross-script)');
+  6, 'Latin Ibrahim and Arabic ابراهيم score exactly 6 given-name pts (cross-script, AIO-100)');
 
 SELECT finish();
 ROLLBACK;

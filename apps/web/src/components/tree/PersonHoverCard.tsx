@@ -48,11 +48,16 @@ export function PersonHoverCard({ person, children }: Props) {
                 {secondaryName}
               </div>
             ) : null}
-            {person.birthYear || person.deathYear ? (
+            {person.birthYear || person.deathYear || person.hasDeath ? (
               <div className="text-xs text-muted-foreground">
                 {person.birthYear ?? '?'}
-                {' — '}
-                {person.deathYear ?? (person.birthYear ? t('حاليا', 'present') : '?')}
+                {person.deathYear != null
+                  ? ` — ${person.deathYear}`
+                  : person.hasDeath
+                    ? ' — ?'
+                    : person.isLiving === true
+                      ? ` — ${t('حاليا', 'present')}`
+                      : ''}
               </div>
             ) : null}
             {person.isPlaceholder ? (

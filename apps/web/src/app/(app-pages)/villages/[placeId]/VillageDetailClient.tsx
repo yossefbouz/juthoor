@@ -146,6 +146,16 @@ export function VillageDetailClient({
           </div>
         </motion.div>
 
+        {/* ── Map (OSM embed; no leaflet/maplibre dependency) ── */}
+        {place.latitude != null && place.longitude != null ? (
+          <VillageMap
+            lat={place.latitude}
+            lng={place.longitude}
+            label={heroAr ?? 'place'}
+            title={t('الموقع على الخريطة', 'Location on the map')}
+          />
+        ) : null}
+
         {/* ── Stat grid ── */}
         <div className="mt-4 grid grid-cols-3 gap-3">
           <Stat
@@ -482,6 +492,61 @@ export function VillageDetailClient({
         <div className="h-10" />
       </div>
     </div>
+  );
+}
+
+
+function VillageMap({
+  lat,
+  lng,
+  label,
+  title,
+}: {
+  lat: number;
+  lng: number;
+  label: string;
+  title: string;
+}) {
+  // OpenStreetMap embed with a marker pin. Avoids adding leaflet/maplibre.
+  const delta = 0.08;
+  const bbox = [
+    lng - delta,
+    lat - delta,
+    lng + delta,
+    lat + delta,
+  ].join('%2C');
+  const marker = `${lat}%2C${lng}`;
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+  const external = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=12/${lat}/${lng}`;
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-2xl border border-[var(--jt-stone-200)] bg-[var(--card)] shadow-[var(--jt-shadow-sm)]">
+      <div className="flex items-center justify-between gap-2 border-b border-[var(--jt-stone-200)]/80 px-4 py-2.5">
+        <h2
+          className="text-sm font-bold text-[var(--jt-olive-900)]"
+          style={{ fontFamily: 'var(--jt-font-display)' }}
+        >
+          {title}
+        </h2>
+        <a
+          href={external}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] font-semibold text-[var(--jt-olive-700)] hover:underline"
+        >
+          OpenStreetMap
+        </a>
+      </div>
+      <div className="relative aspect-[16/9] w-full bg-[var(--jt-stone-100)]">
+        <iframe
+          title={label}
+          src={src}
+          className="absolute inset-0 h-full w-full border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+    </section>
   );
 }
 

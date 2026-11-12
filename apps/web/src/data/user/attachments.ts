@@ -7,6 +7,7 @@ import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
 import { ATTACHMENT_LIMITS } from '@/lib/attachments/limits';
 
 export type AttachmentKind = 'photo' | 'document';
+export type MediaKind = 'picture' | 'document';
 export type AttachmentTag =
   | 'portrait'
   | 'id_card'
@@ -33,6 +34,12 @@ export type Attachment = {
   year: number | null;
   uploaded_by: string | null;
   created_at: string;
+  place_taken_id: string | null;
+  date_taken: string | null;
+  title: string | null;
+  issuing_authority: string | null;
+  issue_date: string | null;
+  media_kind: MediaKind;
   signed_url?: string | null;
   uploader_display_name?: string | null;
 };
@@ -65,7 +72,17 @@ const InsertSchema = z.object({
   captionAr: z.string().trim().max(280).optional(),
   captionEn: z.string().trim().max(280).optional(),
   year: z.coerce.number().int().min(1500).max(new Date().getUTCFullYear()).optional(),
+  placeTakenId: z.string().uuid().optional(),
+  dateTaken: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  title: z.string().trim().max(200).optional(),
+  issuingAuthority: z.string().trim().max(200).optional(),
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  openMessageThread: z.boolean().optional(),
 });
+
+function mediaKindFrom(kind: AttachmentKind): MediaKind {
+  return kind === 'document' ? 'document' : 'picture';
+}
 
 /**
  * Server-signed upload URL. Client PUTs the file to Storage directly with this token.
@@ -93,11 +110,14 @@ export async function getAttachmentUploadTarget(input: {
   return { path, token: data.token };
 }
 
-export async function recordAttachment(input: z.input<typeof InsertSchema>): Promise<Attachment> {
+export async function recordAttachment(
+  input: z.input<typeof InsertSchema>,
+): Promise<Attachment & { threadId?: string | null }> {
   const parsed = InsertSchema.parse(input);
   const uid = await getCachedLoggedInUserIdOrNull();
   if (!uid) throw new Error('Not authenticated');
   const supabase = await createJuthoorSupabaseClient();
+  const mediaKind = mediaKindFrom(parsed.kind);
 
   // Soft-cap check
   const { count } = await supabase
@@ -121,11 +141,50 @@ export async function recordAttachment(input: z.input<typeof InsertSchema>): Pro
       caption_en: parsed.captionEn ?? null,
       year: parsed.year ?? null,
       uploaded_by: uid,
+      place_taken_id: parsed.placeTakenId ?? null,
+      date_taken: parsed.dateTaken ?? null,
+      title: parsed.title ?? null,
+      issuing_authority: parsed.issuingAuthority ?? null,
+      issue_date: parsed.issueDate ?? null,
+      media_kind: mediaKind,
     })
     .select('*')
     .single();
   if (error) throw new Error(error.message);
-  return data as Attachment;
+
+  const attachment = data as Attachment;
+
+  // Notify IFT Admin (tree owner). No-op when uploader is the owner.
+  const { error: notifyErr } = await supabase.rpc('notify_ift_on_attachment_link', {
+    p_attachment_id: attachment.id,
+  });
+  if (notifyErr) {
+    console.error('notify_ift_on_attachment_link failed:', notifyErr.message);
+  }
+
+  let threadId: string | null = null;
+  if (parsed.openMessageThread !== false) {
+    const contextType = mediaKind === 'document' ? 'document_link' : 'picture_link';
+    const { data: tid, error: threadErr } = await supabase.rpc('open_or_create_message_thread', {
+      p_context_type: contextType,
+      p_context_id: attachment.id,
+      p_counterpart_user_id: null,
+      p_initial_body:
+        mediaKind === 'document'
+          ? `Document linked: ${parsed.title?.trim() || 'untitled'}`
+          : `Picture linked${parsed.dateTaken ? ` (${parsed.dateTaken})` : ''}`,
+    });
+    if (threadErr) {
+      // Owner self-upload has no counterpart; that is expected.
+      if (!/counterpart|owner/i.test(threadErr.message)) {
+        console.error('open_or_create_message_thread failed:', threadErr.message);
+      }
+    } else {
+      threadId = (tid as string | null) ?? null;
+    }
+  }
+
+  return { ...attachment, threadId };
 }
 
 export async function listAttachments(personId: string): Promise<Attachment[]> {
@@ -189,16 +248,20 @@ export async function deleteAttachment(attachmentId: string): Promise<void> {
   if (!row) return;
 
   const path = (row as unknown as { storage_path: string }).storage_path;
-  // RLS gates both â€” DB delete + storage object delete
-  const [{ error: delDbErr }, { error: delStErr }] = await Promise.all([
-      supabase.from('person_attachments').delete().eq('id', attachmentId),
-    supabase.storage.from('person-attachments').remove([path]),
-  ]);
-  if (delDbErr) throw new Error(delDbErr.message);
+  // Remove the file first: the storage delete policy for uploaders and record
+  // owners checks that the attachment row still exists.
+  const { error: delStErr } = await supabase.storage
+    .from('person-attachments')
+    .remove([path]);
   if (delStErr) {
-    // Non-fatal â€” file might be left behind, log only
+    // Non-fatal — file might be left behind, log only
     console.error('Failed to remove storage object:', delStErr);
   }
+  const { error: delDbErr } = await supabase
+    .from('person_attachments')
+    .delete()
+    .eq('id', attachmentId);
+  if (delDbErr) throw new Error(delDbErr.message);
 }
 
 /**
@@ -227,4 +290,4 @@ export async function getPrimaryPhotoUrl(personId: string): Promise<string | nul
 }
 
 // NOTE: cannot export non-async values from a `'use server'` file. Constants
-// live in `lib/attachments/limits.ts` instead â€” see ATTACHMENT_LIMITS there.
+// live in `lib/attachments/limits.ts` instead — see ATTACHMENT_LIMITS there.

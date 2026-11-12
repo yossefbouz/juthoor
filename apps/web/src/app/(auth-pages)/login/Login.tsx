@@ -26,9 +26,11 @@ import { OTP_LENGTH } from '@/lib/auth/otpConfig';
 export function Login({
   next,
   nextActionType: _nextActionType,
+  closed = false,
 }: {
   next?: string;
   nextActionType?: string;
+  closed?: boolean;
 }) {
   const { t, dir } = useLocale();
   const [redirectInProgress, setRedirectInProgress] = useState(false);
@@ -119,6 +121,17 @@ export function Login({
         />
       ) : (
         <div className="space-y-8 bg-background p-6 rounded-lg shadow-sm dark:border">
+          {closed ? (
+            <p
+              role="status"
+              className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+            >
+              {t(
+                'تم إغلاق حسابك. بيانات العائلة محفوظة في الأرشيف، ولا يمكن تسجيل الدخول بهذا الحساب مرة أخرى.',
+                'Your account is closed. Family data stays in the archive vault, and this login can no longer sign in.',
+              )}
+            </p>
+          ) : null}
           <Tabs defaultValue="password" className="md:min-w-[400px]">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="password">{t('كلمة السر', 'Password')}</TabsTrigger>

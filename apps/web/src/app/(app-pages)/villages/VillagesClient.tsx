@@ -7,6 +7,11 @@ import { ArrowLeft, ArrowRight, MapPin, Search, Tent, Users, X } from 'lucide-re
 import { useLocale } from '@/contexts/LocaleContext';
 import { CountUp } from '@/components/home/CountUp';
 import type { PlaceListItem, PlaceTypeCounts } from '@/data/user/places';
+import {
+  DistrictSelect,
+  districtsFromPlaces,
+  placeMatchesDistrict,
+} from '@/components/search/DistrictSelect';
 
 const TYPE_FILTERS = [
   { key: 'all', ar: 'الكل', en: 'All' },
@@ -36,13 +41,17 @@ export function VillagesClient({
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   const [filter, setFilter] = useState<FilterKey>('all');
   const [query, setQuery] = useState('');
+  const [district, setDistrict] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [, startTransition] = useTransition();
+
+  const districts = useMemo(() => districtsFromPlaces(places), [places]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return places.filter((p) => {
       if (filter !== 'all' && p.place_type !== filter) return false;
+      if (!placeMatchesDistrict(p, district)) return false;
       if (!q) return true;
       const hay = [p.name_ar, p.name_en, p.district_ar, p.district_en]
         .filter(Boolean)
@@ -50,7 +59,7 @@ export function VillagesClient({
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [places, filter, query]);
+  }, [places, filter, query, district]);
 
   const visible = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = filtered.length > visible.length;
@@ -124,6 +133,19 @@ export function VillagesClient({
                 <X className="h-4 w-4" />
               </button>
             )}
+          </div>
+
+          <div className="w-full sm:w-64">
+            <DistrictSelect
+              districts={districts}
+              value={district}
+              onChange={(key) => {
+                setDistrict(key);
+                setPage(1);
+              }}
+              locale={locale}
+              placeholder={t('المنطقة / القضاء', 'District')}
+            />
           </div>
 
           <div

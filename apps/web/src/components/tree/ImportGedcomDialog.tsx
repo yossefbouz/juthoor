@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { useLocale } from '@/contexts/LocaleContext';
 
 interface Props {
   readonly treeId: string;
@@ -33,6 +34,7 @@ interface ImportSummary {
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export function ImportGedcomDialog({ treeId }: Props) {
+  const { t } = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -89,15 +91,19 @@ export function ImportGedcomDialog({ treeId }: Props) {
       <DialogTrigger asChild>
         <Button variant="outline" className="inline-flex items-center gap-2">
           <Upload className="h-4 w-4" />
-          استيراد GEDCOM
+          {t('استيراد شجرة من منصة أخرى', 'Import a tree from another platform')}
         </Button>
       </DialogTrigger>
       <DialogContent dir="rtl" className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>استيراد شجرة GEDCOM</DialogTitle>
+          <DialogTitle>
+            {t('استيراد شجرة من منصة أخرى', 'Import a tree from another platform')}
+          </DialogTitle>
           <DialogDescription>
-            ارفع ملف <code>.ged</code> (حتى ٥ ميجابايت) وسيُضاف محتواه
-            إلى شجرتك. قد تحتاج القرى غير المعروفة إلى ربط يدوي لاحقًا.
+            {t(
+              'ارفع ملف .ged من منصة أخرى (حتى ٥ ميجابايت) وسيُضاف محتواه إلى شجرتك، وأنت مديرها. قد تحتاج القرى غير المعروفة إلى ربط يدوي لاحقًا. يبقى الأحياء مخفيين عن غيرك: بياناتهم غير الإلزامية تُصدَّر لمدير الشجرة وحده.',
+              'Upload a .ged file from another platform (up to 5 MB). Its people are added to your tree, which you manage. Unknown villages may need linking by hand later. The living people stay hidden from everyone else: only the IFT Administrator can export their non-mandatory details.',
+            )}
           </DialogDescription>
         </DialogHeader>
 

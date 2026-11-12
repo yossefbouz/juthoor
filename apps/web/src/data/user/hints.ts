@@ -131,9 +131,25 @@ async function decideHint(hintId: string, accept: boolean): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Accept the owner's side. When BOTH owners accept, the link is confirmed. */
-export async function acceptConnection(input: z.input<typeof HintSchema>): Promise<void> {
-  await decideHint(HintSchema.parse(input).hintId, true);
+/** Accept the owner's side. When BOTH owners accept, the link is confirmed.
+ *  Also opens (or creates) a contact_relay messaging thread with the counterpart tree owner.
+ */
+export async function acceptConnection(
+  input: z.input<typeof HintSchema>,
+): Promise<{ threadId: string | null }> {
+  const { hintId } = HintSchema.parse(input);
+  await decideHint(hintId, true);
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) return { threadId: null };
+  const supabase = await createJuthoorSupabaseClient();
+  const { data: threadId, error } = await supabase.rpc('open_thread_from_match_hint_accept', {
+    p_hint_id: hintId,
+  });
+  if (error) {
+    console.error('open_thread_from_match_hint_accept failed:', error.message);
+    return { threadId: null };
+  }
+  return { threadId: (threadId as string | null) ?? null };
 }
 
 /** Revoke a link the engine made automatically (undoes it for both trees). */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyFatherInheritance,
   deriveDisplayName,
   inheritSurname,
   inheritVillage,
@@ -125,5 +126,60 @@ describe('nextPlaceholderNumber (per-father scope)', () => {
   it('returns N+1 for N existing placeholder spouses', () => {
     expect(nextPlaceholderNumber(1)).toBe(2);
     expect(nextPlaceholderNumber(3)).toBe(4);
+  });
+});
+
+describe('applyFatherInheritance', () => {
+  it('fills blank surname and origin from the father', () => {
+    const result = applyFatherInheritance(
+      {
+        arSurname: '',
+        enSurname: undefined,
+        placeOfOriginId: undefined,
+        fatherGivenAr: undefined,
+        fatherSurnameAr: undefined,
+        fatherGivenEn: undefined,
+        fatherSurnameEn: undefined,
+      },
+      {
+        arSurname: 'البوز',
+        enSurname: 'Bouz',
+        arGivenName: 'يوسف',
+        enGivenName: 'Yousef',
+        placeOfOriginId: 'place-1',
+      }
+    );
+    expect(result.arSurname).toBe('البوز');
+    expect(result.enSurname).toBe('Bouz');
+    expect(result.placeOfOriginId).toBe('place-1');
+    expect(result.fatherGivenAr).toBe('يوسف');
+    expect(result.fatherSurnameAr).toBe('البوز');
+  });
+
+  it('keeps explicit child values', () => {
+    const result = applyFatherInheritance(
+      {
+        arSurname: 'الحنبلي',
+        enSurname: 'Hanbali',
+        placeOfOriginId: 'place-child',
+        fatherGivenAr: 'محمود',
+      },
+      {
+        arSurname: 'البوز',
+        enSurname: 'Bouz',
+        arGivenName: 'يوسف',
+        enGivenName: 'Yousef',
+        placeOfOriginId: 'place-1',
+      }
+    );
+    expect(result.arSurname).toBe('الحنبلي');
+    expect(result.enSurname).toBe('Hanbali');
+    expect(result.placeOfOriginId).toBe('place-child');
+    expect(result.fatherGivenAr).toBe('محمود');
+  });
+
+  it('is a no-op when father defaults are null', () => {
+    const input = { arSurname: '', placeOfOriginId: undefined };
+    expect(applyFatherInheritance(input, null)).toEqual(input);
   });
 });

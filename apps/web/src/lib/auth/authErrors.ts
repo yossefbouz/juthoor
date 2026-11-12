@@ -48,5 +48,26 @@ export function friendlyAuthError(raw: unknown): string {
     return 'كلمة المرور ضعيفة جدًا · That password is too weak.';
   }
 
+  // Person-claim / request flow (RPC exception codes + remapped action messages).
+  // Keep these specific so safe-action does not collapse them to the generic line.
+  if (/claim_requires_approval/.test(t)) {
+    return 'ربط هذا الشخص يحتاج موافقة مالك الشجرة · Claiming this person requires the tree owner\'s approval.';
+  }
+  if (/tree_access_required/.test(t)) {
+    return 'يلزم الوصول إلى الشجرة لطلب الربط · You need access to this tree before requesting a claim.';
+  }
+  if (
+    /already_pending|already.?linked|already claimed|pending claim/.test(t)
+  ) {
+    return 'هذا الشخص مربوط بالفعل أو لديه طلب معلّق · This person is already linked or has a pending claim.';
+  }
+  if (
+    /verification_required|verify your identity before claiming|verify your identity/.test(
+      t
+    )
+  ) {
+    return 'وثّق هويتك قبل المطالبة بسجل شخص حي · Verify your identity before claiming a living person record.';
+  }
+
   return GENERIC_AUTH_ERROR;
 }

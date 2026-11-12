@@ -7,8 +7,8 @@ export async function updateSession(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -45,6 +45,7 @@ export async function updateSession(request: NextRequest) {
     '/why',
     '/how',
     '/contact',
+    '/faq',
     '/privacy',
     '/terms',
     '/login',
@@ -68,6 +69,29 @@ export async function updateSession(request: NextRequest) {
     url.pathname = '/login';
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Closed accounts: profile.deleted_at set (or Auth already removed).
+  // Block re-entry if a stale session somehow remains.
+  if (user && !isPublic) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('deleted_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile?.deleted_at) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('closed', '1');
+      const redirect = NextResponse.redirect(url);
+      // Copy refreshed auth cookies from supabaseResponse onto the redirect
+      // so the browser actually drops the closed session.
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirect.cookies.set(cookie);
+      });
+      return redirect;
+    }
   }
 
   // Already authenticated visitors hitting /login or /sign-up should bounce

@@ -9,8 +9,11 @@ import { validateMarriage, validateNewSpouse } from '@/lib/tree/marriageRules';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import type { GenderType } from '@/types/database';
 
+import { applyFatherInheritance } from '@/lib/tree/inheritance';
+
 import {
   createPersonWithPrimaryName,
+  loadFatherInheritanceDefaults,
   toUserFacingDbError,
   type SupabaseServerClient,
 } from './personCreate';
@@ -59,7 +62,25 @@ export const addRelativeAction = authActionClient
       newPersonGender: personInput.gender,
     });
 
-    const personId = await createPersonWithPrimaryName(supabase, personInput);
+    // R4: default surname + origin from the father when the new person is
+    // a child (or a sibling sharing that father's family). Explicit form
+    // values always win over inheritance.
+    const fatherIdForInheritance = await resolveFatherIdForInheritance(
+      supabase,
+      plan
+    );
+    const fatherDefaults = fatherIdForInheritance
+      ? await loadFatherInheritanceDefaults(supabase, fatherIdForInheritance)
+      : null;
+    const personWithDefaults = applyFatherInheritance(
+      personInput,
+      fatherDefaults
+    );
+
+    const personId = await createPersonWithPrimaryName(
+      supabase,
+      personWithDefaults
+    );
 
     try {
       await executeLink(supabase, {
@@ -82,6 +103,8 @@ export const addRelativeAction = authActionClient
 // ============================================================================
 // Anchor loading
 // ============================================================================
+
+
 
 interface AnchorPerson {
   readonly id: string;
@@ -135,6 +158,35 @@ type LinkPlan =
       /** Shared family-of-origin, or null → bootstrap placeholder father. */
       readonly familyId: string | null;
     };
+
+async function resolveFatherIdForInheritance(
+  supabase: SupabaseServerClient,
+  plan: LinkPlan
+): Promise<string | null> {
+  if (plan.kind === 'child') {
+    return plan.fatherId;
+  }
+  if (plan.kind === 'sibling' && plan.familyId) {
+    const { data, error } = await supabase
+      .from('families')
+      .select('partner1_id, partner2_id')
+      .eq('id', plan.familyId)
+      .maybeSingle();
+    if (error) throw new Error(toUserFacingDbError(error.message));
+    if (!data) return null;
+    const partnerIds = [data.partner1_id, data.partner2_id].filter(
+      (id): id is string => Boolean(id)
+    );
+    if (partnerIds.length === 0) return null;
+    const { data: partners, error: partnersErr } = await supabase
+      .from('persons')
+      .select('id, gender')
+      .in('id', partnerIds);
+    if (partnersErr) throw new Error(toUserFacingDbError(partnersErr.message));
+    return partners?.find((p) => p.gender === 'M')?.id ?? null;
+  }
+  return null;
+}
 
 interface PlanArgs {
   readonly treeId: string;

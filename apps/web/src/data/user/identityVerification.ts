@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
 import { requireAdmin } from '@/data/admin/requireAdmin';
+import { requireStaff } from '@/data/admin/requireStaff';
 
 const BUCKET = 'verification-docs';
 const ALLOWED_EXT = /^(jpg|jpeg|png|webp|heic|pdf)$/i;
@@ -105,9 +106,9 @@ export async function getMyVerification(): Promise<IdentityVerification | null> 
   return (data as IdentityVerification | null) ?? null;
 }
 
-/** Admin: pending verification requests with signed document URLs. */
+/** Staff (admin or moderator): pending verification requests with signed URLs. */
 export async function listPendingVerifications(): Promise<PendingVerification[]> {
-  await requireAdmin();
+  await requireStaff();
   const supabase = await createJuthoorSupabaseClient();
 
   const { data, error } = await supabase

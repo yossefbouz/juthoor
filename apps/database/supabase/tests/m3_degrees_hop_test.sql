@@ -70,7 +70,11 @@ SELECT is(
 
 -- ── revoke re-isolation: after the link is revoked the cross-tree path is gone ─
 SELECT set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
-SELECT public.revoke_person_link('a1a1a1a1-1111-1111-1111-111111111111');
+-- revoke_person_link is admin-only (D9). Tear down as the test superuser via teardown_person_link.
+RESET ROLE;
+SELECT public.teardown_person_link('a1a1a1a1-1111-1111-1111-111111111111', 'admin');
+SET LOCAL role authenticated;
+SELECT set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 -- 5.
 SELECT ok(
   public.compute_degrees('10000000-0000-0000-0000-0000000000a1','20000000-0000-0000-0000-0000000000c1') IS NULL,

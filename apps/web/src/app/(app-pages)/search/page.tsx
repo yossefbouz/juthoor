@@ -3,6 +3,7 @@ import { SearchClient } from './SearchClient';
 import { loadVillagesForFilter, searchMasterTree } from '@/data/user/search';
 import { computeDegreesTo, getSelfPersonId, type DegreesResult } from '@/data/user/degrees';
 import { SearchQuerySchema, type SearchResult } from '@/lib/search/zodSchemas';
+import { placeMatchesDistrict } from '@/lib/places/districts';
 
 type SearchParamsValue = string | string[] | undefined;
 
@@ -21,12 +22,26 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
   const surname = firstString(params.surname);
   const father = firstString(params.father);
   const mother = firstString(params.mother);
+  const paternalGrandfather = firstString(params.paternalGrandfather);
+  const paternalGreatGrandfather = firstString(params.paternalGreatGrandfather);
   const placeId = firstString(params.placeId);
+  const district = firstString(params.district);
   const birthYear = firstString(params.birthYear);
   const yearWindow = firstString(params.yearWindow);
   const gender = firstString(params.gender);
 
-  const hasQuery = Boolean(q || given || surname || father || mother || placeId || birthYear);
+  const hasQuery = Boolean(
+    q ||
+      given ||
+      surname ||
+      father ||
+      mother ||
+      paternalGrandfather ||
+      paternalGreatGrandfather ||
+      placeId ||
+      district ||
+      birthYear,
+  );
   if (!hasQuery) return { results: [], hasQuery: false, error: null };
 
   const parsed = SearchQuerySchema.safeParse({
@@ -35,7 +50,10 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
     surname,
     father,
     mother,
+    paternalGrandfather,
+    paternalGreatGrandfather,
     placeId,
+    district,
     birthYear,
     yearWindow,
     gender,
@@ -44,7 +62,19 @@ async function runSearch(params: Record<string, SearchParamsValue>): Promise<{
     return { results: [], hasQuery: true, error: parsed.error.issues[0]?.message ?? 'Invalid query' };
   }
   try {
-    const results = await searchMasterTree(parsed.data);
+    let results = await searchMasterTree(parsed.data);
+    if (district && !placeId) {
+      const villages = await loadVillagesForFilter();
+      const districtKey = district.trim().toLowerCase();
+      const allowed = new Set(
+        villages
+          .filter((v) => placeMatchesDistrict(v, districtKey))
+          .map((v) => v.id),
+      );
+      results = results.filter(
+        (r) => r.origin_place_id != null && allowed.has(r.origin_place_id),
+      );
+    }
     return { results, hasQuery: true, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Search failed';
@@ -94,7 +124,10 @@ async function SearchContainer({
         surname: firstString(params.surname) ?? '',
         father: firstString(params.father) ?? '',
         mother: firstString(params.mother) ?? '',
+        paternalGrandfather: firstString(params.paternalGrandfather) ?? '',
+        paternalGreatGrandfather: firstString(params.paternalGreatGrandfather) ?? '',
         placeId: firstString(params.placeId) ?? null,
+        district: firstString(params.district) ?? null,
         birthYear: firstString(params.birthYear) ?? '',
         yearWindow: Number(firstString(params.yearWindow) ?? 5),
         gender: (firstString(params.gender) as 'M' | 'F' | undefined) ?? null,
@@ -118,7 +151,7 @@ export default function SearchPage({
           initialResults={[]}
           degreesByPersonId={{}}
           selfPersonId={null}
-          initialQuery={{ q: '', given: '', surname: '', father: '', mother: '', placeId: null, birthYear: '', yearWindow: 5, gender: null }}
+          initialQuery={{ q: '', given: '', surname: '', father: '', mother: '', paternalGrandfather: '', paternalGreatGrandfather: '', placeId: null, district: null, birthYear: '', yearWindow: 5, gender: null }}
           villages={[]}
           hasQuery={false}
           serverError={null}

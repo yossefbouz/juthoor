@@ -50,6 +50,14 @@ export type TreeMemberStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 
 export type AttachmentKind = 'photo' | 'document';
 
+export type MediaKind = 'picture' | 'document';
+
+export type MessageContextType =
+  | 'relationship_dispute'
+  | 'picture_link'
+  | 'document_link'
+  | 'contact_relay';
+
 export type AttachmentTag =
   | 'portrait'
   | 'id_card'
@@ -112,10 +120,20 @@ export interface Person {
   readonly display_name_en: string | null;
   readonly gedcom_xref: string | null;
   readonly is_living: boolean;
+  readonly needs_completion?: boolean;
   readonly notes: string | null;
+  readonly primary_photo_id?: string | null;
   readonly created_by: string | null;
   readonly created_at: string;
   readonly updated_at: string;
+  readonly father_given_ar?: string | null;
+  readonly father_surname_ar?: string | null;
+  readonly mother_given_ar?: string | null;
+  readonly mother_maiden_ar?: string | null;
+  readonly father_given_en?: string | null;
+  readonly father_surname_en?: string | null;
+  readonly mother_given_en?: string | null;
+  readonly mother_maiden_en?: string | null;
 }
 
 export interface PersonName {
@@ -192,6 +210,7 @@ export interface Profile {
   readonly avatar_url: string | null;
   readonly preferred_language: 'ar' | 'en';
   readonly is_admin: boolean;
+  readonly is_moderator: boolean;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -251,8 +270,59 @@ type MutablePersonProfile = {
   achievements_en: string | null;
   contribution_ar: string | null;
   contribution_en: string | null;
+  contact_consent: boolean;
+  contact_email: string | null;
+  contact_phone: string | null;
+  current_country: string | null;
+  current_city: string | null;
+  current_address: string | null;
+  preferred_contact_method: string | null;
+  contact_email_enc: string | null;
+  contact_phone_enc: string | null;
+  current_address_enc: string | null;
+  contribution_consent: boolean;
   updated_at: string;
   updated_by: string | null;
+};
+
+type MutablePersonDisplacement = {
+  person_id: string;
+  unrwa_registration_number: string | null;
+  family_card_1948_number: string | null;
+  host_country_first: string | null;
+  host_country_current: string | null;
+  refugee_status: string | null;
+  camp_name: string | null;
+  displacement_year: number | null;
+  displacement_wave: string | null;
+  land_property_notes: string | null;
+  oral_history: string | null;
+  oral_history_provenance: string | null;
+  unrwa_field_of_operations: string | null;
+  unrwa_registration_date: number | null;
+  unrwa_registration_status: string | null;
+  unrwa_services_area: string | null;
+  host_travel_document_number: string | null;
+  host_id_residency_number: string | null;
+  pa_id_number: string | null;
+  palestinian_passport_number: string | null;
+  israeli_id_number: string | null;
+  other_identity_document: string | null;
+  land_record_reference: string | null;
+  land_registry: string | null;
+  property_location: string | null;
+  ownership_nature: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+type MutablePersonFieldGrant = {
+  id: string;
+  person_id: string;
+  grantee_user_id: string;
+  granted_by: string | null;
+  scope: string;
+  created_at: string;
 };
 
 /** Gov-ID + family-evidence verification request (mockup 02 / flow 1.1). */
@@ -280,8 +350,21 @@ type MutableTree = {
   is_public: boolean;
   gedcom_filename: string | null;
   gedcom_imported_at: string | null;
+  /** True after former owner closed account; tree held by archive vault. */
+  is_archived: boolean;
+  archived_at: string | null;
+  archived_from_user_id: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type MutableAccountClosureLog = {
+  id: string;
+  former_user_id: string;
+  former_email: string | null;
+  trees_archived: number;
+  closed_at: string;
+  notes: string | null;
 };
 
 type MutableTreeMember = {
@@ -309,10 +392,46 @@ type MutablePerson = {
   display_name_en: string | null;
   gedcom_xref: string | null;
   is_living: boolean;
+  needs_completion: boolean;
   notes: string | null;
   primary_photo_id: string | null;
   created_by: string | null;
   created_at: string;
+  updated_at: string;
+  father_given_ar: string | null;
+  father_surname_ar: string | null;
+  mother_given_ar: string | null;
+  mother_maiden_ar: string | null;
+  father_given_en: string | null;
+  father_surname_en: string | null;
+  mother_given_en: string | null;
+  mother_maiden_en: string | null;
+};
+
+type MutablePersonIdentifier = {
+  id: string;
+  person_id: string;
+  id_type:
+    | 'unrwa_registration'
+    | 'family_card_1948'
+    | 'pa_id'
+    | 'pa_passport'
+    | 'host_travel_doc'
+    | 'host_id_residency'
+    | 'israeli_id';
+  id_value: string;
+  evidence_attachment_id: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  verified_attachment_id: string | null;
+  rejected_at: string | null;
+  created_at: string;
+};
+
+type MutablePersonNote = {
+  person_id: string;
+  body: string;
+  updated_by: string | null;
   updated_at: string;
 };
 
@@ -328,6 +447,33 @@ type MutablePersonAttachment = {
   caption_en: string | null;
   year: number | null;
   uploaded_by: string | null;
+  created_at: string;
+  place_taken_id: string | null;
+  date_taken: string | null;
+  title: string | null;
+  issuing_authority: string | null;
+  issue_date: string | null;
+  media_kind: MediaKind;
+};
+
+type MutableMessageThread = {
+  id: string;
+  context_type: MessageContextType;
+  context_id: string;
+  created_at: string;
+};
+
+type MutableMessageThreadParticipant = {
+  thread_id: string;
+  user_id: string;
+  joined_at: string;
+};
+
+type MutableMessage = {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  body: string;
   created_at: string;
 };
 
@@ -413,7 +559,11 @@ type MutableProfile = {
   avatar_url: string | null;
   preferred_language: 'ar' | 'en';
   is_admin: boolean;
+  is_moderator: boolean;
+  linked_person_id: string | null;
+  /** Synced alias of linked_person_id (Wave 2). Prefer linked_person_id. */
   self_person_id: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -436,6 +586,18 @@ type MutablePersonPrivacyHold = {
   set_by: string | null;
   set_at: string;
   reason: string | null;
+};
+
+/** Pending "is this you?" claim request awaiting tree-owner / admin decision. */
+type MutablePersonClaimRequest = {
+  id: string;
+  person_id: string;
+  requester_user_id: string;
+  tree_id: string;
+  status: 'pending' | 'approved' | 'declined';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 };
 
 type MutableNotification = {
@@ -498,6 +660,40 @@ export type Database = {
         Update: Partial<MutablePersonProfile>;
         Relationships: [];
       };
+      person_displacement: {
+        Row: MutablePersonDisplacement;
+        Insert: Partial<MutablePersonDisplacement> & { person_id: string };
+        Update: Partial<MutablePersonDisplacement>;
+        Relationships: [];
+      };
+      person_field_grants: {
+        Row: MutablePersonFieldGrant;
+        Insert: Partial<MutablePersonFieldGrant> & {
+          person_id: string;
+          grantee_user_id: string;
+        };
+        Update: Partial<MutablePersonFieldGrant>;
+        Relationships: [];
+      };
+      person_identifiers: {
+        Row: MutablePersonIdentifier;
+        Insert: Partial<MutablePersonIdentifier> & {
+          person_id: string;
+          id_type: MutablePersonIdentifier['id_type'];
+          id_value: string;
+        };
+        Update: Partial<MutablePersonIdentifier>;
+        Relationships: [];
+      };
+      person_notes: {
+        Row: MutablePersonNote;
+        Insert: Partial<MutablePersonNote> & {
+          person_id: string;
+          body: string;
+        };
+        Update: Partial<MutablePersonNote>;
+        Relationships: [];
+      };
       identity_verifications: {
         Row: MutableIdentityVerification;
         Insert: Partial<MutableIdentityVerification> & {
@@ -512,6 +708,12 @@ export type Database = {
         Row: MutableTree;
         Insert: Partial<MutableTree> & { name: string; owner_id: string };
         Update: Partial<MutableTree>;
+        Relationships: [];
+      };
+      account_closure_log: {
+        Row: MutableAccountClosureLog;
+        Insert: Partial<MutableAccountClosureLog> & { former_user_id: string };
+        Update: Partial<MutableAccountClosureLog>;
         Relationships: [];
       };
       tree_members: {
@@ -584,6 +786,34 @@ export type Database = {
         Update: Partial<MutablePersonAttachment>;
         Relationships: [];
       };
+      message_threads: {
+        Row: MutableMessageThread;
+        Insert: Partial<MutableMessageThread> & {
+          context_type: MessageContextType;
+          context_id: string;
+        };
+        Update: Partial<MutableMessageThread>;
+        Relationships: [];
+      };
+      message_thread_participants: {
+        Row: MutableMessageThreadParticipant;
+        Insert: Partial<MutableMessageThreadParticipant> & {
+          thread_id: string;
+          user_id: string;
+        };
+        Update: Partial<MutableMessageThreadParticipant>;
+        Relationships: [];
+      };
+      messages: {
+        Row: MutableMessage;
+        Insert: Partial<MutableMessage> & {
+          thread_id: string;
+          sender_id: string;
+          body: string;
+        };
+        Update: Partial<MutableMessage>;
+        Relationships: [];
+      };
       match_paths: {
         Row: MutableMatchPath;
         Insert: Partial<MutableMatchPath> & {
@@ -609,6 +839,120 @@ export type Database = {
         Row: MutablePersonPrivacyHold;
         Insert: Partial<MutablePersonPrivacyHold> & { person_id: string };
         Update: Partial<MutablePersonPrivacyHold>;
+        Relationships: [];
+      };
+      person_claim_requests: {
+        Row: MutablePersonClaimRequest;
+        Insert: Partial<MutablePersonClaimRequest> & {
+          person_id: string;
+          requester_user_id: string;
+          tree_id: string;
+        };
+        Update: Partial<MutablePersonClaimRequest>;
+        Relationships: [];
+      };
+      access_log: {
+        Row: {
+          id: string;
+          viewer_id: string;
+          resource_type: string;
+          resource_id: string;
+          action: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          viewer_id: string;
+          resource_type: string;
+          resource_id: string;
+          action: string;
+          created_at?: string;
+        };
+        Update: Partial<{
+          id: string;
+          viewer_id: string;
+          resource_type: string;
+          resource_id: string;
+          action: string;
+          created_at: string;
+        }>;
+        Relationships: [];
+      };
+      verification_appeals: {
+        Row: {
+          id: string;
+          verification_id: string;
+          appellant_id: string;
+          reason: string;
+          status: string;
+          staff_note: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          verification_id: string;
+          appellant_id: string;
+          reason: string;
+          status?: string;
+          staff_note?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<{
+          id: string;
+          verification_id: string;
+          appellant_id: string;
+          reason: string;
+          status: string;
+          staff_note: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        }>;
+        Relationships: [];
+      };
+      email_outbox: {
+        Row: {
+          id: string;
+          notification_id: string | null;
+          recipient_user_id: string;
+          kind: string;
+          to_email: string | null;
+          subject: string;
+          body_text: string;
+          status: string;
+          provider: string | null;
+          error: string | null;
+          created_at: string;
+          sent_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          notification_id?: string | null;
+          recipient_user_id: string;
+          kind: string;
+          to_email?: string | null;
+          subject: string;
+          body_text: string;
+          status?: string;
+          provider?: string | null;
+          error?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+        };
+        Update: Partial<{
+          status: string;
+          provider: string | null;
+          error: string | null;
+          sent_at: string | null;
+          to_email: string | null;
+        }>;
         Relationships: [];
       };
       notifications: {
@@ -639,6 +983,14 @@ export type Database = {
           p_death_year?: number | null;
           p_place_of_origin_id?: string | null;
           p_is_placeholder?: boolean;
+          p_father_given_ar?: string | null;
+          p_father_surname_ar?: string | null;
+          p_mother_given_ar?: string | null;
+          p_mother_maiden_ar?: string | null;
+          p_father_given_en?: string | null;
+          p_father_surname_en?: string | null;
+          p_mother_given_en?: string | null;
+          p_mother_maiden_en?: string | null;
         };
         Returns: { person_id: string; name_id: string }[];
       };
@@ -649,6 +1001,8 @@ export type Database = {
           q_surname?: string | null;
           q_father?: string | null;
           q_mother?: string | null;
+          q_pgf?: string | null;
+          q_pggf?: string | null;
           q_gender?: GenderType | null;
           q_birth_year?: number | null;
           q_year_window?: number | null;
@@ -678,9 +1032,195 @@ export type Database = {
         Args: { p_source: string; p_target: string };
         Returns: Json;
       };
+      compute_all_paths: {
+        Args: { p_source: string; p_target: string; p_max_paths?: number };
+        Returns: Json;
+      };
+      create_contact_relay_request: {
+        Args: { p_target_person_id: string; p_message?: string | null };
+        Returns: Json;
+      };
+      raise_relationship_dispute: {
+        Args: {
+          p_tree_id: string;
+          p_person_a: string;
+          p_person_b: string;
+          p_relation_type: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
       can_access_tree: { Args: { p_tree_id: string }; Returns: boolean };
       can_write_tree: { Args: { p_tree_id: string }; Returns: boolean };
       is_admin: { Args: Record<string, never>; Returns: boolean };
+      is_moderator: { Args: Record<string, never>; Returns: boolean };
+      log_access: {
+        Args: {
+          p_resource_type: string;
+          p_resource_id: string;
+          p_action?: string;
+        };
+        Returns: string;
+      };
+      list_visible_pft_links: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          link_id: string;
+          person_a_id: string;
+          person_b_id: string;
+          tree_a_id: string;
+          tree_b_id: string;
+          name_a_ar: string | null;
+          name_a_en: string | null;
+          name_b_ar: string | null;
+          name_b_en: string | null;
+          canonical_person_id: string;
+          group_id: string;
+        }>;
+      };
+      is_record_owner: { Args: { p_person_id: string }; Returns: boolean };
+      claim_linked_person: {
+        Args: { p_person_id: string };
+        Returns: string;
+      };
+      /** Request flow for "is this you?" on an existing person (pending owner approval). */
+      request_person_claim: {
+        Args: { p_person_id: string };
+        Returns: string;
+      };
+      /** Tree owner / admin approve or decline a pending person claim. */
+      respond_person_claim: {
+        Args: { p_claim_id: string; p_decision: string };
+        Returns: Json;
+      };
+      is_person_claimed: {
+        Args: { p_person_id: string };
+        Returns: boolean;
+      };
+      list_incoming_person_claims: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          id: string;
+          person_id: string;
+          requester_user_id: string;
+          tree_id: string | null;
+          status: string;
+          created_at: string;
+          person_name_ar: string | null;
+          person_name_en: string | null;
+          requester_name: string | null;
+          requester_verified: boolean;
+        }>;
+      };
+      get_person_story: {
+        Args: { p_person_id: string };
+        Returns: Array<{
+          achievements_ar: string | null;
+          achievements_en: string | null;
+          contribution_ar: string | null;
+          contribution_en: string | null;
+          contribution_consent: boolean;
+        }>;
+      };
+      get_person_contact: {
+        Args: { p_person_id: string };
+        Returns: {
+          contact_email: string | null;
+          contact_phone: string | null;
+          contact_consent: boolean;
+          current_country: string | null;
+          current_city: string | null;
+          current_address: string | null;
+          preferred_contact_method: string | null;
+        }[];
+      };
+      delete_person_attachment: {
+        Args: { p_attachment_id: string };
+        Returns: string | null;
+      };
+      respond_contact_relay: {
+        Args: { p_relay_id: string; p_status: string };
+        Returns: Record<string, unknown>;
+      };
+      can_view_sensitive_person_fields: {
+        Args: { p_person_id: string };
+        Returns: boolean;
+      };
+      can_edit_optional_person_fields: {
+        Args: { p_person_id: string };
+        Returns: boolean;
+      };
+      upsert_person_note: {
+        Args: { p_person_id: string; p_body: string };
+        Returns: undefined;
+      };
+      verify_identifier: {
+        Args: { p_person: string; p_id_type: string; p_attachment: string };
+        Returns: undefined;
+      };
+      reject_identifier: {
+        Args: { p_person: string; p_id_type: string };
+        Returns: undefined;
+      };
+      list_identifier_queue: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          person_id: string;
+          id_type: string;
+          tree_name: string | null;
+          person_name: string | null;
+          value: string;
+          attachment_id: string;
+          storage_path: string;
+          uploaded_at: string;
+        }>;
+      };
+      run_matching_scheduled: {
+        Args: { p_force_full?: boolean };
+        Returns: Json;
+      };
+      update_person_optional_profile: {
+        Args: {
+          p_person_id: string;
+          p_achievements_ar?: string | null;
+          p_achievements_en?: string | null;
+          p_contribution_ar?: string | null;
+          p_contribution_en?: string | null;
+        };
+        Returns: MutablePersonProfile;
+      };
+      upsert_person_displacement: {
+        Args: {
+          p_person_id: string;
+          p_unrwa_registration_number?: string | null;
+          p_family_card_1948_number?: string | null;
+          p_host_country_first?: string | null;
+          p_host_country_current?: string | null;
+          p_refugee_status?: string | null;
+          p_camp_name?: string | null;
+          p_displacement_year?: number | null;
+          p_displacement_wave?: string | null;
+          p_land_property_notes?: string | null;
+          p_oral_history?: string | null;
+          p_oral_history_provenance?: string | null;
+          p_unrwa_evidence_attachment_id?: string | null;
+          p_unrwa_field_of_operations?: string | null;
+          p_unrwa_registration_date?: number | null;
+          p_unrwa_registration_status?: string | null;
+          p_unrwa_services_area?: string | null;
+          p_host_travel_document_number?: string | null;
+          p_host_id_residency_number?: string | null;
+          p_pa_id_number?: string | null;
+          p_palestinian_passport_number?: string | null;
+          p_israeli_id_number?: string | null;
+          p_other_identity_document?: string | null;
+          p_land_record_reference?: string | null;
+          p_land_registry?: string | null;
+          p_property_location?: string | null;
+          p_ownership_nature?: string | null;
+        };
+        Returns: MutablePersonDisplacement;
+      };
       is_tree_owner: {
         Args: { p_tree_id: string; p_user_id: string };
         Returns: boolean;
@@ -728,6 +1268,31 @@ export type Database = {
       };
       revoke_auto_link: { Args: { p_match_id: string }; Returns: undefined };
       revoke_person_link: { Args: { p_link_id: string }; Returns: undefined };
+      notify_ift_on_attachment_link: {
+        Args: { p_attachment_id: string };
+        Returns: string | null;
+      };
+      open_or_create_message_thread: {
+        Args: {
+          p_context_type: MessageContextType;
+          p_context_id: string;
+          p_counterpart_user_id?: string | null;
+          p_initial_body?: string | null;
+        };
+        Returns: string;
+      };
+      ensure_contact_relay: {
+        Args: { p_match_id: string; p_counterpart_user_id: string };
+        Returns: string;
+      };
+      open_thread_from_match_hint_accept: {
+        Args: { p_hint_id: string };
+        Returns: string;
+      };
+      is_message_thread_participant: {
+        Args: { p_thread_id: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       gender_type: GenderType;
@@ -740,6 +1305,8 @@ export type Database = {
       attachment_kind: AttachmentKind;
       attachment_tag: AttachmentTag;
       hint_status: HintStatus;
+      media_kind: MediaKind;
+      message_context_type: MessageContextType;
     };
     CompositeTypes: {
       [_ in never]: never;

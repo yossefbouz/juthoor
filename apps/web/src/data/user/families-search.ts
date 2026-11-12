@@ -27,20 +27,28 @@ export type FamilySurnameOverview = {
   groups: FamilyAcrossVillagesGroup[];
 };
 
+export type FamilyAcrossVillagesFilters = {
+  district?: string | null;
+  placeId?: string | null;
+};
+
 /**
  * Aggregate every person whose primary surname matches `surname`,
  * group them by their place_of_origin (BIRT event place_id), so the UI
  * can render "Al-Ajrami families across villages" — the
  * cross-village family page.
  *
- * Goes wide on a single surname; designed for the /families/[surname]
- * route. Limited to public + accessible trees by RLS.
+ * Optional `district` / `placeId` narrow which birth/origin places are kept
+ * (same filters as /families index). Limited to public + accessible trees by RLS.
  */
 export async function loadFamilyAcrossVillages(
   surname: string,
+  filters: FamilyAcrossVillagesFilters = {},
 ): Promise<FamilySurnameOverview> {
   const supabase = await createJuthoorSupabaseClient();
   const trimmed = surname.trim();
+  const placeIdFilter = filters.placeId?.trim() || null;
+  const districtFilter = filters.district?.trim().toLowerCase() || null;
   if (!trimmed) {
     return { surname: '', total_persons: 0, total_villages: 0, total_trees: 0, groups: [] };
   }
@@ -92,7 +100,9 @@ export async function loadFamilyAcrossVillages(
   const [{ data: lifeRows, error: bErr }, privilegedTrees] = await Promise.all([
     supabase
       .from('events')
-      .select('person_id, event_type, date_year, place_id, places ( id, name_ar, name_en )')
+      .select(
+        'person_id, event_type, date_year, place_id, places ( id, name_ar, name_en, district_ar, district_en )',
+      )
       .in('person_id', personIds)
       .in('event_type', ['BIRT', 'DEAT']),
     viewerPrivilegedTreeIds(),
@@ -104,11 +114,24 @@ export async function loadFamilyAcrossVillages(
     event_type: 'BIRT' | 'DEAT';
     date_year: number | null;
     place_id: string | null;
-    places: { id: string; name_ar: string; name_en: string | null } | null;
+    places: {
+      id: string;
+      name_ar: string;
+      name_en: string | null;
+      district_ar: string | null;
+      district_en: string | null;
+    } | null;
   };
   const birtByPerson = new Map<
     string,
-    { year: number | null; place_id: string | null; place_ar: string | null; place_en: string | null }
+    {
+      year: number | null;
+      place_id: string | null;
+      place_ar: string | null;
+      place_en: string | null;
+      district_ar: string | null;
+      district_en: string | null;
+    }
   >();
   const deceased = new Set<string>();
   for (const r of (lifeRows as unknown as LifeRow[]) ?? []) {
@@ -120,11 +143,26 @@ export async function loadFamilyAcrossVillages(
         place_id: r.place_id,
         place_ar: r.places?.name_ar ?? null,
         place_en: r.places?.name_en ?? null,
+        district_ar: r.places?.district_ar ?? null,
+        district_en: r.places?.district_en ?? null,
       });
     }
   }
 
-  // 5) Group persons by birth-place id.
+  function placeMatchesFilters(birt: {
+    place_id: string | null;
+    district_ar: string | null;
+    district_en: string | null;
+  } | undefined): boolean {
+    if (!placeIdFilter && !districtFilter) return true;
+    if (!birt?.place_id) return false;
+    if (placeIdFilter) return birt.place_id === placeIdFilter;
+    const ar = (birt.district_ar ?? '').trim().toLowerCase();
+    const en = (birt.district_en ?? '').trim().toLowerCase();
+    return ar === districtFilter || en === districtFilter;
+  }
+
+  // 5) Group persons by birth-place id (honour district / placeId filters).
   type Bucket = {
     place_id: string | null;
     place_ar: string | null;
@@ -132,6 +170,7 @@ export async function loadFamilyAcrossVillages(
     persons: FamilyAcrossVillagesGroup['sample_persons'];
   };
   const buckets = new Map<string, Bucket>();
+  const countedTreeIds = new Set<string>();
   for (const p of (personRows ?? []) as Array<{
     id: string;
     display_name_ar: string | null;
@@ -142,16 +181,23 @@ export async function loadFamilyAcrossVillages(
     // A living person's birth year and village stay with their own tree, as
     // in the people list: elsewhere they are listed without either.
     const knownBirt = birtByPerson.get(p.id);
+    if (!placeMatchesFilters(knownBirt)) continue;
+
     const hidden =
       !privilegedTrees.has(p.tree_id) &&
       isPresumedLiving({
         hasDeath: deceased.has(p.id),
         birthYear: knownBirt?.year ?? null,
       });
+    // Place filters need a visible birth/origin place; skip living people whose
+    // village is masked, so we do not leak origin via the filter itself.
+    if ((placeIdFilter || districtFilter) && hidden) continue;
+
     const birt = hidden ? undefined : knownBirt;
     const placeKey = birt?.place_id ?? 'unknown';
     const existing = buckets.get(placeKey);
     const treeName = treeNameById.get(p.tree_id) ?? null;
+    countedTreeIds.add(p.tree_id);
     const personEntry = {
       person_id: p.id,
       name_ar: p.display_name_ar,
@@ -182,11 +228,12 @@ export async function loadFamilyAcrossVillages(
     }))
     .sort((a, b) => b.count - a.count);
 
+  const totalPersons = groups.reduce((sum, g) => sum + g.count, 0);
   return {
     surname: trimmed,
-    total_persons: (personRows ?? []).length,
+    total_persons: totalPersons,
     total_villages: groups.filter((g) => g.village_id !== null).length,
-    total_trees: treeIds.length,
+    total_trees: countedTreeIds.size,
     groups,
   };
 }

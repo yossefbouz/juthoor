@@ -1,9 +1,9 @@
-import { CreatePrivateItemForm } from '../ClientPage';
+﻿import { notFound } from 'next/navigation';
 
+/**
+ * Nextbase starter leftover (private_items demo CRUD).
+ * Quarantined in Wave 0.5 — create route disabled.
+ */
 export default function NewPrivateItemPage() {
-  return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-2xl">
-      <CreatePrivateItemForm />
-    </div>
-  );
+  notFound();
 }

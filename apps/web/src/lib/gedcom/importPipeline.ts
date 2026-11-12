@@ -11,7 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database, Place } from '@/types/database';
+import type { Database, NameType, Place } from '@/types/database';
 
 import { matchPlace } from './placeMatching';
 import type { GedcomSnapshot } from './types';
@@ -65,7 +65,7 @@ export async function importGedcomSnapshot(
         display_name_ar: displayAr,
         display_name_en: displayEn,
         gedcom_xref: p.xref,
-        notes: p.notes ?? null,
+        notes: null,
       })
       .select('id')
       .single();
@@ -76,18 +76,96 @@ export async function importGedcomSnapshot(
     xrefToPersonId.set(p.xref, inserted.id);
     personsInserted++;
 
-    // Primary name row
+    // Free-text notes live on person_notes (D1). No persons.notes fallback
+    // (that column is readable by every tree viewer).
+    if (p.notes && p.notes.trim() !== '' && p.notes !== 'placeholder') {
+      const { error: noteErr } = await supabase.rpc('upsert_person_note', {
+        p_person_id: inserted.id,
+        p_body: p.notes,
+      });
+      if (noteErr) {
+        errors.push(`Note skipped for ${p.xref}: ${noteErr.message}`);
+      }
+    }
+
+    // Primary name row. FRS: female primary must be maiden, never married.
+    // If the first NAME is TYPE married, prefer a maiden/birth NAME for primary.
+    const rawPrimaryType = (primary?.nameType ?? 'birth').toLowerCase();
+    const maidenSource =
+      p.gender === 'F'
+        ? p.names.find((n) =>
+            ['maiden', 'birth'].includes((n.nameType ?? '').toLowerCase()),
+          )
+        : undefined;
+    const femaleMarriedPrimary =
+      p.gender === 'F' && rawPrimaryType === 'married';
+    const primarySource =
+      femaleMarriedPrimary && maidenSource ? maidenSource : primary;
+    const primaryGiven =
+      primarySource?.given ?? given;
+    const primarySurname =
+      primarySource?.surname ?? surname;
+    const primaryNameType: NameType = femaleMarriedPrimary
+      ? 'maiden'
+      : p.gender === 'F' && (rawPrimaryType === 'birth' || !primary?.nameType)
+        ? 'maiden'
+        : asNameType(rawPrimaryType);
+
     await supabase.from('person_names').insert({
       person_id: inserted.id,
-      name_type: primary?.nameType ?? 'birth',
+      name_type: primaryNameType,
       is_primary: true,
-      lang: primary?.lang ?? 'en',
-      given_name: given,
-      surname,
-      gedcom_name: primary?.raw ?? null,
+      lang: primarySource?.lang ?? 'en',
+      given_name: primaryGiven,
+      surname: primarySurname,
+      gedcom_name: primarySource?.raw ?? null,
     });
 
-    // Events
+    if (femaleMarriedPrimary && primary) {
+      await supabase.from('person_names').insert({
+        person_id: inserted.id,
+        name_type: 'married',
+        is_primary: false,
+        lang: primary.lang ?? 'en',
+        given_name: given,
+        surname,
+        gedcom_name: primary.raw ?? null,
+      });
+    }
+
+    // Keep additional NAME records (not dropped after the first).
+    for (const extra of p.names.slice(1)) {
+      if (femaleMarriedPrimary && extra === primary) continue;
+      if (maidenSource && extra === maidenSource && femaleMarriedPrimary) continue;
+      const g = extra.given ?? null;
+      const s = extra.surname ?? null;
+      if (!g && !s) continue;
+      await supabase.from('person_names').insert({
+        person_id: inserted.id,
+        name_type: asNameType(extra.nameType ?? 'aka'),
+        is_primary: false,
+        lang: extra.lang ?? 'en',
+        given_name: g,
+        surname: s,
+        gedcom_name: extra.raw ?? null,
+      });
+    }
+
+    // Import IDNO / legacy REFN into person_identifiers.
+    const idnos = p.idnos?.length
+      ? p.idnos
+      : (p.refns ?? []).map((r) => ({ type: r.type, value: r.value }));
+    for (const idno of idnos) {
+      const idType = mapIdnoTypeToDb(String(idno.type));
+      if (!idType || !idno.value?.trim()) continue;
+      await supabase.from('person_identifiers').insert({
+        person_id: inserted.id,
+        id_type: idType,
+        id_value: idno.value.trim(),
+      });
+    }
+
+    // Events (EVEN.TYPE → events.description; NOTE → events.notes)
     for (const ev of p.events) {
       const match = matchPlace(ev.place, places);
       if (ev.place && match.placeId === null) {
@@ -100,6 +178,8 @@ export async function importGedcomSnapshot(
         date_year: ev.year ?? null,
         place_id: match.placeId,
         place_name: match.placeId === null ? match.rawName || null : null,
+        description: ev.typeDetail ?? null,
+        notes: ev.note ?? null,
       });
       eventsInserted++;
     }
@@ -145,6 +225,8 @@ export async function importGedcomSnapshot(
         date_year: ev.year ?? null,
         place_id: match.placeId,
         place_name: match.placeId === null ? match.rawName || null : null,
+        description: ev.typeDetail ?? null,
+        notes: ev.note ?? null,
       });
       eventsInserted++;
     }
@@ -189,8 +271,45 @@ export async function importGedcomSnapshot(
 
 /**
  * Pick the best name for a display field in the requested language.
- * Falls back to the primary name when no language-specific one exists.
+ * Prefers lang-tagged NAME rows, then TRAN (ar) / ROMN (en), then the
+ * primary NAME when its script matches.
  */
+type DbIdType =
+  | 'unrwa_registration'
+  | 'family_card_1948'
+  | 'pa_id'
+  | 'pa_passport'
+  | 'israeli_id'
+  | 'host_travel_doc'
+  | 'host_id_residency';
+
+function mapIdnoTypeToDb(type: string): DbIdType | null {
+  const t = type.replace(/^_/, '').toUpperCase();
+  if (t === 'UNRWA') return 'unrwa_registration';
+  if (t === 'HOSTCARD1948' || t === 'FAMILY_CARD_1948') return 'family_card_1948';
+  if (t === 'PAID' || t === 'PA_ID') return 'pa_id';
+  if (t === 'PAPASSPORT' || t === 'PA_PASSPORT') return 'pa_passport';
+  if (t === 'ILID' || t === 'ISRAELI_ID') return 'israeli_id';
+  if (t === 'HOST_TRAVEL_DOC' || t === 'HOSTTRAVELDOC') return 'host_travel_doc';
+  if (t === 'HOST_ID_RESIDENCY' || t === 'HOSTIDRESIDENCY') return 'host_id_residency';
+  return null;
+}
+
+function asNameType(raw: string): NameType {
+  const v = raw.toLowerCase();
+  if (
+    v === 'birth' ||
+    v === 'married' ||
+    v === 'immigrant' ||
+    v === 'aka' ||
+    v === 'professional' ||
+    v === 'maiden'
+  ) {
+    return v;
+  }
+  return 'aka';
+}
+
 function joinName(
   given: string | null | undefined,
   surname: string | null | undefined,
@@ -203,6 +322,13 @@ function joinName(
     const s = langMatch.surname ?? '';
     return `${g} ${s}`.trim() || null;
   }
+
+  // GEDCOM 7: TRAN carries Arabic script; ROMN carries phonetic/English.
+  for (const n of names) {
+    if (lang === 'ar' && n.tran) return n.tran.trim() || null;
+    if (lang === 'en' && n.romn) return n.romn.trim() || null;
+  }
+
   // Only fall back if the primary matches the target lang family.
   // Prevents Arabic primary name from landing in display_name_en.
   const g = given ?? '';

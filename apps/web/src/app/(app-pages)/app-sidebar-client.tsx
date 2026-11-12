@@ -21,6 +21,8 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { signOutAction } from '@/data/auth/sign-out';
+import { deleteAccountAction } from '@/data/user/account';
+import { clearClientAuthCaches } from '@/lib/auth/clearClientCaches';
 import { useLocale } from '@/contexts/LocaleContext';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { ModeToggle } from '@/components/ui/mode-toggle';
@@ -30,7 +32,9 @@ import {
   Home,
   Inbox,
   LogOut,
+  Trash2,
   MapPin,
+  Network,
   Search,
   TreePine,
   Users,
@@ -38,6 +42,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTransition } from 'react';
+import { toast } from 'sonner';
 
 export function AppSidebarContent({
   userEmail,
@@ -54,9 +59,17 @@ export function AppSidebarContent({
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
 
+  // Private Items (Nextbase starter) omitted - quarantined in Wave 0.5
   const navigationItems = [
     { titleAr: 'لوحة الجذور', titleEn: 'Dashboard', url: '/dashboard', icon: Home, match: (p: string) => p === '/dashboard' },
     { titleAr: 'شجرة العائلة', titleEn: 'Family Tree', url: '/tree', icon: TreePine, match: (p: string) => p.startsWith('/tree') },
+    {
+      titleAr: 'الشجرة الفلسطينية',
+      titleEn: 'Palestinian Family Tree',
+      url: '/pft',
+      icon: Network,
+      match: (p: string) => p === '/pft' || p.startsWith('/palestinian-family-tree'),
+    },
     { titleAr: 'ابحث عن ذويك', titleEn: 'Find Family', url: '/search', icon: Search, match: (p: string) => p.startsWith('/search') },
     { titleAr: 'العائلات', titleEn: 'Families', url: '/families', icon: Users, match: (p: string) => p.startsWith('/families') },
     { titleAr: 'القرى والمدن', titleEn: 'Villages & Cities', url: '/villages', icon: MapPin, match: (p: string) => p.startsWith('/villages') },
@@ -72,7 +85,41 @@ export function AppSidebarContent({
 
   function handleSignOut() {
     startTransition(async () => {
+      await clearClientAuthCaches();
       await signOutAction();
+    });
+  }
+
+  function handleDeleteAccount() {
+    const ok = window.confirm(
+      t(
+        'إغلاق الحساب نهائي: أشجارك تُنقل إلى أرشيف المنصة، ويُحذف تسجيل الدخول. لا يمكن التراجع عن ذلك.',
+        'Closing your account is permanent: your trees move to the platform archive vault, and your login is deleted. This cannot be undone.',
+      ),
+    );
+    if (!ok) return;
+    startTransition(async () => {
+      try {
+        await clearClientAuthCaches();
+        await deleteAccountAction();
+      } catch (err) {
+        // next/navigation redirect() throws; that is success, not a toast.
+        const digest =
+          err && typeof err === 'object' && 'digest' in err
+            ? String((err as { digest?: unknown }).digest ?? '')
+            : '';
+        if (
+          digest.startsWith('NEXT_REDIRECT') ||
+          (err instanceof Error && err.message === 'NEXT_REDIRECT')
+        ) {
+          throw err;
+        }
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t('تعذّر إغلاق الحساب', 'Could not close account'),
+        );
+      }
     });
   }
 
@@ -205,6 +252,14 @@ export function AppSidebarContent({
                 <DropdownMenuItem onClick={handleSignOut} disabled={isPending}>
                   <LogOut className="mr-2 h-4 w-4" />
                   {isPending ? t('جارٍ الخروج…', 'Signing out…') : t('تسجيل الخروج', 'Sign out')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDeleteAccount}
+                  disabled={isPending}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {t('حذف الحساب', 'Delete account')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

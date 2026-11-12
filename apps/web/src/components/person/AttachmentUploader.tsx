@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Loader2, Image as ImageIcon, FileText } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { getAttachmentUploadTarget, recordAttachment, type AttachmentKind, type AttachmentTag } from '@/data/user/attachments';
 import { TAG_LABELS, PHOTO_TAGS, DOCUMENT_TAGS } from '@/lib/attachments/tagLabels';
 import { ATTACHMENT_LIMITS } from '@/lib/attachments/limits';
+import { PlaceCombobox } from '@/components/tree/PlaceCombobox';
 
 export function AttachmentUploader({
   open,
@@ -27,12 +29,18 @@ export function AttachmentUploader({
   t: <T extends string>(ar: T, en: T) => T;
   locale: 'ar' | 'en';
 }) {
+  const router = useRouter();
   const [kind, setKind] = useState<AttachmentKind>(defaultKind);
   const [tag, setTag] = useState<AttachmentTag>(defaultKind === 'photo' ? 'portrait' : 'birth_cert');
   const [file, setFile] = useState<File | null>(null);
   const [captionAr, setCaptionAr] = useState('');
   const [captionEn, setCaptionEn] = useState('');
   const [year, setYear] = useState<string>('');
+  const [placeTakenId, setPlaceTakenId] = useState<string | null>(null);
+  const [dateTaken, setDateTaken] = useState('');
+  const [title, setTitle] = useState('');
+  const [issuingAuthority, setIssuingAuthority] = useState('');
+  const [issueDate, setIssueDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,27 +91,52 @@ export function AttachmentUploader({
         .uploadToSignedUrl(path, token, file);
       if (upErr) throw new Error(upErr.message);
 
-      // 3. Record DB row
-      await recordAttachment({
-        personId,
-        treeId,
-        kind,
-        tag,
-        storagePath: path,
-        mimeType: file.type || (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
-        sizeBytes: file.size,
-        captionAr: captionAr.trim() || undefined,
-        captionEn: captionEn.trim() || undefined,
-        year: year.trim() ? Number(year) : undefined,
-      });
+      // 3. Record DB row (+ notify IFT Admin / open message thread).
+      // On insert failure, remove the orphaned storage object.
+      let recorded;
+      try {
+        recorded = await recordAttachment({
+          personId,
+          treeId,
+          kind,
+          tag,
+          storagePath: path,
+          mimeType: file.type || (kind === 'photo' ? 'image/jpeg' : 'application/pdf'),
+          sizeBytes: file.size,
+          captionAr: captionAr.trim() || undefined,
+          captionEn: captionEn.trim() || undefined,
+          year: year.trim() ? Number(year) : undefined,
+          placeTakenId: placeTakenId || undefined,
+          dateTaken: dateTaken.trim() || undefined,
+          title: title.trim() || undefined,
+          issuingAuthority: issuingAuthority.trim() || undefined,
+          issueDate: issueDate.trim() || undefined,
+        });
+      } catch (insertErr) {
+        const { removeOrphanedAttachmentObjectAction } = await import(
+          '@/data/user/attachmentsCleanup'
+        );
+        await removeOrphanedAttachmentObjectAction({ storagePath: path }).catch(
+          () => undefined,
+        );
+        throw insertErr;
+      }
 
       // 4. Reset + notify parent
       setFile(null);
       setCaptionAr('');
       setCaptionEn('');
       setYear('');
+      setPlaceTakenId(null);
+      setDateTaken('');
+      setTitle('');
+      setIssuingAuthority('');
+      setIssueDate('');
       onUploaded();
       onClose();
+      if (recorded.threadId) {
+        router.push(`/messages/${recorded.threadId}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -126,7 +159,7 @@ export function AttachmentUploader({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-lg rounded-3xl border border-[var(--jt-olive-200)] bg-[var(--card)] p-6 shadow-[var(--jt-shadow-xl)] md:p-8"
+            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[var(--jt-olive-200)] bg-[var(--card)] p-6 shadow-[var(--jt-shadow-xl)] md:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -254,6 +287,70 @@ export function AttachmentUploader({
                   />
                 </label>
               </div>
+
+              {kind === 'photo' ? (
+                <>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                      {t('مكان الالتقاط', 'Place taken')}
+                    </span>
+                    <PlaceCombobox
+                      value={placeTakenId}
+                      onChange={(id) => setPlaceTakenId(id)}
+                      placeholder={t('قرية أو مدينة', 'Village or town')}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                      {t('تاريخ الالتقاط', 'Date taken')}
+                    </span>
+                    <input
+                      type="date"
+                      value={dateTaken}
+                      onChange={(e) => setDateTaken(e.target.value)}
+                      className="w-full rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                      {t('عنوان الوثيقة', 'Document title')}
+                    </span>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder={t('شهادة ميلاد', 'Birth certificate')}
+                      className="rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                      {t('الجهة المُصدِرة', 'Issuing authority')}
+                    </span>
+                    <input
+                      type="text"
+                      value={issuingAuthority}
+                      onChange={(e) => setIssuingAuthority(e.target.value)}
+                      placeholder={t('مثلاً: الأونروا', 'e.g. UNRWA')}
+                      className="rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                      {t('تاريخ الإصدار', 'Issue date')}
+                    </span>
+                    <input
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      className="w-full rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                    />
+                  </label>
+                </>
+              )}
 
               <label className="flex flex-col gap-1.5">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">

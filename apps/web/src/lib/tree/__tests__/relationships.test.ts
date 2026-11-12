@@ -27,7 +27,7 @@ describe('buildNeighbors — nuclear family', () => {
       ...nuclearFamilyFixture,
       families: [
         // Swap so that mother is partner1 and father is partner2.
-        { id: 'f-1', partner1Id: 'p-fatima', partner2Id: 'p-ahmad' },
+        { id: 'f-1', partner1Id: 'p-fatima', partner2Id: 'p-ahmad', isDissolved: false },
       ],
     };
     const neighbors = buildNeighbors(flipped, 'p-sami');

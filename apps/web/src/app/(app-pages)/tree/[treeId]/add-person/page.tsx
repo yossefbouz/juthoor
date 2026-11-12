@@ -27,6 +27,7 @@ export default async function AddPersonPage({ params, searchParams }: Props) {
     id: f.id,
     partner1Id: f.partner1_id,
     partner2Id: f.partner2_id,
+    isDissolved: f.notes === 'dissolved',
   }));
 
   return (

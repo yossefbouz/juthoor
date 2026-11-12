@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { isPerfectMatchEligible } from '@/lib/matching/perfectMatch';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { requireAdmin } from '@/data/admin/requireAdmin';
 import type { Json } from '@/types/database';
@@ -32,6 +33,8 @@ export type ReviewCard = {
   personB: ReviewPerson;
   fields: ReviewField[];
   createdAt: string;
+  /** D8: true when a perfect-match identifier hit lacks required UNRWA evidence. */
+  perfectMatchBlocked: boolean;
 };
 
 // ── breakdown → per-field agree/disagree/missing (mirrors SQL match_field_agreement) ──
@@ -42,6 +45,9 @@ type Breakdown = {
     decision?: string;
     vetoes?: string[];
     privacy?: string | null;
+    perfect_match?: boolean;
+    identifier_match?: string | null;
+    identifier_evidence?: boolean;
   };
   params?: Record<string, { w?: number; pts?: number }>;
 };
@@ -49,18 +55,19 @@ type Breakdown = {
 /** The disagreement veto marker(s) that flip a zero-points field to 'disagree'. */
 const DISAGREE_MARKERS: Record<string, readonly string[]> = {
   mother: ['mother_disagree'],
+  spouse_first: ['spouse_disagree'],
+  spouse_family: ['spouse_disagree'],
   spouse: ['spouse_disagree'],
   origin: ['origin_disagree'],
   mgf: ['mgp_disagree'],
-  mgm: ['mgp_disagree'],
   birth_year: ['birth_year_disagree', 'birth_year_gap'],
 };
 
-/** Stable display order for the chips (patriline → maternal → spouse → anchors). */
+/** Stable display order for the chips (AIO-100: patriline → maternal → spouse → anchors). */
 const FIELD_ORDER = [
-  'given', 'surname', 'father', 'pgf', 'pgm',
-  'mother', 'mgf', 'mgm', 'spouse',
-  'origin', 'birth_year', 'birth_place', 'death_year', 'death_place', 'email', 'num_children',
+  'given', 'surname', 'father', 'pgf',
+  'mother', 'mgf', 'spouse_first', 'spouse_family',
+  'origin', 'birth_year', 'birth_place', 'death_year', 'death_place', 'num_children',
 ] as const;
 
 function deriveFields(bd: Breakdown): ReviewField[] {
@@ -169,6 +176,7 @@ export async function listReviewQueue(input?: {
       personB: b,
       fields: deriveFields(bd),
       createdAt: m.created_at,
+      perfectMatchBlocked: Boolean(bd.meta?.perfect_match) && !isPerfectMatchEligible(bd),
     };
   });
 }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 
@@ -15,10 +15,18 @@ interface Props {
   readonly person: Person;
   readonly photoUrl: string | null | undefined;
   readonly allPersons: readonly Person[];
+  /** R10: record was created with Unknown defaults or missing birth/place. */
+  readonly needsCompletion?: boolean;
 }
 
 /** `/tree/[treeId]/person/[personId]` header — avatar, name, and the action row. */
-export function PersonPageHeader({ treeId, person, photoUrl, allPersons }: Props) {
+export function PersonPageHeader({
+  treeId,
+  person,
+  photoUrl,
+  allPersons,
+  needsCompletion = false,
+}: Props) {
   const { t, dir, locale } = useLocale();
 
   const displayName =
@@ -33,7 +41,20 @@ export function PersonPageHeader({ treeId, person, photoUrl, allPersons }: Props
       <div className="flex items-center gap-4">
         <PersonAvatar name={displayName} photoUrl={photoUrl} size={72} />
         <div className="space-y-1">
-          <T.H1>{displayName}</T.H1>
+          <div className="flex flex-wrap items-center gap-2">
+            <T.H1>{displayName}</T.H1>
+            {needsCompletion ? (
+              <span
+                className="inline-flex items-center rounded-md border border-[var(--jt-gold-400)] bg-[var(--jt-gold-50)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--jt-olive-800)]"
+                title={t(
+                  'حقول إلزامية ناقصة أو افتراضية — أكمل السجل',
+                  'Mandatory fields missing or defaulted — complete this record',
+                )}
+              >
+                {t('يحتاج إكمال', 'Needs completion')}
+              </span>
+            ) : null}
+          </div>
           {person.display_name_en && person.display_name_ar ? (
             <T.P className="text-muted-foreground">{secondaryName}</T.P>
           ) : null}

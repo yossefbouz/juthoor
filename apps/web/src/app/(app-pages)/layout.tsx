@@ -5,7 +5,9 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { getCachedIsUserLoggedIn } from '@/rsc-data/supabase';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { MessageSquare } from 'lucide-react';
 import { type ReactNode, Suspense } from 'react';
 import { AppSidebar } from './app-sidebar';
 import { DynamicBreadcrumb } from '@/components/dynamic-breadcrumb';
@@ -40,7 +42,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <Suspense fallback={null}>
             <DynamicBreadcrumb />
           </Suspense>
-          <div className="ms-auto flex items-center">
+          <div className="ms-auto flex items-center gap-1">
+            <Link
+              href="/messages"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--jt-stone-600)] transition hover:bg-[var(--jt-olive-50)] hover:text-[var(--jt-olive-800)]"
+              aria-label="Messages"
+            >
+              <MessageSquare className="h-4 w-4" />
+            </Link>
             <Suspense fallback={null}>
               <NotificationBellShell />
             </Suspense>

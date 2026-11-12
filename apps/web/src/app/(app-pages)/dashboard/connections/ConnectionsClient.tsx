@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, EyeOff, Inbox, Link2, Loader2, ShieldAlert, ShieldOff, Undo2, X } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import {
@@ -58,6 +59,7 @@ export function ConnectionsClient({
   initialConnections: ConnectionCard[];
 }) {
   const { t, dir, locale } = useLocale();
+  const router = useRouter();
   const [cards, setCards] = useState<ConnectionCard[]>(initialConnections);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -227,7 +229,15 @@ export function ConnectionsClient({
                         type="button"
                         disabled={busy}
                         onClick={() =>
-                          act(card.hintId, () => acceptConnection({ hintId: card.hintId }), false, 'accepted')
+                          act(
+                            card.hintId,
+                            async () => {
+                              const { threadId } = await acceptConnection({ hintId: card.hintId });
+                              if (threadId) router.push(`/messages/${threadId}`);
+                            },
+                            false,
+                            'accepted',
+                          )
                         }
                         className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--jt-olive-600)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--jt-olive-700)] disabled:opacity-50"
                       >

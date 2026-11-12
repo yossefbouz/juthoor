@@ -5,14 +5,19 @@ import { z } from 'zod';
 
 import { authActionClient } from '@/lib/safe-action';
 import {
+  FEMALE_MAIDEN_SURNAME_MESSAGE,
   genderUIEnum,
+  nameTypeEnum,
   personInputSchema,
 } from '@/lib/tree/zodSchemas';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 
 import {
   createPersonWithPrimaryName,
+  englishDisplayFromParts,
   joinDisplay,
+  loadFatherInheritanceDefaults,
+  resolvePrimaryNameType,
   toUserFacingDbError,
   type SupabaseServerClient,
 } from './personCreate';
@@ -27,14 +32,73 @@ import {
  * added later via a separate mutation so they stay searchable but are
  * never picked as display.
  */
-export const insertPersonAction = authActionClient
-  .schema(personInputSchema)
+
+/**
+ * R4 defaults for the add-person UI: surname + origin from a known father.
+ * Used to pre-fill the form; the server re-applies the same rules on save.
+ */
+export const getInheritanceDefaultsAction = authActionClient
+  .schema(z.object({ fatherId: z.string().uuid() }))
   .action(async ({ parsedInput }) => {
     const supabase = await createJuthoorSupabaseClient();
-    const personId = await createPersonWithPrimaryName(supabase, parsedInput);
+    return loadFatherInheritanceDefaults(supabase, parsedInput.fatherId);
+  });
+
+/** Primary given/surname for prefilling R10 parent-name fields. */
+export const getPersonPrimaryNamesAction = authActionClient
+  .schema(z.object({ personId: z.string().uuid() }))
+  .action(async ({ parsedInput }) => {
+    const supabase = await createJuthoorSupabaseClient();
+    const { data, error } = await supabase
+      .from('person_names')
+      .select('lang, given_name, surname, is_primary')
+      .eq('person_id', parsedInput.personId)
+      .order('is_primary', { ascending: false });
+    if (error) throw new Error(error.message);
+    let arGiven: string | undefined;
+    let arSurname: string | undefined;
+    let enGiven: string | undefined;
+    let enSurname: string | undefined;
+    for (const row of data ?? []) {
+      const given = row.given_name?.trim();
+      const surname = row.surname?.trim();
+      if (row.lang === 'ar') {
+        if (given && !arGiven) arGiven = given;
+        if (surname && !arSurname) arSurname = surname;
+      } else if (row.lang === 'en') {
+        if (given && !enGiven) enGiven = given;
+        if (surname && !enSurname) enSurname = surname;
+      }
+    }
+    return { arGiven, arSurname, enGiven, enSurname };
+  });
+
+export const insertPersonAction = authActionClient
+  .schema(
+    personInputSchema.extend({
+      /** When true (add-self), set profiles.linked_person_id to the new person. */
+      linkAsSelf: z.boolean().optional(),
+    })
+  )
+  .action(async ({ parsedInput, ctx: { userId } }) => {
+    const { linkAsSelf, ...personInput } = parsedInput;
+    const supabase = await createJuthoorSupabaseClient();
+    const personId = await createPersonWithPrimaryName(supabase, personInput);
+
+    if (linkAsSelf) {
+      const { error: linkErr } = await supabase.rpc('claim_linked_person', {
+        p_person_id: personId,
+      });
+      if (linkErr) {
+        // Do not leave an unlinked orphan on someone else's / failed claim path.
+        await supabase.from('persons').delete().eq('id', personId);
+        throw new Error(linkErr.message);
+      }
+    }
 
     revalidatePath('/tree');
     revalidatePath(`/tree/${parsedInput.treeId}`);
+    revalidatePath('/dashboard');
     return { personId };
   });
 
@@ -139,6 +203,7 @@ const upgradePlaceholderPersonSchema = z
     enGivenName: z.string().trim().min(1).max(100).optional(),
     enSurname: z.string().trim().max(100).optional(),
     gender: genderUIEnum,
+    nameType: nameTypeEnum.optional(),
     birthYear: yearSchema.optional(),
     deathYear: yearSchema.optional(),
     placeOfOriginId: z.string().uuid().optional(),
@@ -154,6 +219,13 @@ const upgradePlaceholderPersonSchema = z
       input.deathYear === undefined ||
       input.deathYear >= input.birthYear,
     { message: 'Death year cannot be before birth year', path: ['deathYear'] }
+  )
+  .refine(
+    (input) => !(input.gender === 'F' && input.nameType === 'married'),
+    {
+      message: FEMALE_MAIDEN_SURNAME_MESSAGE,
+      path: ['nameType'],
+    }
   );
 
 export const upgradePlaceholderPersonAction = authActionClient
@@ -177,10 +249,18 @@ export const upgradePlaceholderPersonAction = authActionClient
       throw new Error('Tree mismatch');
     }
 
+    if (parsedInput.gender === 'F' && parsedInput.nameType === 'married') {
+      throw new Error(FEMALE_MAIDEN_SURNAME_MESSAGE);
+    }
+
     const arDisplay =
       joinDisplay(parsedInput.arGivenName, parsedInput.arSurname) ?? null;
-    const enDisplay =
-      joinDisplay(parsedInput.enGivenName, parsedInput.enSurname) ?? null;
+    const enDisplay = englishDisplayFromParts(
+      parsedInput.enGivenName,
+      parsedInput.enSurname,
+      parsedInput.arGivenName,
+      parsedInput.arSurname
+    );
 
     // Years and place live on `events` (GEDCOM BIRT/DEAT), NOT on the
     // persons row — the persons table has no birth_year/death_year/
@@ -191,11 +271,19 @@ export const upgradePlaceholderPersonAction = authActionClient
         gender: parsedInput.gender,
         display_name_ar: arDisplay,
         display_name_en: enDisplay,
-        notes: parsedInput.notes ?? null, // clears the 'placeholder' tag
+        notes: null, // clears the 'placeholder' tag
       })
       .eq('id', parsedInput.placeholderId);
 
     if (updateErr) throw new Error(toUserFacingDbError(updateErr.message));
+
+    if (parsedInput.notes && parsedInput.notes.trim() !== '') {
+      const { error: noteErr } = await supabase.rpc('upsert_person_note', {
+        p_person_id: parsedInput.placeholderId,
+        p_body: parsedInput.notes,
+      });
+      if (noteErr) throw new Error(toUserFacingDbError(noteErr.message));
+    }
 
     if (parsedInput.birthYear !== undefined) {
       await upsertPersonYearEvent(supabase, {
@@ -215,7 +303,11 @@ export const upgradePlaceholderPersonAction = authActionClient
     }
 
     // Replace the primary person_names row with the real name.
-    const nameType = parsedInput.gender === 'F' ? 'maiden' : 'birth';
+    // Women always maiden; coerce married → maiden if it slipped through.
+    const nameType = resolvePrimaryNameType(
+      parsedInput.gender,
+      parsedInput.nameType
+    );
     const { error: nameErr } = await supabase
       .from('person_names')
       .update({

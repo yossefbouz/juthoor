@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useTransition, type FormEvent } from 'react';
+import { useMemo, useState, useTransition, type FormEvent } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { SearchResult } from '@/lib/search/zodSchemas';
+import type { PersonView } from '@/lib/tree/types';
+import { PersonHoverCard } from '@/components/tree/PersonHoverCard';
 import { VillageCombobox } from '@/components/search/VillageCombobox';
 import { GenderPicker } from '@/components/search/GenderPicker';
 import { YearRangeInput } from '@/components/search/YearRangeInput';
@@ -24,11 +26,22 @@ import { ScoreBreakdownPopover } from '@/components/search/ScoreBreakdownPopover
 import { DegreeChip } from '@/components/search/DegreeChip';
 import { DegreesDialog } from '@/components/search/DegreesDialog';
 import { RequestAccessDialog } from '@/components/search/RequestAccessDialog';
-import type { DegreesResult } from '@/data/user/degrees';
+import {
+  DistrictSelect,
+  districtsFromPlaces,
+  placeMatchesDistrict,
+} from '@/components/search/DistrictSelect';
+import { isDegreesOk, type DegreesResult } from '@/data/user/degrees-types';
 import { kinshipLabel } from '@/lib/search/relationLabels';
 import { Lock } from 'lucide-react';
 
-type Village = { id: string; name_ar: string; name_en: string | null; district_ar: string | null };
+type Village = {
+  id: string;
+  name_ar: string;
+  name_en: string | null;
+  district_ar: string | null;
+  district_en: string | null;
+};
 
 type Query = {
   q: string;
@@ -36,7 +49,10 @@ type Query = {
   surname: string;
   father: string;
   mother: string;
+  paternalGrandfather: string;
+  paternalGreatGrandfather: string;
   placeId: string | null;
+  district: string | null;
   birthYear: string;
   yearWindow: number;
   gender: 'M' | 'F' | null;
@@ -79,6 +95,12 @@ export function SearchClient({
     ),
   );
 
+  const districts = useMemo(() => districtsFromPlaces(villages), [villages]);
+  const villagesInDistrict = useMemo(
+    () => villages.filter((v) => placeMatchesDistrict(v, query.district)),
+    [villages, query.district],
+  );
+
   function submit(e: FormEvent) {
     e.preventDefault();
     const params = new URLSearchParams();
@@ -87,6 +109,9 @@ export function SearchClient({
     if (query.surname.trim()) params.set('surname', query.surname.trim());
     if (query.father.trim()) params.set('father', query.father.trim());
     if (query.mother.trim()) params.set('mother', query.mother.trim());
+    if (query.paternalGrandfather.trim()) params.set('paternalGrandfather', query.paternalGrandfather.trim());
+    if (query.paternalGreatGrandfather.trim()) params.set('paternalGreatGrandfather', query.paternalGreatGrandfather.trim());
+    if (query.district) params.set('district', query.district);
     if (query.placeId) params.set('placeId', query.placeId);
     if (query.birthYear.trim()) {
       params.set('birthYear', query.birthYear.trim());
@@ -99,7 +124,7 @@ export function SearchClient({
   }
 
   function clearAll() {
-    setQuery({ q: '', given: '', surname: '', father: '', mother: '', placeId: null, birthYear: '', yearWindow: 5, gender: null });
+    setQuery({ q: '', given: '', surname: '', father: '', mother: '', paternalGrandfather: '', paternalGreatGrandfather: '', placeId: null, district: null, birthYear: '', yearWindow: 5, gender: null });
     router.push('/search');
   }
 
@@ -210,13 +235,48 @@ export function SearchClient({
                     placeholder={t('فاطمة', 'Fatima')}
                     locale={locale}
                   />
+                  <Field
+                    label={t('الجد لأب', 'Paternal grandfather')}
+                    value={query.paternalGrandfather}
+                    onChange={(v) => setQuery({ ...query, paternalGrandfather: v })}
+                    placeholder={t('محمود', 'Mahmoud')}
+                    locale={locale}
+                  />
+                  <Field
+                    label={t('أبو الجد لأب', 'Paternal great-grandfather')}
+                    value={query.paternalGreatGrandfather}
+                    onChange={(v) => setQuery({ ...query, paternalGreatGrandfather: v })}
+                    placeholder={t('إبراهيم', 'Ibrahim')}
+                    locale={locale}
+                  />
+                  <label className="flex flex-col gap-1.5">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                      <MapPin className="h-3 w-3" />
+                      {t('اللواء / القضاء', 'District')}
+                    </span>
+                    <DistrictSelect
+                      districts={districts}
+                      value={query.district}
+                      onChange={(key) =>
+                        setQuery({
+                          ...query,
+                          district: key,
+                          placeId:
+                            key && query.placeId && !villages.filter((v) => placeMatchesDistrict(v, key)).some((v) => v.id === query.placeId)
+                              ? null
+                              : query.placeId,
+                        })
+                      }
+                      locale={locale}
+                    />
+                  </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
                       <MapPin className="h-3 w-3" />
                       {t('أصل العائلة', 'Village of origin')}
                     </span>
                     <VillageCombobox
-                      villages={villages}
+                      villages={villagesInDistrict}
                       value={query.placeId}
                       onChange={(id) => setQuery({ ...query, placeId: id })}
                       locale={locale}
@@ -368,6 +428,25 @@ function Field({
   );
 }
 
+
+function searchResultToPersonView(result: SearchResult): PersonView {
+  return {
+    id: result.person_id,
+    gender: result.gender ?? 'U',
+    displayNameAr: result.display_name_ar,
+    displayNameEn: result.display_name_en,
+    isPlaceholder: false,
+    birthYear: result.birth_year,
+    // Do not hardcode deathYear: null — that made hover show "present" for
+    // long-dead people when only birth_year is known from search.
+    deathYear: null,
+    hasDeath: false,
+    isLiving: undefined,
+    placeOfOriginId: result.origin_place_id,
+    birthPlaceAr: result.origin_name_ar,
+  };
+}
+
 function ResultCard({
   result,
   index,
@@ -447,12 +526,23 @@ function ResultCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span
-              className={`text-xl font-bold ${isLocked ? 'italic text-[var(--jt-stone-500)]' : 'text-[var(--jt-olive-900)]'}`}
-              style={{ fontFamily: 'var(--jt-font-display)' }}
-            >
-              {label}
-            </span>
+            {isLocked ? (
+              <span
+                className="text-xl font-bold italic text-[var(--jt-stone-500)]"
+                style={{ fontFamily: 'var(--jt-font-display)' }}
+              >
+                {label}
+              </span>
+            ) : (
+              <PersonHoverCard person={searchResultToPersonView(result)}>
+                <span
+                  className="text-xl font-bold text-[var(--jt-olive-900)]"
+                  style={{ fontFamily: 'var(--jt-font-display)' }}
+                >
+                  {label}
+                </span>
+              </PersonHoverCard>
+            )}
             {!isLocked && result.display_name_ar && result.display_name_en && (
               <span className="text-xs text-[var(--jt-stone-500)]">
                 {locale === 'ar' ? result.display_name_en : result.display_name_ar}
@@ -490,7 +580,7 @@ function ResultCard({
                 {t('أنت', 'You')}
               </span>
             )}
-            {!isSelf && degrees && (
+            {!isSelf && isDegreesOk(degrees) && (
               <DegreeChip
                 degrees={degrees.degrees}
                 label={kinshipLabel(degrees.degrees, degrees.path, locale)}
@@ -498,6 +588,11 @@ function ResultCard({
                 ariaLabel={t('عرض صلة القرابة', 'Show relation')}
               />
             )}
+            {!isSelf && degrees && 'error' in degrees && degrees.error ? (
+              <span className="text-[10px] font-semibold text-[var(--jt-terra-600)]">
+                {t('تعذّر حساب الصلة', 'Could not compute relation')}
+              </span>
+            ) : null}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 text-end">
