@@ -53,6 +53,9 @@ export function friendlyAuthError(raw: unknown): string {
   if (/claim_requires_approval/.test(t)) {
     return 'ربط هذا الشخص يحتاج موافقة مالك الشجرة · Claiming this person requires the tree owner\'s approval.';
   }
+  if (/living_status_change_not_allowed/.test(t)) {
+    return 'فقط مسؤول الشجرة أو صاحب السجل يمكنه تسجيل وفاة شخص حي · Only the tree administrator or the person themselves can record a death for a living person.';
+  }
   if (/tree_access_required/.test(t)) {
     return 'يلزم الوصول إلى الشجرة لطلب الربط · You need access to this tree before requesting a claim.';
   }

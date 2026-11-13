@@ -243,7 +243,7 @@ export function VerifyClient({
               {t('تحقّق من هويتك', 'Verify your identity')}
             </h2>
 
-            {/* Target tree — on approval the admin grants you edit access to it */}
+            {/* Target tree — on approval, a request goes to the tree's administrator */}
             {trees.length > 0 && (
               <label className="mb-4 mt-5 flex flex-col gap-1.5">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
@@ -263,8 +263,8 @@ export function VerifyClient({
                 </select>
                 <span className="text-[11px] text-[var(--jt-stone-400)]">
                   {t(
-                    'عند الموافقة، سيمنحك المسؤول صلاحية التحرير على هذه الشجرة.',
-                    'On approval, the administrator grants you edit access to this tree.',
+                    'عند الموافقة، يُرسل طلب إلى مسؤول هذه الشجرة ليقرر منحك صلاحية التحرير.',
+                    "On approval, a request goes to this tree's administrator, who decides whether to give you edit access.",
                   )}
                 </span>
               </label>
