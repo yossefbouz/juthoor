@@ -160,9 +160,10 @@ const ReviewSchema = z.object({
 });
 
 /** Admin: approve or reject a verification request. On approval, if the request
- *  targets a specific tree, the submitter is granted collaborator (edit) access
- *  to that tree first — so "approved" always means "can now edit". The admin's
- *  is_admin() RLS permits the tree_members grant. */
+ *  targets a tree the submitter does not own, a pending collaborator request is
+ *  filed for that tree's IFT Administrator, who decides access (spec 3.2). The
+ *  platform admin never grants tree access directly. Existing memberships and
+ *  earlier decisions (approved, rejected, revoked) are left untouched. */
 export async function reviewVerification(
   input: z.input<typeof ReviewSchema>,
 ): Promise<void> {
@@ -179,19 +180,29 @@ export async function reviewVerification(
       .maybeSingle();
     const v = row as { user_id: string; tree_id: string | null } | null;
     if (v?.tree_id && v.user_id) {
-      const { error: grantErr } = await supabase.from('tree_members').upsert(
-        {
-          tree_id: v.tree_id,
-          user_id: v.user_id,
-          role: 'collaborator',
-          status: 'approved',
-          accepted_at: now,
-          reviewed_at: now,
-          reviewed_by: reviewerId,
-        },
-        { onConflict: 'tree_id,user_id' },
-      );
-      if (grantErr) throw new Error(`Failed to grant tree access: ${grantErr.message}`);
+      const { data: tree } = await supabase
+        .from('trees')
+        .select('owner_id')
+        .eq('id', v.tree_id)
+        .maybeSingle();
+      const ownerId = (tree as { owner_id: string } | null)?.owner_id;
+      if (ownerId && ownerId !== v.user_id) {
+        const { error: requestErr } = await supabase.from('tree_members').upsert(
+          {
+            tree_id: v.tree_id,
+            user_id: v.user_id,
+            role: 'read_only',
+            status: 'pending',
+            requested_role: 'collaborator',
+            requested_at: now,
+            requester_note: 'Identity verified by a platform administrator.',
+          },
+          { onConflict: 'tree_id,user_id', ignoreDuplicates: true },
+        );
+        if (requestErr) {
+          throw new Error(`Failed to file the tree access request: ${requestErr.message}`);
+        }
+      }
     }
   }
 
@@ -209,7 +220,8 @@ export async function reviewVerification(
 }
 
 /** Trees the current user can target when verifying (their own + public /
- *  accessible, per RLS), so an approved verification grants edit access to it. */
+ *  accessible, per RLS). Approval files an access request for that tree's
+ *  IFT Administrator; it does not grant access by itself. */
 export async function listVerifiableTrees(): Promise<SelectableTree[]> {
   const supabase = await createJuthoorSupabaseClient();
   const { data, error } = await supabase
