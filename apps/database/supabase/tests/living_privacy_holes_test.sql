@@ -1,5 +1,5 @@
 -- pgTAP: living people's life events are private, and only privileged users
--- can record a death for a living person (20261113120000_living_privacy_holes).
+-- can record a death for a living person (20261113100000_living_privacy_holes).
 BEGIN;
 SELECT plan(11);
 
