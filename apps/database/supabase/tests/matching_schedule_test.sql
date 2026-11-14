@@ -3,13 +3,13 @@
 BEGIN;
 SELECT plan(8);
 
+-- Group A10 / AIO2: end-of-day matching is on by default (kill switch still works).
 SELECT is(
   (SELECT nightly_matching_enabled FROM public.app_settings),
-  false,
-  'the nightly run is off by default (shadow mode until ops flips it)'
+  true,
+  'the nightly run is on by default (AIO2 end-of-day batch)'
 );
 
-UPDATE public.app_settings SET nightly_matching_enabled = true;
 SELECT ok(
   (public.run_matching_scheduled(false)->>'skipped') = 'false'
     AND (public.run_matching_scheduled(false) ? 'run_id'),

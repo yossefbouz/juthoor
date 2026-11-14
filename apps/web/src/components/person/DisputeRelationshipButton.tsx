@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Flag } from 'lucide-react';
+import { CheckCircle2, Flag } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import { Button } from '@/components/ui/button';
-import { raiseRelationshipDisputeAction } from '@/data/user/relationshipDisputes';
+import {
+  raiseRelationshipDisputeAction,
+  validateRelationshipAction,
+} from '@/data/user/relationshipDisputes';
 
-/** W3.6: dispute a relationship from the 360 person view; notifies tree owner. */
+/** AIO2 4.X.1.1.8: validate or dispute a relationship from the 360 person view. */
 export function DisputeRelationshipButton({
   treeId,
   focusPersonId,
@@ -19,15 +22,34 @@ export function DisputeRelationshipButton({
   relationType: string;
 }) {
   const { t } = useLocale();
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<'idle' | 'dispute' | null>('idle');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<'validated' | 'disputed' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!relatedPersonId) return null;
 
-  async function submit() {
+  async function validate() {
+    setBusy(true);
+    setError(null);
+    try {
+      await validateRelationshipAction({
+        treeId,
+        personA: focusPersonId,
+        personB: relatedPersonId!,
+        relationType,
+      });
+      setDone('validated');
+      setMode('idle');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('تعذر الإرسال', 'Could not send'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function dispute() {
     setBusy(true);
     setError(null);
     try {
@@ -38,8 +60,8 @@ export function DisputeRelationshipButton({
         relationType,
         note: note.trim() || undefined,
       });
-      setDone(true);
-      setOpen(false);
+      setDone('disputed');
+      setMode('idle');
     } catch (e) {
       setError(e instanceof Error ? e.message : t('تعذر الإرسال', 'Could not send'));
     } finally {
@@ -49,15 +71,25 @@ export function DisputeRelationshipButton({
 
   return (
     <div className="mt-3">
-      {done ? (
+      {done === 'validated' ? (
+        <p className="text-xs font-semibold text-[var(--jt-olive-700)]">
+          {t('تم توثيق الصلة (Validated).', 'Relationship marked Validated.')}
+        </p>
+      ) : done === 'disputed' ? (
         <p className="text-xs font-semibold text-[var(--jt-olive-700)]">
           {t('تم إرسال النزاع إلى مالك الشجرة.', 'Dispute sent to the tree owner.')}
         </p>
-      ) : !open ? (
-        <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-          <Flag className="h-3.5 w-3.5" />
-          {t('اعترض على الصلة', 'Dispute relationship')}
-        </Button>
+      ) : mode !== 'dispute' ? (
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={validate} disabled={busy}>
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {busy ? t('…', '…') : t('توثيق الصلة', 'Validate')}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setMode('dispute')}>
+            <Flag className="h-3.5 w-3.5" />
+            {t('اعترض على الصلة', 'Dispute')}
+          </Button>
+        </div>
       ) : (
         <div className="space-y-2 rounded-xl border border-[var(--jt-terra-200)] bg-[var(--jt-terra-50)]/40 p-3">
           <p className="text-xs text-[var(--jt-stone-700)]">
@@ -76,14 +108,23 @@ export function DisputeRelationshipButton({
           />
           {error && <p className="text-xs text-[var(--jt-terra-600)]">{error}</p>}
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={submit} disabled={busy}>
+            <Button type="button" size="sm" onClick={dispute} disabled={busy}>
               {busy ? t('يرسل…', 'Sending…') : t('إرسال', 'Submit')}
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setMode('idle')}
+              disabled={busy}
+            >
               {t('إلغاء', 'Cancel')}
             </Button>
           </div>
         </div>
+      )}
+      {error && mode !== 'dispute' && (
+        <p className="mt-1 text-xs text-[var(--jt-terra-600)]">{error}</p>
       )}
     </div>
   );

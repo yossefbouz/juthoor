@@ -44,3 +44,23 @@ export async function raiseRelationshipDisputeAction(
   revalidatePath(`/tree/${parsed.treeId}/person/${parsed.personA}`);
   return data as RelationshipDispute;
 }
+
+/** AIO2 4.X.1.1.8 / Group A5: flag a relationship Validated. */
+export async function validateRelationshipAction(
+  input: z.input<typeof RaiseSchema>,
+): Promise<RelationshipDispute> {
+  const parsed = RaiseSchema.parse(input);
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) throw new Error('Not authenticated');
+  const supabase = await createJuthoorSupabaseClient();
+  const { data, error } = await supabase.rpc('validate_relationship', {
+    p_tree_id: parsed.treeId,
+    p_person_a: parsed.personA,
+    p_person_b: parsed.personB,
+    p_relation_type: parsed.relationType,
+    p_note: parsed.note ?? null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/tree/${parsed.treeId}/person/${parsed.personA}`);
+  return data as RelationshipDispute;
+}
