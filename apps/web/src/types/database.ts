@@ -281,6 +281,12 @@ type MutablePersonProfile = {
   contact_phone_enc: string | null;
   current_address_enc: string | null;
   contribution_consent: boolean;
+  hamula_affiliation: string | null;
+  origin_relationship: string | null;
+  origin_text: string | null;
+  occupation: string | null;
+  education: string | null;
+  migration_notes: string | null;
   updated_at: string;
   updated_by: string | null;
 };
@@ -1050,6 +1056,17 @@ export type Database = {
         };
         Returns: Json;
       };
+      validate_relationship: {
+        Args: {
+          p_tree_id: string;
+          p_person_a: string;
+          p_person_b: string;
+          p_relation_type: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
+      unknown_place_id: { Args: Record<string, never>; Returns: string };
       can_access_tree: { Args: { p_tree_id: string }; Returns: boolean };
       can_write_tree: { Args: { p_tree_id: string }; Returns: boolean };
       is_admin: { Args: Record<string, never>; Returns: boolean };
@@ -1120,6 +1137,12 @@ export type Database = {
           contribution_ar: string | null;
           contribution_en: string | null;
           contribution_consent: boolean;
+          hamula_affiliation: string | null;
+          origin_relationship: string | null;
+          origin_text: string | null;
+          occupation: string | null;
+          education: string | null;
+          migration_notes: string | null;
         }>;
       };
       get_person_contact: {

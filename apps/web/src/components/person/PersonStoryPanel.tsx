@@ -64,6 +64,14 @@ export function PersonStoryPanel({
   const [preferredMethod, setPreferredMethod] = useState(
     initialProfile?.preferred_contact_method ?? '',
   );
+  const [hamula, setHamula] = useState(initialProfile?.hamula_affiliation ?? '');
+  const [originRel, setOriginRel] = useState(initialProfile?.origin_relationship ?? '');
+  const [originText, setOriginText] = useState(initialProfile?.origin_text ?? '');
+  const [occupation, setOccupation] = useState(initialProfile?.occupation ?? '');
+  const [education, setEducation] = useState(initialProfile?.education ?? '');
+  const [migrationNotes, setMigrationNotes] = useState(
+    initialProfile?.migration_notes ?? '',
+  );
 
   const achievements = isAR
     ? profile?.achievements_ar ?? profile?.achievements_en
@@ -76,7 +84,15 @@ export function PersonStoryPanel({
   const hideForLiving = isLiving && !contributionConsent && !canManage;
   const achievementsVisible = hideForLiving ? null : achievements;
   const contributionVisible = hideForLiving ? null : contribution;
-  const hasContent = Boolean(achievementsVisible || contributionVisible);
+  const hasOrigin = Boolean(
+    profile?.hamula_affiliation ||
+      profile?.origin_text ||
+      profile?.occupation ||
+      profile?.education ||
+      profile?.migration_notes ||
+      profile?.origin_relationship,
+  );
+  const hasContent = Boolean(achievementsVisible || contributionVisible || hasOrigin);
 
   // Nothing recorded and the viewer can't add anything → render nothing.
   // Also hide entirely for living people without consent (non-managers).
@@ -94,6 +110,12 @@ export function PersonStoryPanel({
     setCurrentCity(profile?.current_city ?? '');
     setCurrentAddress(profile?.current_address ?? '');
     setPreferredMethod(profile?.preferred_contact_method ?? '');
+    setHamula(profile?.hamula_affiliation ?? '');
+    setOriginRel(profile?.origin_relationship ?? '');
+    setOriginText(profile?.origin_text ?? '');
+    setOccupation(profile?.occupation ?? '');
+    setEducation(profile?.education ?? '');
+    setMigrationNotes(profile?.migration_notes ?? '');
     setError(null);
     setEditing(true);
   }
@@ -123,6 +145,17 @@ export function PersonStoryPanel({
           | 'do_not_contact'
           | ''
           | null,
+        hamulaAffiliation: hamula || null,
+        originRelationship: (originRel || null) as
+          | 'born_there'
+          | 'descended'
+          | 'married_into'
+          | ''
+          | null,
+        originText: originText || null,
+        occupation: occupation || null,
+        education: education || null,
+        migrationNotes: migrationNotes || null,
       });
       setProfile(updated);
       setEditing(false);
@@ -194,6 +227,80 @@ export function PersonStoryPanel({
               />
               {t('الموافقة على إظهار بيانات التواصل', 'Consent to show contact details')}
             </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                  {t('العشيرة / الحمولة', 'Clan / hamula')}
+                </span>
+                <input
+                  type="text"
+                  value={hamula}
+                  onChange={(e) => setHamula(e.target.value)}
+                  className={`w-full ${inputClass}`}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                  {t('صلة الأصل', 'Link to origin VCC')}
+                </span>
+                <select
+                  value={originRel}
+                  onChange={(e) => setOriginRel(e.target.value)}
+                  className={`w-full ${selectClass}`}
+                >
+                  <option value="">{t('— اختر —', '— Select —')}</option>
+                  <option value="born_there">{t('وُلد هناك', 'Born there')}</option>
+                  <option value="descended">{t('منحدر منها', 'Descended from there')}</option>
+                  <option value="married_into">{t('انتمى بالزواج', 'Married into')}</option>
+                </select>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                  {t('الأصل (نص)', 'Origin (text)')}
+                </span>
+                <input
+                  type="text"
+                  value={originText}
+                  onChange={(e) => setOriginText(e.target.value)}
+                  placeholder={t('غير معروف', 'Unknown')}
+                  className={`w-full ${inputClass}`}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                  {t('المهنة', 'Occupation')}
+                </span>
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className={`w-full ${inputClass}`}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                  {t('التعليم', 'Education')}
+                </span>
+                <input
+                  type="text"
+                  value={education}
+                  onChange={(e) => setEducation(e.target.value)}
+                  className={`w-full ${inputClass}`}
+                />
+              </label>
+              <label className="block space-y-1 md:col-span-2">
+                <span className="text-xs font-medium text-[var(--jt-stone-600)]">
+                  {t('ملاحظات الهجرة', 'Migration notes')}
+                </span>
+                <textarea
+                  value={migrationNotes}
+                  onChange={(e) => setMigrationNotes(e.target.value)}
+                  rows={2}
+                  maxLength={2000}
+                  className={`w-full ${inputClass}`}
+                />
+              </label>
+            </div>
             {contactConsent && (
               <div className="grid gap-3 md:grid-cols-2">
                 <input
@@ -303,6 +410,55 @@ export function PersonStoryPanel({
               text={contributionVisible}
               empty={t('لم تُسجَّل مساهمة بعد.', 'No contribution recorded yet.')}
             />
+            {(profile?.hamula_affiliation ||
+              profile?.origin_text ||
+              profile?.occupation ||
+              profile?.education ||
+              profile?.migration_notes ||
+              profile?.origin_relationship) && (
+              <div className="grid gap-2 rounded-xl border border-[var(--jt-stone-200)] bg-[var(--jt-stone-50)]/50 p-3 text-sm text-[var(--jt-stone-800)]">
+                {profile.hamula_affiliation && (
+                  <p>
+                    <span className="font-semibold">{t('العشيرة', 'Hamula')}: </span>
+                    {profile.hamula_affiliation}
+                  </p>
+                )}
+                {profile.origin_relationship && (
+                  <p>
+                    <span className="font-semibold">{t('صلة الأصل', 'Origin link')}: </span>
+                    {profile.origin_relationship === 'born_there'
+                      ? t('وُلد هناك', 'Born there')
+                      : profile.origin_relationship === 'descended'
+                        ? t('منحدر منها', 'Descended')
+                        : t('انتمى بالزواج', 'Married into')}
+                  </p>
+                )}
+                {profile.origin_text && (
+                  <p>
+                    <span className="font-semibold">{t('الأصل', 'Origin')}: </span>
+                    {profile.origin_text}
+                  </p>
+                )}
+                {profile.occupation && (
+                  <p>
+                    <span className="font-semibold">{t('المهنة', 'Occupation')}: </span>
+                    {profile.occupation}
+                  </p>
+                )}
+                {profile.education && (
+                  <p>
+                    <span className="font-semibold">{t('التعليم', 'Education')}: </span>
+                    {profile.education}
+                  </p>
+                )}
+                {profile.migration_notes && (
+                  <p className="whitespace-pre-wrap">
+                    <span className="font-semibold">{t('الهجرة', 'Migration')}: </span>
+                    {profile.migration_notes}
+                  </p>
+                )}
+              </div>
+            )}
           </>
         )}
       </CardContent>
