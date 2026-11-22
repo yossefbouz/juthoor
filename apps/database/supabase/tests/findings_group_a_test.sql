@@ -94,12 +94,12 @@ SELECT ok(
 -- A8 / A10
 SELECT ok(public.unknown_place_id() IS NOT NULL, 'A8 Unknown place sentinel exists');
 SELECT ok(
-  (
+  NOT (
     SELECT COALESCE(nightly_matching_enabled, false)
     FROM public.app_settings
     LIMIT 1
   ),
-  'A10 nightly_matching_enabled is on'
+  'A10 nightly_matching_enabled is off again (20261122120000_pr31_reconcile)'
 );
 
 SELECT * FROM finish();

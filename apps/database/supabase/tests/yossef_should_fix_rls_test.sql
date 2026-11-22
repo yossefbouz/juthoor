@@ -71,8 +71,8 @@ SELECT is(
       AND table_name = 'app_settings'
       AND column_name = 'nightly_matching_enabled'
   ),
-  'true',
-  'nightly_matching_enabled defaults true (Group A10 / AIO2)'
+  'false',
+  'nightly_matching_enabled defaults false'
 );
 
 -- num_children 0=0 must score 0 after the should-fix patch

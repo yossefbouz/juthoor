@@ -74,10 +74,10 @@ RESET ROLE;
 -- A8 unknown place
 SELECT ok(public.unknown_place_id() IS NOT NULL, 'A8 unknown_place_id');
 
--- A10 nightly on
+-- A10 nightly: off again (20261122120000_pr31_reconcile)
 SELECT ok(
-  (SELECT COALESCE(nightly_matching_enabled, false) FROM public.app_settings LIMIT 1),
-  'A10 nightly enabled'
+  NOT (SELECT COALESCE(nightly_matching_enabled, false) FROM public.app_settings LIMIT 1),
+  'A10 nightly is off'
 );
 
 -- A6 / A7 columns present (regression if migration rolled back)
