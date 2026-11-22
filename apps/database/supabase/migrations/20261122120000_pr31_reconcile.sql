@@ -26,8 +26,8 @@
 --     education and migration notes of a living person are returned to
 --     privileged viewers only.
 --
--- Not changed here: admins can still write optional fields through
--- can_edit_optional_person_fields (needs the D9 decision first).
+-- Administrator write access to optional fields is handled in the next
+-- migration, 20261122130000.
 -- ============================================================================
 
 -- ── 1. Nightly matching off ─────────────────────────────────────────────────

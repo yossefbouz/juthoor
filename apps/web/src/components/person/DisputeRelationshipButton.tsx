@@ -15,11 +15,14 @@ export function DisputeRelationshipButton({
   focusPersonId,
   relatedPersonId,
   relationType,
+  initiallyValidated = false,
 }: {
   treeId: string;
   focusPersonId: string;
   relatedPersonId: string | null;
   relationType: string;
+  /** The relationship is already flagged Validated (by anyone). */
+  initiallyValidated?: boolean;
 }) {
   const { t } = useLocale();
   const [mode, setMode] = useState<'idle' | 'dispute' | null>('idle');
@@ -71,20 +74,23 @@ export function DisputeRelationshipButton({
 
   return (
     <div className="mt-3">
-      {done === 'validated' ? (
-        <p className="text-xs font-semibold text-[var(--jt-olive-700)]">
-          {t('تم توثيق الصلة (Validated).', 'Relationship marked Validated.')}
-        </p>
-      ) : done === 'disputed' ? (
+      {done === 'disputed' ? (
         <p className="text-xs font-semibold text-[var(--jt-olive-700)]">
           {t('تم إرسال النزاع إلى مالك الشجرة.', 'Dispute sent to the tree owner.')}
         </p>
       ) : mode !== 'dispute' ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={validate} disabled={busy}>
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {busy ? t('…', '…') : t('توثيق الصلة', 'Validate')}
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {initiallyValidated || done === 'validated' ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--jt-olive-400)] px-2.5 py-1 text-xs font-semibold text-[var(--jt-olive-700)]">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {t('تم توثيق الصلة', 'Validated')}
+            </span>
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={validate} disabled={busy}>
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {busy ? t('…', '…') : t('توثيق الصلة', 'Validate')}
+            </Button>
+          )}
           <Button type="button" variant="outline" size="sm" onClick={() => setMode('dispute')}>
             <Flag className="h-3.5 w-3.5" />
             {t('اعترض على الصلة', 'Dispute')}

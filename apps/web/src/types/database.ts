@@ -441,6 +441,18 @@ type MutablePersonNote = {
   updated_at: string;
 };
 
+type MutableRelationshipDispute = {
+  id: string;
+  tree_id: string;
+  person_a: string;
+  person_b: string;
+  relation_type: string;
+  status: string;
+  raised_by: string;
+  note: string | null;
+  created_at: string;
+};
+
 type MutablePersonAttachment = {
   id: string;
   person_id: string;
@@ -698,6 +710,18 @@ export type Database = {
           body: string;
         };
         Update: Partial<MutablePersonNote>;
+        Relationships: [];
+      };
+      relationship_disputes: {
+        Row: MutableRelationshipDispute;
+        Insert: Partial<MutableRelationshipDispute> & {
+          tree_id: string;
+          person_a: string;
+          person_b: string;
+          relation_type: string;
+          raised_by: string;
+        };
+        Update: Partial<MutableRelationshipDispute>;
         Relationships: [];
       };
       identity_verifications: {
