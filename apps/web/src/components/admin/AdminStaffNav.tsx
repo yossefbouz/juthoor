@@ -15,6 +15,7 @@ const LINKS: Array<{
   { href: '/admin/appeals', ar: 'الاستئنافات', en: 'Appeals' },
   { href: '/admin/review', ar: 'المطابقات', en: 'Matches', adminOnly: true },
   { href: '/admin/card-check', ar: 'البطاقات', en: 'Card check', adminOnly: true },
+  { href: '/admin/villages', ar: 'القرى', en: 'Villages', adminOnly: true },
   { href: '/admin/moderators', ar: 'المشرفون', en: 'Moderators', adminOnly: true },
   { href: '/admin/email-outbox', ar: 'البريد', en: 'Email outbox', adminOnly: true },
 ];

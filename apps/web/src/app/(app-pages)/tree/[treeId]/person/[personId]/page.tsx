@@ -22,6 +22,7 @@ import {
   listPersonFieldGrants,
 } from '@/data/user/personFieldGrants';
 import { loadPersonProfile } from '@/data/user/personProfiles';
+import { isRelationshipValidated } from '@/data/user/relationshipDisputes';
 import { buildNeighbors } from '@/lib/tree/relationships';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
@@ -134,6 +135,14 @@ export default async function PersonPage({ params }: Props) {
       : Promise.resolve([]),
   ]);
   const neighbors = buildNeighbors(snapshot, personId);
+  const parentId =
+    neighbors.parents.father?.id ?? neighbors.parents.mother?.id ?? null;
+  const parentLinkValidated = await isRelationshipValidated({
+    treeId,
+    personId,
+    relatedPersonId: parentId,
+    relationType: 'parent',
+  }).catch(() => false);
 
   // primaryPhotoId is on persons row (added by attachments migration)
   const primaryPhotoId = (person as { primary_photo_id?: string | null }).primary_photo_id ?? null;
@@ -217,10 +226,9 @@ export default async function PersonPage({ params }: Props) {
         <DisputeRelationshipButton
           treeId={treeId}
           focusPersonId={personId}
-          relatedPersonId={
-            neighbors.parents.father?.id ?? neighbors.parents.mother?.id ?? null
-          }
+          relatedPersonId={parentId}
           relationType="parent"
+          initiallyValidated={parentLinkValidated}
         />
       </div>
 

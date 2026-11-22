@@ -44,3 +44,54 @@ export async function raiseRelationshipDisputeAction(
   revalidatePath(`/tree/${parsed.treeId}/person/${parsed.personA}`);
   return data as RelationshipDispute;
 }
+
+const ValidatedQuerySchema = z.object({
+  treeId: z.string().uuid(),
+  personId: z.string().uuid(),
+});
+
+/** True when the relationship between the two people is flagged Validated. */
+export async function isRelationshipValidated(input: {
+  treeId: string;
+  personId: string;
+  relatedPersonId: string | null;
+  relationType: string;
+}): Promise<boolean> {
+  const parsed = ValidatedQuerySchema.safeParse(input);
+  if (!parsed.success || !input.relatedPersonId) return false;
+  const { treeId, personId } = parsed.data;
+  const supabase = await createJuthoorSupabaseClient();
+  const { data, error } = await supabase
+    .from('relationship_disputes')
+    .select('person_a, person_b')
+    .eq('tree_id', treeId)
+    .eq('status', 'validated')
+    .eq('relation_type', input.relationType)
+    .or(`person_a.eq.${personId},person_b.eq.${personId}`);
+  if (error || !data) return false;
+  return data.some(
+    (row) =>
+      row.person_a === input.relatedPersonId ||
+      row.person_b === input.relatedPersonId,
+  );
+}
+
+/** AIO2 4.X.1.1.8 / Group A5: flag a relationship Validated. */
+export async function validateRelationshipAction(
+  input: z.input<typeof RaiseSchema>,
+): Promise<RelationshipDispute> {
+  const parsed = RaiseSchema.parse(input);
+  const uid = await getCachedLoggedInUserIdOrNull();
+  if (!uid) throw new Error('Not authenticated');
+  const supabase = await createJuthoorSupabaseClient();
+  const { data, error } = await supabase.rpc('validate_relationship', {
+    p_tree_id: parsed.treeId,
+    p_person_a: parsed.personA,
+    p_person_b: parsed.personB,
+    p_relation_type: parsed.relationType,
+    p_note: parsed.note ?? null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/tree/${parsed.treeId}/person/${parsed.personA}`);
+  return data as RelationshipDispute;
+}

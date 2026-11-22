@@ -77,6 +77,11 @@ const InsertSchema = z.object({
   title: z.string().trim().max(200).optional(),
   issuingAuthority: z.string().trim().max(200).optional(),
   issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  /** AIO2 7.1.1 four-part pictured-person name */
+  subjectGiven: z.string().trim().max(80).optional(),
+  subjectFather: z.string().trim().max(80).optional(),
+  subjectGrandfather: z.string().trim().max(80).optional(),
+  subjectFamily: z.string().trim().max(80).optional(),
   openMessageThread: z.boolean().optional(),
 });
 
@@ -146,6 +151,10 @@ export async function recordAttachment(
       title: parsed.title ?? null,
       issuing_authority: parsed.issuingAuthority ?? null,
       issue_date: parsed.issueDate ?? null,
+      subject_given: parsed.subjectGiven ?? null,
+      subject_father: parsed.subjectFather ?? null,
+      subject_grandfather: parsed.subjectGrandfather ?? null,
+      subject_family: parsed.subjectFamily ?? null,
       media_kind: mediaKind,
     })
     .select('*')

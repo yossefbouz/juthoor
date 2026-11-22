@@ -41,6 +41,10 @@ export function AttachmentUploader({
   const [title, setTitle] = useState('');
   const [issuingAuthority, setIssuingAuthority] = useState('');
   const [issueDate, setIssueDate] = useState('');
+  const [subjectGiven, setSubjectGiven] = useState('');
+  const [subjectFather, setSubjectFather] = useState('');
+  const [subjectGrandfather, setSubjectGrandfather] = useState('');
+  const [subjectFamily, setSubjectFamily] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +115,10 @@ export function AttachmentUploader({
           title: title.trim() || undefined,
           issuingAuthority: issuingAuthority.trim() || undefined,
           issueDate: issueDate.trim() || undefined,
+          subjectGiven: subjectGiven.trim() || undefined,
+          subjectFather: subjectFather.trim() || undefined,
+          subjectGrandfather: subjectGrandfather.trim() || undefined,
+          subjectFamily: subjectFamily.trim() || undefined,
         });
       } catch (insertErr) {
         const { removeOrphanedAttachmentObjectAction } = await import(
@@ -132,6 +140,10 @@ export function AttachmentUploader({
       setTitle('');
       setIssuingAuthority('');
       setIssueDate('');
+      setSubjectGiven('');
+      setSubjectFather('');
+      setSubjectGrandfather('');
+      setSubjectFamily('');
       onUploaded();
       onClose();
       if (recorded.threadId) {
@@ -290,6 +302,52 @@ export function AttachmentUploader({
 
               {kind === 'photo' ? (
                 <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                        {t('الاسم الأول', 'First name')}
+                      </span>
+                      <input
+                        type="text"
+                        value={subjectGiven}
+                        onChange={(e) => setSubjectGiven(e.target.value)}
+                        className="rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                        {t('اسم الأب', "Father's name")}
+                      </span>
+                      <input
+                        type="text"
+                        value={subjectFather}
+                        onChange={(e) => setSubjectFather(e.target.value)}
+                        className="rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                        {t('اسم الجد', "Grandfather's name")}
+                      </span>
+                      <input
+                        type="text"
+                        value={subjectGrandfather}
+                        onChange={(e) => setSubjectGrandfather(e.target.value)}
+                        className="rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
+                        {t('اسم العائلة', 'Family name')}
+                      </span>
+                      <input
+                        type="text"
+                        value={subjectFamily}
+                        onChange={(e) => setSubjectFamily(e.target.value)}
+                        className="rounded-xl border border-[var(--jt-stone-200)] bg-[var(--background)] px-4 py-2.5 text-sm outline-none focus:border-[var(--jt-olive-400)] focus:ring-2 focus:ring-[var(--jt-olive-100)]"
+                      />
+                    </label>
+                  </div>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--jt-stone-500)]">
                       {t('مكان الالتقاط', 'Place taken')}

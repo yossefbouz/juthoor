@@ -26,6 +26,12 @@ const PROFILE: PersonProfile = {
   achievements_en: null,
   contribution_ar: 'خدمة قريته وأهلها',
   contribution_en: null,
+  hamula_affiliation: null,
+  origin_relationship: null,
+  origin_text: null,
+  occupation: null,
+  education: null,
+  migration_notes: null,
 };
 
 function renderPanel(profile: PersonProfile | null, canManage: boolean) {

@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
 
+export type OriginRelationship = 'born_there' | 'descended' | 'married_into';
+
 export type PersonProfile = {
   person_id: string;
   achievements_ar: string | null;
@@ -18,6 +20,13 @@ export type PersonProfile = {
   current_address: string | null;
   preferred_contact_method: string | null;
   contribution_consent: boolean;
+  /** AIO2 Table 17 / Group A7 */
+  hamula_affiliation: string | null;
+  origin_relationship: OriginRelationship | null;
+  origin_text: string | null;
+  occupation: string | null;
+  education: string | null;
+  migration_notes: string | null;
 };
 
 /** Story/location cols are not granted on SELECT; use get_person_story / get_person_contact. */
@@ -38,6 +47,12 @@ type PersonStoryRpcRow = {
   contribution_ar?: string | null;
   contribution_en?: string | null;
   contribution_consent?: boolean | null;
+  hamula_affiliation?: string | null;
+  origin_relationship?: string | null;
+  origin_text?: string | null;
+  occupation?: string | null;
+  education?: string | null;
+  migration_notes?: string | null;
 };
 
 async function viewerMayManageOptional(personId: string): Promise<boolean> {
@@ -85,6 +100,7 @@ export async function loadPersonProfile(
     Array.isArray(contactRows) ? contactRows[0] : contactRows
   ) as PersonContactRpcRow | null;
 
+  const originRel = story?.origin_relationship;
   return {
     person_id: row.person_id,
     achievements_ar: story?.achievements_ar ?? null,
@@ -102,6 +118,17 @@ export async function loadPersonProfile(
     contribution_consent: Boolean(
       story?.contribution_consent ?? row.contribution_consent,
     ),
+    hamula_affiliation: story?.hamula_affiliation ?? null,
+    origin_relationship:
+      originRel === 'born_there' ||
+      originRel === 'descended' ||
+      originRel === 'married_into'
+        ? originRel
+        : null,
+    origin_text: story?.origin_text ?? null,
+    occupation: story?.occupation ?? null,
+    education: story?.education ?? null,
+    migration_notes: story?.migration_notes ?? null,
   };
 }
 
@@ -128,6 +155,18 @@ const SaveSchema = z.object({
     .union([z.enum(PREFERRED_CONTACT_METHODS), z.literal(''), z.null()])
     .optional(),
   contributionConsent: z.boolean().optional(),
+  hamulaAffiliation: z.string().trim().max(200).nullable().optional(),
+  originRelationship: z
+    .union([
+      z.enum(['born_there', 'descended', 'married_into']),
+      z.literal(''),
+      z.null(),
+    ])
+    .optional(),
+  originText: z.string().trim().max(200).nullable().optional(),
+  occupation: z.string().trim().max(200).nullable().optional(),
+  education: z.string().trim().max(200).nullable().optional(),
+  migrationNotes: z.string().trim().max(2000).nullable().optional(),
 });
 
 const orNull = (v: string | null | undefined): string | null => {
@@ -179,6 +218,29 @@ export async function savePersonProfile(
       : {}),
     ...(parsed.contributionConsent !== undefined
       ? { contribution_consent: parsed.contributionConsent }
+      : {}),
+    ...(parsed.hamulaAffiliation !== undefined
+      ? { hamula_affiliation: orNull(parsed.hamulaAffiliation) }
+      : {}),
+    ...(parsed.originRelationship !== undefined
+      ? {
+          origin_relationship:
+            parsed.originRelationship === '' || parsed.originRelationship === null
+              ? null
+              : parsed.originRelationship,
+        }
+      : {}),
+    ...(parsed.originText !== undefined
+      ? { origin_text: orNull(parsed.originText) }
+      : {}),
+    ...(parsed.occupation !== undefined
+      ? { occupation: orNull(parsed.occupation) }
+      : {}),
+    ...(parsed.education !== undefined
+      ? { education: orNull(parsed.education) }
+      : {}),
+    ...(parsed.migrationNotes !== undefined
+      ? { migration_notes: orNull(parsed.migrationNotes) }
       : {}),
     updated_by: uid,
     updated_at: new Date().toISOString(),
