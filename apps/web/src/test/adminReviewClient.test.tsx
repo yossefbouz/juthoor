@@ -54,6 +54,7 @@ function renderReview(cards: ReviewCard[], hidden: { count: number; floor: numbe
 const SHOW_HIDDEN = /عرض المطابقات المخفية/; // "Show hidden pairs"
 const BACK_TO_QUEUE = /العودة إلى الطابور/; // "Back to the queue"
 const DEFER = /تأجيل للمالكَين/; // "Defer to owners"
+const LOAD_MORE = /تحميل المزيد/; // "Load more"
 
 describe('AdminReviewClient — pairs hidden by the review floor', () => {
   it('says how many pairs are hidden and what the floor is', () => {
@@ -98,6 +99,31 @@ describe('AdminReviewClient — pairs hidden by the review floor', () => {
     expect(
       (screen.getAllByRole('button', { name: /رفض/ }) as HTMLButtonElement[]).every((b) => !b.disabled),
     ).toBe(true);
+  });
+
+  it('says how many hidden pairs are on screen and loads the rest on request', async () => {
+    const page = (from: number, to: number) =>
+      Array.from({ length: to - from }, (_, i) => card(`m-${from + i}`, 20, true));
+    vi.mocked(listReviewQueue).mockResolvedValueOnce(page(0, 25));
+    vi.mocked(listReviewQueue).mockResolvedValueOnce(page(25, 30));
+    vi.mocked(getHiddenReviewCount).mockResolvedValue({ count: 30, floor: 30 });
+
+    renderReview([card('m-high', 60, false)], { count: 30, floor: 30 });
+    expect(screen.queryByRole('button', { name: LOAD_MORE })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: SHOW_HIDDEN }));
+    await waitFor(() => expect(screen.queryByText('m-24 أ')).not.toBeNull());
+    // 25 of the 30 hidden pairs are on screen, and the line says so.
+    expect(screen.getByText(/أقل من حد المراجعة/).textContent).toContain('25 من 30');
+    expect(screen.queryByText('m-25 أ')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: LOAD_MORE }));
+    await waitFor(() => expect(screen.queryByText('m-29 أ')).not.toBeNull());
+    expect(listReviewQueue).toHaveBeenLastCalledWith({ hidden: true, offset: 25 });
+    expect(screen.getByText(/أقل من حد المراجعة/).textContent).toContain('30 من 30');
+    expect(screen.queryByText('m-0 أ')).not.toBeNull();
+    // Everything is loaded: nothing more to offer.
+    expect(screen.queryByRole('button', { name: LOAD_MORE })).toBeNull();
   });
 
   it('goes back to the queue', async () => {

@@ -105,6 +105,7 @@ export function AdminReviewClient({
   const [hidden, setHidden] = useState(initialHidden);
   const [showHidden, setShowHidden] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -125,6 +126,24 @@ export function AdminReviewClient({
       setError(e instanceof Error ? e.message : t('فشل الإجراء.', 'Action failed.'));
     } finally {
       setBusyId(null);
+    }
+  }
+
+  /** The hidden list loads a page at a time; fetch the next page. */
+  async function loadMoreHidden() {
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const rows = await listReviewQueue({ hidden: true, offset: cards.length });
+      const shown = new Set(cards.map((c) => c.matchId));
+      const fresh = rows.filter((r) => !shown.has(r.matchId));
+      setCards((prev) => [...prev, ...fresh]);
+      // Nothing new came back: the count was stale, so stop offering more.
+      if (fresh.length === 0) setHidden((h) => ({ ...h, count: cards.length }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('فشل تحميل القائمة.', 'Could not load the list.'));
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -208,8 +227,8 @@ export function AdminReviewClient({
           <p>
             {showHidden
               ? t(
-                  `تعرض الآن المطابقات المخفية (${hidden.count}) لأن درجتها أقل من حد المراجعة (${hidden.floor ?? '—'}). لا تُرسل إلى مالكي الأشجار.`,
-                  `Showing the ${hidden.count} pair(s) hidden because they score below the review floor (${hidden.floor ?? '—'}). They are not sent to tree owners.`,
+                  `تعرض الآن ${cards.length} من ${hidden.count} مطابقة مخفية لأن درجتها أقل من حد المراجعة (${hidden.floor ?? '—'}). لا تُرسل إلى مالكي الأشجار.`,
+                  `Showing ${cards.length} of the ${hidden.count} pair(s) hidden because they score below the review floor (${hidden.floor ?? '—'}). They are not sent to tree owners.`,
                 )
               : t(
                   `مطابقات مخفية: ${hidden.count}، لأن درجتها أقل من حد المراجعة (${hidden.floor ?? '—'}).`,
@@ -377,6 +396,18 @@ export function AdminReviewClient({
             );
           })}
         </ul>
+      )}
+
+      {showHidden && cards.length < hidden.count && (
+        <button
+          type="button"
+          disabled={loadingMore}
+          onClick={loadMoreHidden}
+          className="inline-flex items-center gap-1.5 self-center rounded-lg border border-[var(--jt-olive-200)] bg-white px-3 py-2 text-xs font-semibold text-[var(--jt-olive-700)] transition hover:bg-[var(--jt-olive-50)] disabled:opacity-50"
+        >
+          {loadingMore && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {t('تحميل المزيد', 'Load more')}
+        </button>
       )}
     </div>
   );

@@ -1,8 +1,8 @@
 -- pgTAP: matching P2, every name of a person is compared (20261125121000_matching_p2_all_names).
 BEGIN;
-SELECT plan(27);
+SELECT plan(38);
 
--- ── fixtures: two trees, five cross-tree pairs, everyone deceased ───────────
+-- ── fixtures: two trees, cross-tree pairs, everyone deceased ────────────────
 INSERT INTO auth.users (id, email, aud, role) VALUES
   ('a1000000-0000-0000-0000-0000000000b1', 'owner1-p2n@test.juthoor', 'authenticated', 'authenticated'),
   ('a2000000-0000-0000-0000-0000000000b2', 'owner2-p2n@test.juthoor', 'authenticated', 'authenticated');
@@ -22,7 +22,13 @@ INSERT INTO public.persons (id, tree_id, gender) VALUES
   ('1c000000-0000-0000-0000-000000000005', 'e1000000-0000-0000-0000-0000000000b1', 'F'),  -- U1 placeholder alternate
   ('2d000000-0000-0000-0000-000000000005', 'e2000000-0000-0000-0000-0000000000b2', 'F'),  -- U2 placeholder alternate
   ('1c000000-0000-0000-0000-000000000006', 'e1000000-0000-0000-0000-0000000000b1', 'M'),  -- X1 محمد, also written Mohammad
-  ('2d000000-0000-0000-0000-000000000006', 'e2000000-0000-0000-0000-0000000000b2', 'M');  -- X2 محمود, also written Mahmoud
+  ('2d000000-0000-0000-0000-000000000006', 'e2000000-0000-0000-0000-0000000000b2', 'M'),  -- X2 محمود, also written Mahmoud
+  ('1c000000-0000-0000-0000-000000000007', 'e1000000-0000-0000-0000-0000000000b1', 'M'),  -- Z1 صالح, also written Saleh
+  ('2d000000-0000-0000-0000-000000000007', 'e2000000-0000-0000-0000-0000000000b2', 'M'),  -- Z2 Saleh only
+  ('1c000000-0000-0000-0000-000000000008', 'e1000000-0000-0000-0000-0000000000b1', 'M'),  -- Y1 Wael, also written وائل
+  ('2d000000-0000-0000-0000-000000000008', 'e2000000-0000-0000-0000-0000000000b2', 'M'),  -- Y2 Wael only
+  ('1c000000-0000-0000-0000-000000000009', 'e1000000-0000-0000-0000-0000000000b1', 'M'),  -- R1 صالح, also written Saleh
+  ('2d000000-0000-0000-0000-000000000009', 'e2000000-0000-0000-0000-0000000000b2', 'M');  -- R2 صلاح, also written Salah
 
 INSERT INTO public.person_names (person_id, is_primary, name_type, given_name, surname) VALUES
   ('1c000000-0000-0000-0000-000000000001', true,  'birth',   'فاطمة',   'الخطيب'),
@@ -45,7 +51,17 @@ INSERT INTO public.person_names (person_id, is_primary, name_type, given_name, s
   ('1c000000-0000-0000-0000-000000000006', true,  'birth',   'محمد',    'الشريف'),
   ('1c000000-0000-0000-0000-000000000006', false, 'aka',     'Mohammad', NULL),
   ('2d000000-0000-0000-0000-000000000006', true,  'birth',   'محمود',   'الشريف'),
-  ('2d000000-0000-0000-0000-000000000006', false, 'aka',     'Mahmoud', NULL);
+  ('2d000000-0000-0000-0000-000000000006', false, 'aka',     'Mahmoud', NULL),
+  ('1c000000-0000-0000-0000-000000000007', true,  'birth',   'صالح',    'حمدان'),
+  ('1c000000-0000-0000-0000-000000000007', false, 'aka',     'Saleh',   NULL),
+  ('2d000000-0000-0000-0000-000000000007', true,  'birth',   'Saleh',   'حمدان'),
+  ('1c000000-0000-0000-0000-000000000008', true,  'birth',   'Wael',    'قاسم'),
+  ('1c000000-0000-0000-0000-000000000008', false, 'aka',     'وائل',    NULL),
+  ('2d000000-0000-0000-0000-000000000008', true,  'birth',   'Wael',    'قاسم'),
+  ('1c000000-0000-0000-0000-000000000009', true,  'birth',   'صالح',    'عودة'),
+  ('1c000000-0000-0000-0000-000000000009', false, 'aka',     'Saleh',   NULL),
+  ('2d000000-0000-0000-0000-000000000009', true,  'birth',   'صلاح',    'عودة'),
+  ('2d000000-0000-0000-0000-000000000009', false, 'aka',     'Salah',   NULL);
 
 INSERT INTO public.events (person_id, event_type, date_year)
   SELECT id, 'BIRT', 1925 FROM public.persons
@@ -141,6 +157,10 @@ SELECT is(
     WHERE person_id = '1c000000-0000-0000-0000-000000000006'),
   ARRAY[1, 0], 'a Latin spelling of the person''s own Arabic name is not kept as another name');
 SELECT is(
+  (SELECT given_copy_norms FROM public.match_features
+    WHERE person_id = '1c000000-0000-0000-0000-000000000006'),
+  ARRAY['محمد'], 'it is kept apart as a Latin copy');
+SELECT is(
   (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair_impl(
      '1c000000-0000-0000-0000-000000000006', '2d000000-0000-0000-0000-000000000006')),
   0, 'so brothers with different Arabic names, both also written in Latin letters, score no given-name points');
@@ -148,6 +168,50 @@ SELECT ok(
   (SELECT breakdown->'meta'->'vetoes' ? 'given_disagree' FROM public.score_pair_impl(
      '1c000000-0000-0000-0000-000000000006', '2d000000-0000-0000-0000-000000000006')),
   'and are still vetoed (given_disagree)');
+
+-- ── a bilingual person against a person recorded in Latin letters only ──────
+-- The Latin copy is compared with the other person's Latin-only names, so the
+-- identical Latin spellings still match (they did before alternates counted).
+SELECT is(
+  (SELECT given_copy_norms FROM public.match_features
+    WHERE person_id = '1c000000-0000-0000-0000-000000000007'),
+  ARRAY['سله'], '"Saleh" next to صالح is a Latin copy (skeleton of three letters)');
+SELECT is(
+  (SELECT given_latin_norms FROM public.match_features
+    WHERE person_id = '2d000000-0000-0000-0000-000000000007'),
+  ARRAY['سله'], '"Saleh" alone is a Latin-only name');
+SELECT is(
+  (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000007', '2d000000-0000-0000-0000-000000000007')),
+  6, 'صالح + Saleh against Saleh scores the given name in full, not the cross-script 2');
+SELECT ok(
+  NOT (SELECT breakdown->'meta'->'vetoes' ? 'given_disagree' FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000007', '2d000000-0000-0000-0000-000000000007')),
+  'and is not vetoed');
+SELECT is(
+  (SELECT ARRAY[cardinality(given_norms), cardinality(given_copy_norms)] FROM public.match_features
+    WHERE person_id = '1c000000-0000-0000-0000-000000000008'),
+  ARRAY[2, 0], '"Wael" next to وائل stays an ordinary name: a skeleton of one letter does not make a copy');
+SELECT is(
+  (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000008', '2d000000-0000-0000-0000-000000000008')),
+  6, 'Wael + وائل against Wael scores the given name in full');
+SELECT ok(
+  NOT (SELECT breakdown->'meta'->'vetoes' ? 'given_disagree' FROM public.score_pair_impl(
+     '2d000000-0000-0000-0000-000000000008', '1c000000-0000-0000-0000-000000000008')),
+  'and given_disagree is not raised, in either argument order');
+
+-- Brothers whose Latin spellings fold to the same letters (Saleh / Salah) while
+-- their Arabic names differ: copy against copy is not compared, the Arabic
+-- spellings decide.
+SELECT is(
+  (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000009', '2d000000-0000-0000-0000-000000000009')),
+  0, 'brothers صالح / Saleh and صلاح / Salah score no given-name points');
+SELECT ok(
+  (SELECT breakdown->'meta'->'vetoes' ? 'given_disagree' FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000009', '2d000000-0000-0000-0000-000000000009')),
+  'and are vetoed (given_disagree)');
 
 -- ── blocking: the name pass sees the alternates ─────────────────────────────
 SELECT public.refresh_match_block_keys(true);
@@ -178,6 +242,13 @@ SELECT ok(
            WHERE person_a_id = '1c000000-0000-0000-0000-000000000001'
              AND person_b_id = '2d000000-0000-0000-0000-000000000001'),
   'so the pair is now a candidate');
+SELECT ok(
+  EXISTS (SELECT 1 FROM public.match_block_keys k1
+            JOIN public.match_block_keys k2 ON k2.pass = k1.pass AND k2.block_key = k1.block_key
+           WHERE k1.pass = 1
+             AND k1.person_id = '1c000000-0000-0000-0000-000000000007'
+             AND k2.person_id = '2d000000-0000-0000-0000-000000000007'),
+  'a Latin copy gives a name-pass key: صالح + Saleh shares one with the record under Saleh alone');
 SELECT ok(
   EXISTS (SELECT 1 FROM public.generate_match_candidates()
            WHERE person_a_id = '1c000000-0000-0000-0000-000000000002'

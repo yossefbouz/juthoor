@@ -10,16 +10,20 @@
 --     and alternates), built with the P1 rules: placeholders ignored, surname
 --     article stripped, spaces ignored in given names, plus the consonant
 --     skeletons used for the cross-script match.
---     One exception: a given name typed in Latin letters that is only a second
---     spelling of one of the person's own Arabic-script given names (same
---     consonant skeleton) is left out. The Arabic spelling compares reliably;
---     the Latin copy would only add the lossy comparisons, and brothers called
---     محمد / Mohammad and محمود / Mahmoud would stop being told apart.
+--     One rule on top: a given name typed in Latin letters that is only a
+--     second spelling of one of the person's own Arabic-script given names
+--     (same consonant skeleton of 2+ letters) is kept apart as a "Latin copy".
+--     It is compared only with the other person's names that exist in Latin
+--     letters alone, so Saleh + صالح still matches a record under Saleh alone.
+--     Against Arabic-script names the Arabic spelling decides: it compares
+--     reliably, while the Latin copy would only add the lossy comparisons, and
+--     brothers called محمد / Mohammad and محمود / Mahmoud, or صالح / Saleh and
+--     صلاح / Salah, would stop being told apart.
 --  2. score_pair_impl (body of 20261122120000) takes the best match across the
 --     two people's names for the given name and the surname. given_disagree is
 --     raised only when no pair of given names matches.
 --  3. The phonetic given+surname blocking pass (pass 1) emits a key for every
---     given × surname combination.
+--     given × surname combination, Latin copies included.
 --
 -- Not changed: the scalar given_norm / given_phon / surname_norm / surname_phon
 -- columns still hold the primary name; parents, grandparents and spouses are
@@ -34,16 +38,24 @@ ALTER TABLE public.match_features
   ADD COLUMN IF NOT EXISTS surname_norms     text[] NOT NULL DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS surname_phons     text[] NOT NULL DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS given_skel_latin  text[] NOT NULL DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS given_skel_native text[] NOT NULL DEFAULT '{}';
+  ADD COLUMN IF NOT EXISTS given_skel_native text[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS given_latin_norms text[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS given_latin_phons text[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS given_copy_norms  text[] NOT NULL DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS given_copy_phons  text[] NOT NULL DEFAULT '{}';
 
 COMMENT ON COLUMN public.match_features.given_norms IS
-  'Every given name of the person (primary and alternates), normalised like given_norm. Placeholders left out.';
+  'Every given name of the person (primary and alternates), normalised like given_norm. Placeholders and Latin copies (see given_copy_norms) left out.';
+COMMENT ON COLUMN public.match_features.given_latin_norms IS
+  'The part of given_norms typed in Latin letters: names the person has no Arabic-script spelling of.';
+COMMENT ON COLUMN public.match_features.given_copy_norms IS
+  'Latin copies: given names typed in Latin letters that have the consonant skeleton (2+ letters) of one of the person''s own Arabic-script given names. Compared only with the other person''s given_latin_norms.';
 COMMENT ON COLUMN public.match_features.given_skel_latin IS
   'Consonant skeletons (2+ letters) of the given names typed in Latin letters. Compared with the other person''s given_skel_native for the cross-script match.';
 COMMENT ON COLUMN public.match_features.given_skel_native IS
   'Consonant skeletons (2+ letters) of the given names typed without Latin letters.';
 
--- All names of one person as six arrays (one row, empty arrays when there is no
+-- All names of one person as ten arrays (one row, empty arrays when there is no
 -- usable name). Same expressions as mf_given_norm / mf_given_phon /
 -- mf_surname_norm / mf_surname_phon in 20261113120000, over every name row.
 CREATE OR REPLACE FUNCTION public.mf_all_names(p_person_id uuid)
@@ -53,7 +65,11 @@ RETURNS TABLE (
   surname_norms text[],
   surname_phons text[],
   given_skel_latin text[],
-  given_skel_native text[]
+  given_skel_native text[],
+  given_latin_norms text[],
+  given_latin_phons text[],
+  given_copy_norms text[],
+  given_copy_phons text[]
 )
 LANGUAGE sql
 STABLE
@@ -82,29 +98,38 @@ AS $$
     FROM n
     WHERE n.gn <> ''
   ),
-  -- Given names kept: everything except a Latin-letter name that has the
-  -- skeleton of one of the person's own Arabic-script names.
-  gk AS (
-    SELECT g.gn, g.gp, g.latin, g.skel
+  -- A Latin-letter name is a copy when one of the person's own Arabic-script
+  -- names has the same consonant skeleton. Skeletons of 2+ letters only, the
+  -- limit the cross-script match uses: one letter says too little (Wael, Ali
+  -- and Alaa all reduce to ل), so such a name stays an ordinary name.
+  gc AS (
+    SELECT g.gn, g.gp, g.latin, g.skel,
+           COALESCE(g.latin AND char_length(g.skel) >= 2
+                    AND EXISTS (SELECT 1 FROM g o WHERE NOT o.latin AND o.skel = g.skel),
+                    false) AS is_copy
     FROM g
-    WHERE NOT (g.latin AND EXISTS (SELECT 1 FROM g o WHERE NOT o.latin AND o.skel = g.skel))
   )
   SELECT
-    COALESCE((SELECT array_agg(DISTINCT gk.gn) FROM gk), '{}'),
-    COALESCE((SELECT array_agg(DISTINCT gk.gp) FROM gk WHERE gk.gp <> ''), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.gn) FROM gc WHERE NOT gc.is_copy), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.gp) FROM gc WHERE NOT gc.is_copy AND gc.gp <> ''), '{}'),
     COALESCE((SELECT array_agg(DISTINCT n.sn) FROM n WHERE n.sn <> ''), '{}'),
     COALESCE((SELECT array_agg(DISTINCT n.sp) FROM n WHERE n.sp <> ''), '{}'),
-    COALESCE((SELECT array_agg(DISTINCT gk.skel) FROM gk
-               WHERE gk.latin AND char_length(gk.skel) >= 2), '{}'),
-    COALESCE((SELECT array_agg(DISTINCT gk.skel) FROM gk
-               WHERE NOT gk.latin AND char_length(gk.skel) >= 2), '{}');
+    COALESCE((SELECT array_agg(DISTINCT gc.skel) FROM gc
+               WHERE gc.latin AND NOT gc.is_copy AND char_length(gc.skel) >= 2), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.skel) FROM gc
+               WHERE NOT gc.latin AND char_length(gc.skel) >= 2), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.gn) FROM gc WHERE gc.latin AND NOT gc.is_copy), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.gp) FROM gc
+               WHERE gc.latin AND NOT gc.is_copy AND gc.gp <> ''), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.gn) FROM gc WHERE gc.is_copy), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gc.gp) FROM gc WHERE gc.is_copy AND gc.gp <> ''), '{}');
 $$;
 
 -- Internal: only refresh_match_features (SECURITY DEFINER) calls it.
 REVOKE ALL ON FUNCTION public.mf_all_names(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.mf_all_names(uuid) TO service_role;
 
--- refresh_match_features: body of 20261107130000 plus the six name arrays.
+-- refresh_match_features: body of 20261107130000 plus the name arrays.
 CREATE OR REPLACE FUNCTION public.refresh_match_features(p_person_id uuid)
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
@@ -161,6 +186,7 @@ BEGIN
     given_norm, given_phon, surname_norm, surname_phon,
     given_norms, given_phons, surname_norms, surname_phons,
     given_skel_latin, given_skel_native,
+    given_latin_norms, given_latin_phons, given_copy_norms, given_copy_phons,
     father_norm, father_phon, mother_norm, mother_phon,
     spouse_names_norm, spouse_names_phon,
     spouse_surnames_norm, spouse_surnames_phon,
@@ -175,6 +201,8 @@ BEGIN
     public.mf_surname_norm(p_person_id), public.mf_surname_phon(p_person_id),
     v_names.given_norms, v_names.given_phons, v_names.surname_norms, v_names.surname_phons,
     v_names.given_skel_latin, v_names.given_skel_native,
+    v_names.given_latin_norms, v_names.given_latin_phons,
+    v_names.given_copy_norms, v_names.given_copy_phons,
     public.mf_given_norm(v_father), public.mf_given_phon(v_father),
     public.mf_given_norm(v_mother), public.mf_given_phon(v_mother),
     v_spouse_norm, v_spouse_phon, v_spouse_sur_norm, v_spouse_sur_phon,
@@ -193,6 +221,8 @@ BEGIN
     given_norms = EXCLUDED.given_norms, given_phons = EXCLUDED.given_phons,
     surname_norms = EXCLUDED.surname_norms, surname_phons = EXCLUDED.surname_phons,
     given_skel_latin = EXCLUDED.given_skel_latin, given_skel_native = EXCLUDED.given_skel_native,
+    given_latin_norms = EXCLUDED.given_latin_norms, given_latin_phons = EXCLUDED.given_latin_phons,
+    given_copy_norms = EXCLUDED.given_copy_norms, given_copy_phons = EXCLUDED.given_copy_phons,
     father_norm = EXCLUDED.father_norm, father_phon = EXCLUDED.father_phon,
     mother_norm = EXCLUDED.mother_norm, mother_phon = EXCLUDED.mother_phon,
     spouse_names_norm = EXCLUDED.spouse_names_norm, spouse_names_phon = EXCLUDED.spouse_names_phon,
@@ -212,9 +242,11 @@ END $$;
 -- Fill the new columns for the feature rows that already exist, so scoring
 -- does not wait for the next batch.
 UPDATE public.match_features mf
-   SET (given_norms, given_phons, surname_norms, surname_phons, given_skel_latin, given_skel_native)
+   SET (given_norms, given_phons, surname_norms, surname_phons, given_skel_latin, given_skel_native,
+        given_latin_norms, given_latin_phons, given_copy_norms, given_copy_phons)
      = (SELECT n.given_norms, n.given_phons, n.surname_norms, n.surname_phons,
-               n.given_skel_latin, n.given_skel_native
+               n.given_skel_latin, n.given_skel_native,
+               n.given_latin_norms, n.given_latin_phons, n.given_copy_norms, n.given_copy_phons
           FROM public.mf_all_names(mf.person_id) n);
 
 -- The names to compare for one field: every name when the feature row has
@@ -359,9 +391,18 @@ BEGIN
   b_surname_phon := public.mf_name_list(b.surname_phons, b.surname_phon);
   v_given_present := cardinality(a_given) > 0 AND cardinality(b_given) > 0;
 
-  -- Best match across the names: literal 4 + phonetic 2.
-  p_given   := (CASE WHEN a_given && b_given THEN 4 ELSE 0 END)
-             + (CASE WHEN a_given_phon && b_given_phon THEN 2 ELSE 0 END);
+  -- Best match across the names: literal 4 + phonetic 2. A Latin copy of the
+  -- person's own Arabic name is compared only with the other person's
+  -- Latin-only names (Saleh + صالح against Saleh); against Arabic names the
+  -- Arabic spelling decides.
+  p_given   := (CASE WHEN a_given && b_given
+                       OR public.mf_filter_placeholder_arr(a.given_copy_norms) && b.given_latin_norms
+                       OR public.mf_filter_placeholder_arr(b.given_copy_norms) && a.given_latin_norms
+                     THEN 4 ELSE 0 END)
+             + (CASE WHEN a_given_phon && b_given_phon
+                       OR public.mf_filter_placeholder_arr(a.given_copy_phons) && b.given_latin_phons
+                       OR public.mf_filter_placeholder_arr(b.given_copy_phons) && a.given_latin_phons
+                     THEN 2 ELSE 0 END);
   -- Same name entered in different scripts (Saleh / صالح, Abdullah / عبدالله):
   -- transliteration is lossy, so equal consonant skeletons earn the
   -- phonetic-level 2 points. Only across scripts: two Arabic spellings compare
@@ -541,11 +582,12 @@ BEGIN
   IF p_full THEN TRUNCATE public.match_block_keys; END IF;
 
   -- pass 1: phonetic given + surname (cross-script — features are script-folded),
-  -- one key for every given × surname combination of the person's names.
+  -- one key for every given × surname combination of the person's names
+  -- (Latin copies included: the other tree may hold the Latin spelling alone).
   INSERT INTO public.match_block_keys(person_id, pass, block_key, tree_id)
     SELECT mf.person_id, 1, g.phon || '|' || s.phon, mf.tree_id
     FROM public.match_features mf
-    CROSS JOIN LATERAL unnest(mf.given_phons   || mf.given_phon)   AS g(phon)
+    CROSS JOIN LATERAL unnest(mf.given_phons || mf.given_copy_phons || mf.given_phon) AS g(phon)
     CROSS JOIN LATERAL unnest(mf.surname_phons || mf.surname_phon) AS s(phon)
     WHERE g.phon <> '' AND s.phon <> '' AND NOT mf.privacy_hold
     ON CONFLICT DO NOTHING;
