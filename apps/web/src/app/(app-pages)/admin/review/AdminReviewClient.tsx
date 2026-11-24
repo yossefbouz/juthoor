@@ -14,6 +14,8 @@ import {
 import { AdminStaffNav } from '@/components/admin/AdminStaffNav';
 import { useLocale } from '@/contexts/LocaleContext';
 import {
+  getHiddenReviewCount,
+  listReviewQueue,
   rescoreMatch,
   resolveMatchAction,
   type ReviewCard,
@@ -91,9 +93,18 @@ function PersonCol({
   );
 }
 
-export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[] }) {
+export function AdminReviewClient({
+  initialCards,
+  initialHidden,
+}: {
+  initialCards: ReviewCard[];
+  initialHidden: { count: number; floor: number | null };
+}) {
   const { t, dir, locale } = useLocale();
   const [cards, setCards] = useState<ReviewCard[]>(initialCards);
+  const [hidden, setHidden] = useState(initialHidden);
+  const [showHidden, setShowHidden] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -109,10 +120,31 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
     try {
       await resolveMatchAction({ matchId, decision, note: notes[matchId]?.trim() || undefined });
       setCards((rows) => rows.filter((r) => r.matchId !== matchId));
+      if (showHidden) setHidden((h) => ({ ...h, count: Math.max(h.count - 1, 0) }));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('فشل الإجراء.', 'Action failed.'));
     } finally {
       setBusyId(null);
+    }
+  }
+
+  /** Switch between the queue and the pairs hidden by the review floor. */
+  async function toggleHidden() {
+    const next = !showHidden;
+    setSwitching(true);
+    setError(null);
+    try {
+      const [rows, count] = await Promise.all([
+        listReviewQueue({ hidden: next }),
+        getHiddenReviewCount(),
+      ]);
+      setCards(rows);
+      setHidden(count);
+      setShowHidden(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('فشل تحميل القائمة.', 'Could not load the list.'));
+    } finally {
+      setSwitching(false);
     }
   }
 
@@ -171,17 +203,54 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
         </div>
       )}
 
+      {(showHidden || hidden.count > 0) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--jt-stone-200)] bg-[var(--jt-stone-50)] px-4 py-3 text-sm text-[var(--jt-stone-600)]">
+          <p>
+            {showHidden
+              ? t(
+                  `تعرض الآن المطابقات المخفية (${hidden.count}) لأن درجتها أقل من حد المراجعة (${hidden.floor ?? '—'}). لا تُرسل إلى مالكي الأشجار.`,
+                  `Showing the ${hidden.count} pair(s) hidden because they score below the review floor (${hidden.floor ?? '—'}). They are not sent to tree owners.`,
+                )
+              : t(
+                  `مطابقات مخفية: ${hidden.count}، لأن درجتها أقل من حد المراجعة (${hidden.floor ?? '—'}).`,
+                  `${hidden.count} pair(s) hidden because they score below the review floor (${hidden.floor ?? '—'}).`,
+                )}
+          </p>
+          <button
+            type="button"
+            disabled={switching}
+            onClick={toggleHidden}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--jt-olive-200)] bg-white px-3 py-2 text-xs font-semibold text-[var(--jt-olive-700)] transition hover:bg-[var(--jt-olive-50)] disabled:opacity-50"
+          >
+            {switching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {showHidden
+              ? t('العودة إلى الطابور', 'Back to the queue')
+              : t('عرض المطابقات المخفية', 'Show hidden pairs')}
+          </button>
+        </div>
+      )}
+
       {cards.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--jt-stone-200)] bg-[var(--jt-stone-50)]/60 px-6 py-16 text-center">
           <Inbox className="h-8 w-8 text-[var(--jt-stone-400)]" />
           <p className="text-sm font-medium text-[var(--jt-stone-600)]">
-            {t('لا توجد مطابقات بانتظار المراجعة.', 'No matches awaiting review.')}
+            {showHidden
+              ? t('لا توجد مطابقات مخفية.', 'No hidden pairs.')
+              : t('لا توجد مطابقات بانتظار المراجعة.', 'No matches awaiting review.')}
           </p>
         </div>
       ) : (
         <ul className="flex flex-col gap-4">
           {cards.map((card) => {
             const busy = busyId === card.matchId;
+            // The database refuses the two decisions that hand a pair below
+            // the floor to the tree owners.
+            const belowFloorTitle = card.belowFloor
+              ? t(
+                  'درجة هذه المطابقة أقل من حد المراجعة، فلا تُرسل إلى المالكَين.',
+                  'This pair scores below the review floor, so it is not sent to the owners.',
+                )
+              : undefined;
             return (
               <li
                 key={card.matchId}
@@ -277,7 +346,8 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || card.belowFloor}
+                      title={belowFloorTitle}
                       onClick={() => decide(card.matchId, 'defer')}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--jt-olive-200)] px-3 py-2 text-xs font-semibold text-[var(--jt-olive-700)] transition hover:bg-[var(--jt-olive-50)] disabled:opacity-50"
                     >
@@ -285,7 +355,8 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || (card.belowFloor && card.livingInvolved)}
+                      title={card.livingInvolved ? belowFloorTitle : undefined}
                       onClick={() => decide(card.matchId, 'approve')}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--jt-olive-600)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--jt-olive-700)] disabled:opacity-50"
                     >
