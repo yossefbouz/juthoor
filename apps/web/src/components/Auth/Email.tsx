@@ -3,6 +3,7 @@ import { T } from '@/components/ui/Typography';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLocale } from '@/contexts/LocaleContext';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -11,7 +12,7 @@ export const Email = ({
   view,
   isLoading,
   successMessage,
-  label = 'Email address',
+  label,
   defaultValue,
   className,
   style,
@@ -25,20 +26,21 @@ export const Email = ({
   className?: string;
   style?: React.CSSProperties;
 }) => {
+  const { t } = useLocale();
   const [email, setEmail] = useState<string>(defaultValue ?? '');
 
   const buttonLabelText = useMemo(() => {
     switch (view) {
       case 'sign-in':
-        return 'Login with Magic Link';
+        return t('ادخل برابط سحري', 'Login with Magic Link');
       case 'sign-up':
-        return 'Sign up with Magic Link';
+        return t('أنشئ حسابًا برابط سحري', 'Sign up with Magic Link');
       case 'update-email':
-        return 'Update Email';
+        return t('تحديث البريد الإلكتروني', 'Update Email');
       case 'forgot-password':
-        return 'Reset password';
+        return t('إعادة تعيين كلمة السر', 'Reset password');
     }
-  }, [view]);
+  }, [view, t]);
 
   return (
     <form
@@ -53,7 +55,7 @@ export const Email = ({
       <div className="space-y-2">
         <div className="space-y-2">
           <Label htmlFor="email" className="text-muted-foreground">
-            {label}
+            {label ?? t('البريد الإلكتروني', 'Email address')}
           </Label>
           <div>
             <Input
@@ -76,7 +78,7 @@ export const Email = ({
                 href="/login"
                 className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500"
               >
-                Log in instead?
+                {t('تسجيل الدخول بدلًا من ذلك؟', 'Log in instead?')}
               </Link>
             </div>
           ) : null}

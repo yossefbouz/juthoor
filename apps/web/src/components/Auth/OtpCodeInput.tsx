@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
 
+import { useLocale } from '@/contexts/LocaleContext';
+
 /**
  * Segmented OTP code entry with `length` cells. Auto-advances on input,
  * supports paste, backspace jump-back, and arrow-key navigation. Calls
@@ -22,6 +24,7 @@ export function OtpCodeInput({
   length?: number;
   disabled?: boolean;
 }) {
+  const { t } = useLocale();
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const cells = Array.from({ length }, (_, i) => value[i] ?? '');
 
@@ -73,7 +76,7 @@ export function OtpCodeInput({
       dir="ltr"
       className="flex items-center justify-center gap-2"
       role="group"
-      aria-label={`${length}-digit verification code`}
+      aria-label={t(`رمز التحقق من ${length} أرقام`, `${length}-digit verification code`)}
     >
       {cells.map((c, i) => (
         <input
@@ -91,7 +94,7 @@ export function OtpCodeInput({
           onPaste={i === 0 ? handlePaste : undefined}
           disabled={disabled}
           className="h-14 w-12 rounded-xl border-2 border-[var(--jt-stone-200)] bg-[var(--background)] text-center text-2xl font-bold tabular-nums text-[var(--jt-olive-900)] outline-none transition-all focus:border-[var(--jt-olive-500)] focus:ring-2 focus:ring-[var(--jt-olive-100)] disabled:opacity-50"
-          aria-label={`digit ${i + 1}`}
+          aria-label={t(`الرقم ${i + 1}`, `digit ${i + 1}`)}
         />
       ))}
     </div>

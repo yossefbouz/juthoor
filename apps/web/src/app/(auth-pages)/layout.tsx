@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import Link from 'next/link';
+import { LocaleToggle } from '@/components/LocaleToggle';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -14,7 +15,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       />
       <div aria-hidden className="jt-tatreez-dark pointer-events-none absolute inset-x-0 top-0 -z-10 h-[200px] opacity-[0.04]" />
       <header className="border-b border-[var(--jt-stone-200)]/60 bg-[var(--background)]/80 backdrop-blur">
-        <div className="mx-auto flex max-w-screen-2xl items-center px-6 py-4">
+        <div className="mx-auto flex max-w-screen-2xl items-center justify-between px-6 py-4">
           <Link href="/" className="group flex items-center gap-3">
             <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--jt-olive-600)] text-[var(--jt-stone-50)] shadow-[var(--jt-shadow-sm)] transition-transform group-hover:-rotate-3">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -34,6 +35,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               </span>
             </span>
           </Link>
+          <LocaleToggle />
         </div>
       </header>
       <main className="flex flex-1 items-center justify-center p-6">

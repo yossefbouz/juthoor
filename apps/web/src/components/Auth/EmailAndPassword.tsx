@@ -103,7 +103,7 @@ export const EmailAndPassword = ({
           <Button disabled={isLoading} type="submit" className="w-full">
             {isLoading ? (
               <>
-                <Spinner className="h-4 w-4 mr-2" />
+                <Spinner className="h-4 w-4 me-2" />
                 <span>{t('جارٍ التحميل...', 'Loading...')}</span>
               </>
             ) : (

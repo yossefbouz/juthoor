@@ -3,6 +3,7 @@ import { ArrowLeftIcon, Fingerprint, MailIcon } from 'lucide-react';
 
 import type React from 'react';
 
+import { useLocale } from '@/contexts/LocaleContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import {
@@ -29,6 +30,7 @@ export function EmailConfirmationPendingCard({
   resendEmail,
 }: IConfirmationPendingCardProps) {
   const router = useRouter();
+  const { t } = useLocale();
   return (
     <div>
       <Card className="w-full md:min-w-[440px] mx-auto mt-10 items-center">
@@ -55,20 +57,22 @@ export function EmailConfirmationPendingCard({
               );
             }}
           >
-            <ArrowLeftIcon className="w-4 h-4 mr-2" />
-            {type === 'sign-up' ? 'Back to sign up' : 'Back to login'}
+            <ArrowLeftIcon className="w-4 h-4 me-2 rtl:rotate-180" />
+            {type === 'sign-up'
+              ? t('العودة إلى إنشاء الحساب', 'Back to sign up')
+              : t('العودة إلى تسجيل الدخول', 'Back to login')}
           </Button>
         </CardFooter>
       </Card>
       {type === 'sign-up' && resendEmail && (
         <p className="text-center mt-4">
-          Didnt receive the email?{' '}
+          {t('لم يصلك البريد؟', "Didn't receive the email?")}{' '}
           <Button
             className="font-bold px-0"
             variant="link"
             onClick={resendEmail}
           >
-            Click to resend
+            {t('اضغط لإعادة الإرسال', 'Click to resend')}
           </Button>
         </p>
       )}

@@ -9,7 +9,7 @@ async function UpdatePasswordContent() {
 
 export default function UpdatePasswordPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div aria-busy="true" />}>
       <UpdatePasswordContent />
     </Suspense>
   );

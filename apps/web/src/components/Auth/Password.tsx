@@ -4,14 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { T } from '@/components/ui/Typography';
 import { Label } from '@/components/ui/label';
+import { useLocale } from '@/contexts/LocaleContext';
 import { CSSProperties, useState } from 'react';
 
 export const Password = ({
   onSubmit,
   isLoading,
   successMessage,
-  label = 'Password',
-  buttonLabel = 'Update',
+  label,
+  buttonLabel,
   className,
   style,
 }: {
@@ -23,6 +24,7 @@ export const Password = ({
   className?: string;
   style?: CSSProperties;
 }) => {
+  const { t } = useLocale();
   const [password, setPassword] = useState<string>('');
 
   return (
@@ -37,7 +39,7 @@ export const Password = ({
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="password" className="text-muted-foreground">
-            {label}
+            {label ?? t('كلمة السر', 'Password')}
           </Label>
           <div>
             <Input
@@ -56,11 +58,11 @@ export const Password = ({
           <Button disabled={isLoading} type="submit" className="w-full">
             {isLoading ? (
               <>
-                <Spinner className="h-4 w-4 mr-2" />
-                <span>Loading...</span>
+                <Spinner className="h-4 w-4 me-2" />
+                <span>{t('جارٍ التحميل...', 'Loading...')}</span>
               </>
             ) : (
-              buttonLabel
+              buttonLabel ?? t('تحديث', 'Update')
             )}
           </Button>
         </div>
