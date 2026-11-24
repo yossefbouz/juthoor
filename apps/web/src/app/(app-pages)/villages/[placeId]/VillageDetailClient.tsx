@@ -207,7 +207,7 @@ export function VillageDetailClient({
           />
           <ActionButton
             icon={ImageIcon}
-            title={t('معرض الصور', 'View photo gallery')}
+            title={t('أرشيف الصور', 'View picture archive')}
             sub={t('صور تاريخية وصور مساهمة من العائلات', 'Historical and family-contributed images')}
             href="#gallery"
           />
@@ -339,7 +339,7 @@ export function VillageDetailClient({
         <section id="gallery" className="mt-10 scroll-mt-6">
           <SectionHead
             kicker={t('صور', 'Photos')}
-            title={t('معرض الصور', 'Photo gallery')}
+            title={t('أرشيف الصور', 'Picture archive')}
             note={gallery.length ? t(`${gallery.length} صورة`, `${gallery.length} photos`) : undefined}
           />
           {gallery.length === 0 ? (

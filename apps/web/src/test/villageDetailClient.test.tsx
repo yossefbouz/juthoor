@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { LocaleProvider } from '@/contexts/LocaleContext';
+import { NAV_ITEMS } from '@/app/nav-items';
 import { VillageDetailClient } from '@/app/(app-pages)/villages/[placeId]/VillageDetailClient';
 import type {
   PlaceDetail,
@@ -15,7 +16,10 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 const AL_TIRA: PlaceDetail = {
   id: 'place-al-tira',
@@ -143,5 +147,19 @@ describe('VillageDetailClient — editorial enrichment (mockup 04)', () => {
 
     expect(screen.queryByText(/لا ينسخ محتوى الأرشيفات/)).toBeNull();
     expect(screen.queryByText(/كانت الطيرة قرية فلسطينية/)).toBeNull();
+  });
+
+  it('calls the pictures section by its navigation name, in both languages', async () => {
+    const nav = NAV_ITEMS.find((item) => item.href === '/pictures')!;
+
+    renderVillage(null);
+    expect(screen.getAllByText(nav.ar).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/معرض الصور/)).toBeNull();
+    cleanup();
+
+    window.localStorage.setItem('juthoor.locale', 'en');
+    renderVillage(null);
+    expect((await screen.findAllByText(new RegExp(nav.en, 'i'))).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/photo gallery/i)).toBeNull();
   });
 });

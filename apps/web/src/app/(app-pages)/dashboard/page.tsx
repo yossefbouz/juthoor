@@ -7,6 +7,8 @@ import { ensureUserHasDefaultTree } from '@/data/anon/trees';
 import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
 import { getStaffRole } from '@/data/admin/requireStaff';
 import { getMyVerification } from '@/data/user/identityVerification';
+import { isTourDoneInMetadata } from '@/lib/tour/tourState';
+import { getCachedLoggedInVerifiedSupabaseUser } from '@/rsc-data/supabase';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 
 async function loadDashboard(): Promise<DashboardData> {
@@ -29,6 +31,7 @@ async function loadDashboard(): Promise<DashboardData> {
     snapshot,
     verification,
     staffRole,
+    auth,
   ] = await Promise.all([
     supabase.from('trees').select('id, name, created_at').eq('id', treeId).maybeSingle(),
     supabase.from('persons').select('id', { count: 'exact', head: true }).eq('tree_id', treeId),
@@ -51,6 +54,7 @@ async function loadDashboard(): Promise<DashboardData> {
     getViewerTreeSnapshot(treeId).catch(() => null),
     getMyVerification().catch(() => null),
     getStaffRole().catch(() => null),
+    getCachedLoggedInVerifiedSupabaseUser().catch(() => null),
   ]);
 
   const needsVerification = !(verification && verification.status === 'approved');
@@ -67,6 +71,9 @@ async function loadDashboard(): Promise<DashboardData> {
     verificationStatus: verification?.status ?? null,
     staff: staffRole
       ? { isAdmin: staffRole.isAdmin }
+      : null,
+    tour: auth?.user
+      ? { userId: auth.user.id, done: isTourDoneInMetadata(auth.user.user_metadata) }
       : null,
   };
 }
