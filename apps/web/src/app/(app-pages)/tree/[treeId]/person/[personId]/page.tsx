@@ -6,10 +6,10 @@ import { TreeView360 } from '@/components/tree/TreeView360';
 import { DisplacementPanel } from '@/components/person/DisplacementPanel';
 import { EvidencePanel } from '@/components/person/EvidencePanel';
 import { FieldGrantsPanel } from '@/components/person/FieldGrantsPanel';
-import { DisputeRelationshipButton } from '@/components/person/DisputeRelationshipButton';
 import { PersonAccessLogger } from '@/components/person/PersonAccessLogger';
 import { PersonContactPanel } from '@/components/person/PersonContactPanel';
 import { PersonStoryPanel } from '@/components/person/PersonStoryPanel';
+import { RelationshipsPanel } from '@/components/person/RelationshipsPanel';
 import { getPerson, getTreePersons } from '@/data/anon/persons';
 import { getViewerTreeSnapshot } from '@/data/anon/treeSnapshot';
 import { getPrimaryPhotoUrl } from '@/data/user/attachments';
@@ -22,7 +22,8 @@ import {
   listPersonFieldGrants,
 } from '@/data/user/personFieldGrants';
 import { loadPersonProfile } from '@/data/user/personProfiles';
-import { isRelationshipValidated } from '@/data/user/relationshipDisputes';
+import { listRelationshipFlags } from '@/data/user/relationshipDisputes';
+import { buildRelationshipItems } from '@/lib/tree/relationshipFlags';
 import { buildNeighbors } from '@/lib/tree/relationships';
 import { createJuthoorSupabaseClient } from '@/supabase-clients/juthoor-server';
 import { getCachedLoggedInUserIdOrNull } from '@/rsc-data/supabase';
@@ -135,14 +136,13 @@ export default async function PersonPage({ params }: Props) {
       : Promise.resolve([]),
   ]);
   const neighbors = buildNeighbors(snapshot, personId);
-  const parentId =
-    neighbors.parents.father?.id ?? neighbors.parents.mother?.id ?? null;
-  const parentLinkValidated = await isRelationshipValidated({
-    treeId,
-    personId,
-    relatedPersonId: parentId,
-    relationType: 'parent',
-  }).catch(() => false);
+  const relationshipFlags = await listRelationshipFlags({ treeId, personId }).catch(
+    () => ({ rows: [], viewerId: null, treeOwnerId: null }),
+  );
+  const relationshipItems = buildRelationshipItems(neighbors, relationshipFlags.rows, {
+    userId: relationshipFlags.viewerId,
+    treeOwnerId: relationshipFlags.treeOwnerId,
+  });
 
   // primaryPhotoId is on persons row (added by attachments migration)
   const primaryPhotoId = (person as { primary_photo_id?: string | null }).primary_photo_id ?? null;
@@ -222,15 +222,12 @@ export default async function PersonPage({ params }: Props) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <DisputeRelationshipButton
-          treeId={treeId}
-          focusPersonId={personId}
-          relatedPersonId={parentId}
-          relationType="parent"
-          initiallyValidated={parentLinkValidated}
-        />
-      </div>
+      <RelationshipsPanel
+        treeId={treeId}
+        focusPersonId={personId}
+        items={relationshipItems}
+        canResolve={canManage}
+      />
 
       <PersonStoryPanel
         personId={personId}
