@@ -16,6 +16,10 @@ export async function signupUserHelper({
   emailAddress: string;
   displayName?: string;
 }): Promise<void> {
+  // the OTP cells are looked up by their English label ("digit N") below
+  await page.addInitScript(() => {
+    window.localStorage.setItem('juthoor.locale', 'en');
+  });
   await page.goto('/sign-up');
   await page.locator('#display-name').fill(displayName);
   await page.locator('#email').fill(emailAddress);

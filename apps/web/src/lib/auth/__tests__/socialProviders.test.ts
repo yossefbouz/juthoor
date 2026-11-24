@@ -90,6 +90,19 @@ describe('getEnabledSocialProviders', () => {
     expect(await (await load())()).toEqual([]);
   });
 
+  it('gives up on a request that never answers', async () => {
+    // Like a hung connection: this fetch only ends when its signal aborts.
+    fetchMock.mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+        })
+    );
+    const startedAt = Date.now();
+    expect(await (await load())()).toEqual([]);
+    expect(Date.now() - startedAt).toBeLessThan(5000);
+  }, 10_000);
+
   it('fails closed on an error status, even if the body lists providers', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ external: { google: true } }, 500));
     expect(await (await load())()).toEqual([]);
