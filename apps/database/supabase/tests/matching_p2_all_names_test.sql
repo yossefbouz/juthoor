@@ -1,6 +1,6 @@
 -- pgTAP: matching P2, every name of a person is compared (20261125121000_matching_p2_all_names).
 BEGIN;
-SELECT plan(24);
+SELECT plan(27);
 
 -- ── fixtures: two trees, five cross-tree pairs, everyone deceased ───────────
 INSERT INTO auth.users (id, email, aud, role) VALUES
@@ -20,7 +20,9 @@ INSERT INTO public.persons (id, tree_id, gender) VALUES
   ('1c000000-0000-0000-0000-000000000004', 'e1000000-0000-0000-0000-0000000000b1', 'M'),  -- S1 alternate "Saleh" in Latin
   ('2d000000-0000-0000-0000-000000000004', 'e2000000-0000-0000-0000-0000000000b2', 'M'),  -- S2 صالح
   ('1c000000-0000-0000-0000-000000000005', 'e1000000-0000-0000-0000-0000000000b1', 'F'),  -- U1 placeholder alternate
-  ('2d000000-0000-0000-0000-000000000005', 'e2000000-0000-0000-0000-0000000000b2', 'F');  -- U2 placeholder alternate
+  ('2d000000-0000-0000-0000-000000000005', 'e2000000-0000-0000-0000-0000000000b2', 'F'),  -- U2 placeholder alternate
+  ('1c000000-0000-0000-0000-000000000006', 'e1000000-0000-0000-0000-0000000000b1', 'M'),  -- X1 محمد, also written Mohammad
+  ('2d000000-0000-0000-0000-000000000006', 'e2000000-0000-0000-0000-0000000000b2', 'M');  -- X2 محمود, also written Mahmoud
 
 INSERT INTO public.person_names (person_id, is_primary, name_type, given_name, surname) VALUES
   ('1c000000-0000-0000-0000-000000000001', true,  'birth',   'فاطمة',   'الخطيب'),
@@ -39,7 +41,11 @@ INSERT INTO public.person_names (person_id, is_primary, name_type, given_name, s
   ('1c000000-0000-0000-0000-000000000005', true,  'birth',   'رانيا',   'حداد'),
   ('1c000000-0000-0000-0000-000000000005', false, 'aka',     'Unknown', 'Unknown'),
   ('2d000000-0000-0000-0000-000000000005', true,  'birth',   'سعاد',    'حداد'),
-  ('2d000000-0000-0000-0000-000000000005', false, 'aka',     'Unknown', 'Unknown');
+  ('2d000000-0000-0000-0000-000000000005', false, 'aka',     'Unknown', 'Unknown'),
+  ('1c000000-0000-0000-0000-000000000006', true,  'birth',   'محمد',    'الشريف'),
+  ('1c000000-0000-0000-0000-000000000006', false, 'aka',     'Mohammad', NULL),
+  ('2d000000-0000-0000-0000-000000000006', true,  'birth',   'محمود',   'الشريف'),
+  ('2d000000-0000-0000-0000-000000000006', false, 'aka',     'Mahmoud', NULL);
 
 INSERT INTO public.events (person_id, event_type, date_year)
   SELECT id, 'BIRT', 1925 FROM public.persons
@@ -126,6 +132,22 @@ SELECT ok(
   (SELECT breakdown->'meta'->'vetoes' ? 'given_disagree' FROM public.score_pair_impl(
      '1c000000-0000-0000-0000-000000000005', '2d000000-0000-0000-0000-000000000005')),
   'a placeholder shared by both people is not a matching name');
+
+-- Brothers محمد and محمود, each also written in Latin letters. Their consonant
+-- skeletons are equal, so a Latin spelling of one against the Arabic spelling
+-- of the other would pass as a cross-script match.
+SELECT is(
+  (SELECT ARRAY[cardinality(given_norms), cardinality(given_skel_latin)] FROM public.match_features
+    WHERE person_id = '1c000000-0000-0000-0000-000000000006'),
+  ARRAY[1, 0], 'a Latin spelling of the person''s own Arabic name is not kept as another name');
+SELECT is(
+  (SELECT (breakdown->'params'->'given'->>'pts')::int FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000006', '2d000000-0000-0000-0000-000000000006')),
+  0, 'so brothers with different Arabic names, both also written in Latin letters, score no given-name points');
+SELECT ok(
+  (SELECT breakdown->'meta'->'vetoes' ? 'given_disagree' FROM public.score_pair_impl(
+     '1c000000-0000-0000-0000-000000000006', '2d000000-0000-0000-0000-000000000006')),
+  'and are still vetoed (given_disagree)');
 
 -- ── blocking: the name pass sees the alternates ─────────────────────────────
 SELECT public.refresh_match_block_keys(true);

@@ -1,6 +1,6 @@
 -- pgTAP: matching P2 accuracy report (20261125122000_matching_p2_accuracy_report).
 BEGIN;
-SELECT plan(20);
+SELECT plan(21);
 
 -- ── fixtures: an admin, an owner, two trees, six labelled cross-tree pairs ──
 INSERT INTO auth.users (id, email, aud, role) VALUES
@@ -117,6 +117,10 @@ SELECT set_config('request.jwt.claims',
 SELECT throws_ok(
   $$ SELECT * FROM public.match_accuracy_report() $$,
   '42501', 'not_authorized', 'a signed-in user who is not an admin is refused');
+SELECT set_config('request.jwt.claims', '', true);
+SELECT throws_ok(
+  $$ SELECT * FROM public.match_accuracy_report() $$,
+  '42501', 'not_authorized', 'and so is the authenticated role with no user at all');
 
 SELECT set_config('request.jwt.claims',
   '{"sub":"a1000000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);

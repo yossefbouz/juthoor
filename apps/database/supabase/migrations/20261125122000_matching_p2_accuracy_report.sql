@@ -28,9 +28,11 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  -- Signed-in users must be admins. The SQL editor and the service role have
-  -- no auth.uid(); anon has no EXECUTE.
-  IF auth.uid() IS NOT NULL AND NOT public.is_admin() THEN
+  -- A caller coming through the API as a user (role authenticated or anon) must
+  -- be an admin. The SQL editor and the service role are let through. The role
+  -- setting is the caller's: SECURITY DEFINER does not change it.
+  IF NOT public.is_admin()
+     AND COALESCE(current_setting('role', true), '') IN ('authenticated', 'anon') THEN
     RAISE EXCEPTION 'not_authorized' USING ERRCODE = '42501';
   END IF;
 

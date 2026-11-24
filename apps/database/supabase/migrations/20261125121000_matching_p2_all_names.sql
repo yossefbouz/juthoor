@@ -10,6 +10,11 @@
 --     and alternates), built with the P1 rules: placeholders ignored, surname
 --     article stripped, spaces ignored in given names, plus the consonant
 --     skeletons used for the cross-script match.
+--     One exception: a given name typed in Latin letters that is only a second
+--     spelling of one of the person's own Arabic-script given names (same
+--     consonant skeleton) is left out. The Arabic spelling compares reliably;
+--     the Latin copy would only add the lossy comparisons, and brothers called
+--     محمد / Mohammad and محمود / Mahmoud would stop being told apart.
 --  2. score_pair_impl (body of 20261122120000) takes the best match across the
 --     two people's names for the given name and the surname. given_disagree is
 --     raised only when no pair of given names matches.
@@ -54,16 +59,7 @@ LANGUAGE sql
 STABLE
 SET search_path = ''
 AS $$
-  SELECT
-    COALESCE(array_agg(DISTINCT n.gn) FILTER (WHERE n.gn <> ''), '{}'),
-    COALESCE(array_agg(DISTINCT n.gp) FILTER (WHERE n.gp <> ''), '{}'),
-    COALESCE(array_agg(DISTINCT n.sn) FILTER (WHERE n.sn <> ''), '{}'),
-    COALESCE(array_agg(DISTINCT n.sp) FILTER (WHERE n.sp <> ''), '{}'),
-    COALESCE(array_agg(DISTINCT public.mf_name_skeleton(n.gn))
-               FILTER (WHERE n.latin AND char_length(public.mf_name_skeleton(n.gn)) >= 2), '{}'),
-    COALESCE(array_agg(DISTINCT public.mf_name_skeleton(n.gn))
-               FILTER (WHERE NOT n.latin AND char_length(public.mf_name_skeleton(n.gn)) >= 2), '{}')
-  FROM (
+  WITH n AS (
     SELECT
       CASE WHEN public.mf_is_placeholder_name(pn.given_name) THEN NULL
            ELSE replace(public.normalize_arabic(public.transliterate_to_arabic(pn.given_name)), ' ', '')
@@ -80,7 +76,28 @@ AS $$
       COALESCE(pn.given_name ~ '[A-Za-z]', false) AS latin
     FROM public.person_names pn
     WHERE pn.person_id = p_person_id
-  ) n;
+  ),
+  g AS (
+    SELECT n.gn, n.gp, n.latin, public.mf_name_skeleton(n.gn) AS skel
+    FROM n
+    WHERE n.gn <> ''
+  ),
+  -- Given names kept: everything except a Latin-letter name that has the
+  -- skeleton of one of the person's own Arabic-script names.
+  gk AS (
+    SELECT g.gn, g.gp, g.latin, g.skel
+    FROM g
+    WHERE NOT (g.latin AND EXISTS (SELECT 1 FROM g o WHERE NOT o.latin AND o.skel = g.skel))
+  )
+  SELECT
+    COALESCE((SELECT array_agg(DISTINCT gk.gn) FROM gk), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gk.gp) FROM gk WHERE gk.gp <> ''), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT n.sn) FROM n WHERE n.sn <> ''), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT n.sp) FROM n WHERE n.sp <> ''), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gk.skel) FROM gk
+               WHERE gk.latin AND char_length(gk.skel) >= 2), '{}'),
+    COALESCE((SELECT array_agg(DISTINCT gk.skel) FROM gk
+               WHERE NOT gk.latin AND char_length(gk.skel) >= 2), '{}');
 $$;
 
 -- Internal: only refresh_match_features (SECURITY DEFINER) calls it.
@@ -200,6 +217,23 @@ UPDATE public.match_features mf
                n.given_skel_latin, n.given_skel_native
           FROM public.mf_all_names(mf.person_id) n);
 
+-- The names to compare for one field: every name when the feature row has
+-- them, otherwise the single primary value (a row written without the arrays).
+-- Placeholders never count.
+CREATE OR REPLACE FUNCTION public.mf_name_list(p_all text[], p_primary text)
+RETURNS text[]
+LANGUAGE sql
+IMMUTABLE
+SET search_path = ''
+AS $$
+  SELECT public.mf_filter_placeholder_arr(
+    CASE WHEN cardinality(p_all) > 0 THEN p_all ELSE ARRAY[p_primary] END);
+$$;
+
+-- Internal: only score_pair_impl (SECURITY DEFINER) calls it.
+REVOKE ALL ON FUNCTION public.mf_name_list(text[], text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mf_name_list(text[], text) TO service_role;
+
 -- ── 2. score_pair_impl: body of 20261122120000, names compared across all ───
 CREATE OR REPLACE FUNCTION public.score_pair_impl(p_a uuid, p_b uuid)
  RETURNS TABLE(score integer, breakdown jsonb)
@@ -314,17 +348,15 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Every name the person has: the arrays hold the primary and the alternates.
-  -- The scalar (primary) value is added so a feature row written before the
-  -- arrays existed still scores. Placeholders never count.
-  a_given        := public.mf_filter_placeholder_arr(a.given_norms   || a.given_norm);
-  b_given        := public.mf_filter_placeholder_arr(b.given_norms   || b.given_norm);
-  a_given_phon   := public.mf_filter_placeholder_arr(a.given_phons   || a.given_phon);
-  b_given_phon   := public.mf_filter_placeholder_arr(b.given_phons   || b.given_phon);
-  a_surname      := public.mf_filter_placeholder_arr(a.surname_norms || a.surname_norm);
-  b_surname      := public.mf_filter_placeholder_arr(b.surname_norms || b.surname_norm);
-  a_surname_phon := public.mf_filter_placeholder_arr(a.surname_phons || a.surname_phon);
-  b_surname_phon := public.mf_filter_placeholder_arr(b.surname_phons || b.surname_phon);
+  -- Every name the person has (primary and alternates), see mf_name_list.
+  a_given        := public.mf_name_list(a.given_norms,   a.given_norm);
+  b_given        := public.mf_name_list(b.given_norms,   b.given_norm);
+  a_given_phon   := public.mf_name_list(a.given_phons,   a.given_phon);
+  b_given_phon   := public.mf_name_list(b.given_phons,   b.given_phon);
+  a_surname      := public.mf_name_list(a.surname_norms, a.surname_norm);
+  b_surname      := public.mf_name_list(b.surname_norms, b.surname_norm);
+  a_surname_phon := public.mf_name_list(a.surname_phons, a.surname_phon);
+  b_surname_phon := public.mf_name_list(b.surname_phons, b.surname_phon);
   v_given_present := cardinality(a_given) > 0 AND cardinality(b_given) > 0;
 
   -- Best match across the names: literal 4 + phonetic 2.
