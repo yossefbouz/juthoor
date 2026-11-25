@@ -135,7 +135,7 @@ export function Login({
               )}
             </p>
           ) : null}
-          <Tabs defaultValue="password" className="md:min-w-[400px]">
+          <Tabs defaultValue="password" dir={dir} className="md:min-w-[400px]">
             <TabsList
               className={`grid w-full ${hasSocial ? 'grid-cols-3' : 'grid-cols-2'}`}
             >
