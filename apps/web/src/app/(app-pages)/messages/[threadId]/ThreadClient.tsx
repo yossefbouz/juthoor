@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Send } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
+import { CONTEXT_LABEL } from '../MessagesListClient';
 import { sendMessage, type ThreadMessage } from '@/data/user/messages';
 import type { MessageContextType } from '@/types/database';
 
@@ -53,7 +54,11 @@ export function ThreadClient({
         >
           {t('محادثة', 'Thread')}
         </h1>
-        <p className="text-xs text-[var(--jt-stone-500)]">{thread.contextType}</p>
+        <p className="text-xs text-[var(--jt-stone-500)]">
+          {CONTEXT_LABEL[thread.contextType]
+            ? t(CONTEXT_LABEL[thread.contextType].ar, CONTEXT_LABEL[thread.contextType].en)
+            : thread.contextType}
+        </p>
       </header>
 
       <div className="flex min-h-[50vh] flex-1 flex-col rounded-2xl border border-[var(--jt-stone-200)] bg-[var(--card)]">

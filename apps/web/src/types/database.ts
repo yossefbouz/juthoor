@@ -1090,6 +1090,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      resolve_relationship_dispute: {
+        Args: { p_dispute_id: string; p_status: string };
+        Returns: Json;
+      };
       unknown_place_id: { Args: Record<string, never>; Returns: string };
       can_access_tree: { Args: { p_tree_id: string }; Returns: boolean };
       can_write_tree: { Args: { p_tree_id: string }; Returns: boolean };
