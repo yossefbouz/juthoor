@@ -17,6 +17,7 @@ import {
 import { useLocale } from '@/contexts/LocaleContext';
 import { FamilyChart } from '@/components/tree/FamilyChart';
 import { DiscoveryTabs } from '@/components/discovery/DiscoveryTabs';
+import { OnboardingTour } from '@/components/tour/OnboardingTour';
 import type { TreeSnapshot } from '@/lib/tree/types';
 
 export type DashboardData = {
@@ -52,6 +53,8 @@ export type DashboardData = {
   verificationStatus: 'pending' | 'approved' | 'rejected' | null;
   /** Staff shortcut strip on the dashboard (admins + moderators). */
   staff?: { isAdmin: boolean } | null;
+  /** First-run tour state; `done` is the flag from the auth user metadata. */
+  tour?: { userId: string; done: boolean } | null;
 };
 
 const fade = (delay = 0) => ({
@@ -67,6 +70,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
 
   return (
     <div dir={dir} className="relative min-h-full bg-[var(--background)]">
+      {data.tour ? <OnboardingTour userId={data.tour.userId} metadataDone={data.tour.done} /> : null}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-x-0 top-0 h-[400px] bg-[radial-gradient(ellipse_at_top,_var(--jt-olive-100)_0%,_transparent_65%)] opacity-60" />
       </div>

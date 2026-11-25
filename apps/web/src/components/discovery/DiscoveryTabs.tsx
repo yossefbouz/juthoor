@@ -67,7 +67,7 @@ const DIMENSIONS: Dimension[] = [
     ar: 'صور',
     en: 'Pictures',
     hintAr: 'صور العائلات والقرى',
-    hintEn: 'Photos archive',
+    hintEn: 'Picture Archive',
   },
   {
     key: 'documents',

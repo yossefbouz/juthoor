@@ -55,6 +55,12 @@ const FAQ: FaqItem[] = [
     aAr: 'ارفع وثيقة هوية من صفحة التوثيق. يراجعها فريق المنصّة. إذا رُفض الطلب يمكنك تقديم استئناف بسيط من لوحة المستخدم بعد تفعيل مسار الاستئناف.',
     aEn: 'Upload an ID from the verify page. Platform staff review it. If rejected, you can file a simple appeal once the appeals path is enabled on your account.',
   },
+  {
+    qAr: 'كيف أشاهد جولة التعريف بالموقع مرة أخرى؟',
+    qEn: 'How do I see the site tour again?',
+    aAr: 'بعد تسجيل الدخول افتح القائمة تحت اسمك في أسفل الشريط الجانبي واختر «جولة في الموقع».',
+    aEn: 'After you log in, open the menu under your name at the bottom of the sidebar and choose “Take the tour”.',
+  },
 ];
 
 export function FaqClient() {

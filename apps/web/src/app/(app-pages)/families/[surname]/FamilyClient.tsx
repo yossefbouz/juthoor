@@ -100,7 +100,7 @@ export function FamilyClient({
             <header className="mb-4">
               <p className="mb-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--jt-olive-700)]">
                 <ImageIcon className="h-3 w-3" />
-                {t('معرض العائلة', 'Family gallery')}
+                {t('أرشيف صور العائلة', 'Family picture archive')}
               </p>
               <h2
                 className="text-2xl font-bold text-[var(--jt-olive-900)]"

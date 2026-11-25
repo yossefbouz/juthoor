@@ -23,12 +23,14 @@ import {
 import { signOutAction } from '@/data/auth/sign-out';
 import { deleteAccountAction } from '@/data/user/account';
 import { clearClientAuthCaches } from '@/lib/auth/clearClientCaches';
+import { TOUR_REPLAY_HREF } from '@/lib/tour/tourState';
 import { useLocale } from '@/contexts/LocaleContext';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import {
   Bell,
   ChevronUp,
+  Compass,
   Home,
   Inbox,
   LogOut,
@@ -247,6 +249,12 @@ export function AppSidebarContent({
                   <Link href="/dashboard" className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
                     {t('لوحة الجذور', 'Your roots')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={TOUR_REPLAY_HREF} className="flex items-center gap-2">
+                    <Compass className="h-4 w-4" />
+                    {t('جولة في الموقع', 'Take the tour')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut} disabled={isPending}>
