@@ -35,6 +35,8 @@ export type ReviewCard = {
   createdAt: string;
   /** D8: true when a perfect-match identifier hit lacks required UNRWA evidence. */
   perfectMatchBlocked: boolean;
+  /** Pending and scoring below app_settings.review_score_floor: cannot be sent to owners. */
+  belowFloor: boolean;
 };
 
 // ── breakdown → per-field agree/disagree/missing (mirrors SQL match_field_agreement) ──
@@ -110,6 +112,8 @@ type PersonRow = {
 
 /**
  * Pending + deferred matches, highest score first, as masked review cards.
+ * Pending pairs scoring below the review floor are left out; `hidden: true`
+ * lists only those instead.
  * Admin-only (RLS admits an admin to read `matches`/`persons` across trees).
  * `score_breakdown` carries no raw counterparty values — only points/state — so
  * the per-field chips reveal agreement, never the other tree's data.
@@ -117,18 +121,19 @@ type PersonRow = {
 export async function listReviewQueue(input?: {
   limit?: number;
   offset?: number;
+  hidden?: boolean;
 }): Promise<ReviewCard[]> {
   await requireAdmin();
   const limit = Math.min(Math.max(input?.limit ?? 25, 1), 100);
   const offset = Math.max(input?.offset ?? 0, 0);
+  const hidden = input?.hidden ?? false;
   const supabase = await createJuthoorSupabaseClient();
 
-  const { data: matchData, error } = await supabase
-    .from('matches')
-    .select('id, person_a_id, person_b_id, confidence_score, status, score_breakdown, created_at')
-    .in('status', ['pending', 'deferred'])
-    .order('confidence_score', { ascending: false })
-    .range(offset, offset + limit - 1);
+  const { data: matchData, error } = await supabase.rpc('admin_review_queue', {
+    p_hidden: hidden,
+    p_limit: limit,
+    p_offset: offset,
+  });
   if (error) throw new Error(`Failed to load review queue: ${error.message}`);
   const matches = (matchData ?? []) as MatchRow[];
   if (matches.length === 0) return [];
@@ -177,8 +182,19 @@ export async function listReviewQueue(input?: {
       fields: deriveFields(bd),
       createdAt: m.created_at,
       perfectMatchBlocked: Boolean(bd.meta?.perfect_match) && !isPerfectMatchEligible(bd),
+      belowFloor: hidden,
     };
   });
+}
+
+/** How many pending pairs the review floor hides, and the floor itself. */
+export async function getHiddenReviewCount(): Promise<{ count: number; floor: number | null }> {
+  await requireAdmin();
+  const supabase = await createJuthoorSupabaseClient();
+  const { data, error } = await supabase.rpc('admin_review_hidden_count');
+  if (error) throw new Error(`Failed to count hidden pairs: ${error.message}`);
+  const row = (data ?? [])[0];
+  return { count: row?.hidden_count ?? 0, floor: row?.review_score_floor ?? null };
 }
 
 // ── live re-derive a single card via score_pair (features may have changed) ──

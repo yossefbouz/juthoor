@@ -1309,6 +1309,22 @@ export type Database = {
         Args: { p_match_id: string; p_decision: string; p_note?: string | null };
         Returns: undefined;
       };
+      admin_review_queue: {
+        Args: { p_hidden?: boolean; p_limit?: number; p_offset?: number };
+        Returns: {
+          id: string;
+          person_a_id: string;
+          person_b_id: string;
+          confidence_score: number;
+          status: MatchStatus;
+          score_breakdown: Json | null;
+          created_at: string;
+        }[];
+      };
+      admin_review_hidden_count: {
+        Args: Record<string, never>;
+        Returns: { hidden_count: number; review_score_floor: number | null }[];
+      };
       resolve_match_hint: {
         Args: { p_hint_id: string; p_accept: boolean };
         Returns: undefined;
