@@ -68,7 +68,10 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning className={`${inter.variable} ${robotoMono.variable}`}>
-      <head />
+      <head>
+        {/* The site has its own dark mode; this asks the Dark Reader extension not to recolour it. */}
+        <meta name="darkreader-lock" />
+      </head>
       <body>
         <DynamicLayoutProviders>
           <ClientLayout>
