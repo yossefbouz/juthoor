@@ -68,6 +68,7 @@ export const Email = ({
               autoComplete={'email'}
               placeholder="placeholder@email.com"
               required
+              className="h-11 rounded-none border-black/20 bg-white shadow-none focus-visible:border-[#0a0a0a] focus-visible:ring-0"
             />
           </div>
         </div>
@@ -76,7 +77,7 @@ export const Email = ({
             <div className="text-sm">
               <Link
                 href="/login"
-                className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500"
+                className="font-medium text-[var(--jt-stone-600)] underline-offset-4 hover:text-[#0a0a0a] hover:underline"
               >
                 {t('تسجيل الدخول بدلًا من ذلك؟', 'Log in instead?')}
               </Link>
@@ -84,7 +85,7 @@ export const Email = ({
           ) : null}
         </div>
         <div>
-          <Button className="w-full" type="submit">
+          <Button className="jt-btn-shine h-11 w-full rounded-none bg-[var(--jt-gold-500)] text-[14px] font-medium text-[#0a0a0a] shadow-none hover:bg-[var(--jt-gold-400)]" type="submit">
             {buttonLabelText}
           </Button>
         </div>

@@ -3,13 +3,6 @@ import { LoginOtpTab } from '@/components/Auth/LoginOtpTab';
 import { EmailAndPassword } from '@/components/Auth/EmailAndPassword';
 import { RedirectingPleaseWaitCard } from '@/components/Auth/RedirectingPleaseWaitCard';
 import { RenderProviders } from '@/components/Auth/RenderProviders';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   signInWithPasswordAction,
@@ -20,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { headingFont } from '@/components/home/homeContent';
 import { useLocale } from '@/contexts/LocaleContext';
 import { localizeAuthMessage } from '@/lib/auth/authErrors';
 import { OTP_LENGTH } from '@/lib/auth/otpConfig';
@@ -116,26 +110,38 @@ export function Login({
 
   if (!mounted) {
     return (
-      <div
-        className="container max-w-lg mx-auto min-h-[470px]"
-        aria-busy="true"
-      />
+      <div className="mx-auto min-h-[520px] w-full max-w-md" aria-busy="true" />
     );
   }
 
+  const isAR = locale === 'ar';
+  // Letter-spacing pulls joined Arabic letters apart, so only Latin text is tracked.
+  const eyebrow = isAR ? 'text-[13px]' : 'text-[11px] uppercase tracking-[0.24em]';
+  const tabTrigger =
+    '-mb-px rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 font-medium text-[var(--jt-stone-500)] shadow-none transition-colors hover:text-[#0a0a0a] data-[state=active]:border-[#0a0a0a] data-[state=active]:bg-transparent data-[state=active]:text-[#0a0a0a] data-[state=active]:shadow-none ' +
+    (isAR ? 'text-[14px]' : 'text-[12px] uppercase tracking-[0.18em]');
+  const tabHint = 'mb-5 text-[14px] leading-relaxed text-[var(--jt-stone-600)]';
+
   return (
-    <div dir={dir} className="container items-center text-start max-w-lg mx-auto overflow-auto min-h-[470px]">
+    <div dir={dir} className="mx-auto w-full max-w-md text-start">
       {redirectInProgress ? (
         <RedirectingPleaseWaitCard
           message={t('انتظر بينما نحوّلك إلى لوحة التحكم.', 'Please wait while we redirect you to your dashboard.')}
           heading={t('جارٍ التحويل إلى لوحة التحكم', 'Redirecting to Dashboard')}
         />
       ) : (
-        <div className="space-y-8 bg-background p-6 rounded-lg shadow-sm dark:border">
+        <div className="min-h-[520px] border border-black/10 bg-white p-7 shadow-[0_12px_40px_-18px_rgba(0,0,0,0.35)] sm:p-9">
+          <p className={`${eyebrow} font-medium text-[var(--jt-gold-600)]`}>{t('أهلًا بعودتك', 'Welcome back')}</p>
+          <h1
+            className="mt-3 text-[1.75rem] font-medium leading-tight text-[#0a0a0a]"
+            style={{ fontFamily: headingFont(isAR) }}
+          >
+            {t('تسجيل الدخول إلى جذور', 'Sign in to Juthoor')}
+          </h1>
           {closed ? (
             <p
               role="status"
-              className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+              className="mt-5 border border-black/15 bg-[var(--jt-stone-50)] px-3 py-2 text-sm text-[var(--jt-stone-700)]"
             >
               {t(
                 'تم إغلاق حسابك. بيانات العائلة محفوظة في الأرشيف، ولا يمكن تسجيل الدخول بهذا الحساب مرة أخرى.',
@@ -143,75 +149,50 @@ export function Login({
               )}
             </p>
           ) : null}
-          <Tabs defaultValue="password" dir={dir} className="md:min-w-[400px]">
+          <Tabs defaultValue="password" dir={dir} className="mt-6">
             <TabsList
-              className={`grid w-full ${hasSocial ? 'grid-cols-3' : 'grid-cols-2'}`}
+              className={`grid h-auto w-full rounded-none border-b border-black/15 bg-transparent p-0 ${hasSocial ? 'grid-cols-3' : 'grid-cols-2'}`}
             >
-              <TabsTrigger value="password">{t('كلمة السر', 'Password')}</TabsTrigger>
-              <TabsTrigger value="otp">{t('رمز التحقق', 'OTP Code')}</TabsTrigger>
+              <TabsTrigger value="password" className={tabTrigger}>{t('كلمة السر', 'Password')}</TabsTrigger>
+              <TabsTrigger value="otp" className={tabTrigger}>{t('رمز التحقق', 'Email code')}</TabsTrigger>
               {hasSocial ? (
-                <TabsTrigger value="social-login">{t('التواصل الاجتماعي', 'Social')}</TabsTrigger>
+                <TabsTrigger value="social-login" className={tabTrigger}>{t('التواصل الاجتماعي', 'Social')}</TabsTrigger>
               ) : null}
             </TabsList>
-            <TabsContent value="otp">
-              <Card className="border-none shadow-none">
-                <CardHeader className="py-6 px-0">
-                  <CardTitle>{t('تسجيل الدخول إلى جذور', 'Sign in to Juthoor')}</CardTitle>
-                  <CardDescription>
-                    {t(
-                      `سنرسل رمزًا من ${OTP_LENGTH} أرقام إلى بريدك.`,
-                      `We'll email you an ${OTP_LENGTH}-digit code.`,
-                    )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 p-0">
-                  <LoginOtpTab next={next} />
-                </CardContent>
-              </Card>
+            <TabsContent value="otp" className="mt-6">
+              <p className={tabHint}>
+                {t(
+                  `سنرسل رمزًا من ${OTP_LENGTH} أرقام إلى بريدك.`,
+                  `We'll email you an ${OTP_LENGTH}-digit code.`,
+                )}
+              </p>
+              <LoginOtpTab next={next} />
             </TabsContent>
-            <TabsContent value="password">
-              <Card className="border-none shadow-none">
-                <CardHeader className="py-6 px-0">
-                  <CardTitle>{t('تسجيل الدخول إلى جذور', 'Sign in to Juthoor')}</CardTitle>
-                  <CardDescription>
-                    {t('ادخل بحسابك الذي أنشأته لجذور.', 'Login with your Juthoor account.')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 p-0">
-                  <EmailAndPassword
-                    isLoading={passwordStatus === 'executing'}
-                    onSubmit={(data) => {
-                      executePassword({
-                        email: data.email,
-                        password: data.password,
-                      });
-                    }}
-                    view="sign-in"
-                  />
-                </CardContent>
-              </Card>
+            <TabsContent value="password" className="mt-6">
+              <p className={tabHint}>{t('ادخل بحسابك الذي أنشأته لجذور.', 'Login with your Juthoor account.')}</p>
+              <EmailAndPassword
+                isLoading={passwordStatus === 'executing'}
+                onSubmit={(data) => {
+                  executePassword({
+                    email: data.email,
+                    password: data.password,
+                  });
+                }}
+                view="sign-in"
+              />
             </TabsContent>
 
             {/* magic-link tab removed — replaced by the OTP tab above */}
             {hasSocial ? (
-              <TabsContent value="social-login">
-                <Card className="border-none shadow-none">
-                  <CardHeader className="py-6 px-0">
-                    <CardTitle>{t('تسجيل الدخول إلى جذور', 'Sign in to Juthoor')}</CardTitle>
-                    <CardDescription>
-                      {t('ادخل عبر أحد حساباتك التالية.', 'Sign in with one of these accounts.')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2 p-0">
-                    <RenderProviders
-                      providers={providers}
-                      isLoading={providerStatus === 'executing'}
-                      onProviderLoginRequested={(provider) =>
-                        executeProvider({ provider, next })
-                      }
-                    />
-                  </CardContent>
-                </Card>
+              <TabsContent value="social-login" className="mt-6">
+                <p className={tabHint}>{t('ادخل عبر أحد حساباتك التالية.', 'Sign in with one of these accounts.')}</p>
+                <RenderProviders
+                  providers={providers}
+                  isLoading={providerStatus === 'executing'}
+                  onProviderLoginRequested={(provider) =>
+                    executeProvider({ provider, next })
+                  }
+                />
               </TabsContent>
             ) : null}
           </Tabs>

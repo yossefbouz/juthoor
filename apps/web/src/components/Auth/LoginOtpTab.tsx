@@ -11,14 +11,19 @@ import { Label } from '@/components/ui/label';
 import { OtpCodeInput } from '@/components/Auth/OtpCodeInput';
 import { useLocale } from '@/contexts/LocaleContext';
 import { requestEmailOtpAction, verifyEmailOtpAction } from '@/data/auth/auth';
+import { localizeAuthMessage } from '@/lib/auth/authErrors';
 import { OTP_LENGTH, isValidOtp } from '@/lib/auth/otpConfig';
+
+// Same gold action button as the password tab and the public pages.
+const SUBMIT =
+  'jt-btn-shine h-11 w-full rounded-none bg-[var(--jt-gold-500)] text-[14px] font-medium text-[#0a0a0a] shadow-none hover:bg-[var(--jt-gold-400)]';
 
 /**
  * Inline OTP login flow for the /login Tabs panel. Sends a 6–8 digit code
  * (length per env) on submit, then verifies. Replaces the magic-link tab.
  */
 export function LoginOtpTab({ next }: { next?: string }) {
-  const { t, dir } = useLocale();
+  const { t, dir, locale } = useLocale();
   const router = useRouter();
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
@@ -32,7 +37,7 @@ export function LoginOtpTab({ next }: { next?: string }) {
     setBusy(true);
     try {
       const r = await requestEmailOtpAction({ email: email.trim(), mode: 'login' });
-      if (r?.serverError) throw new Error(r.serverError);
+      if (r?.serverError) throw new Error(localizeAuthMessage(r.serverError, locale));
       if (r?.validationErrors) {
         throw new Error(t('البريد الإلكتروني غير صالح', 'Enter a valid email address.'));
       }
@@ -89,7 +94,7 @@ export function LoginOtpTab({ next }: { next?: string }) {
             className="space-y-3"
           >
             <div className="space-y-1.5">
-              <Label htmlFor="otp-email">{t('البريد الإلكتروني', 'Email address')}</Label>
+              <Label htmlFor="otp-email" className="text-[13px] font-medium text-[var(--jt-stone-800)]">{t('البريد الإلكتروني', 'Email address')}</Label>
               <Input
                 id="otp-email"
                 type="email"
@@ -98,15 +103,16 @@ export function LoginOtpTab({ next }: { next?: string }) {
                 placeholder="you@example.com"
                 autoComplete="email"
                 required
+                className="h-11 rounded-none border-black/20 bg-white shadow-none focus-visible:border-[#0a0a0a] focus-visible:ring-0"
               />
             </div>
             {error && (
-              <div className="rounded-xl bg-[var(--jt-terra-50)] p-3 text-sm text-[var(--jt-terra-700)]">{error}</div>
+              <div role="alert" className="border border-[var(--jt-terra-200)] bg-[var(--jt-terra-50)] p-3 text-sm text-[var(--jt-terra-700)]">{error}</div>
             )}
             <Button
               type="submit"
               disabled={busy || !email.trim()}
-              className="w-full bg-[var(--jt-olive-700)] hover:bg-[var(--jt-olive-800)]"
+              className={SUBMIT}
             >
               {busy ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <Mail className="me-2 h-4 w-4" />}
               {t('أرسل الرمز', `Send ${OTP_LENGTH}-digit code`)}
@@ -126,13 +132,13 @@ export function LoginOtpTab({ next }: { next?: string }) {
             </p>
             <OtpCodeInput value={code} onChange={setCode} onComplete={verify} length={OTP_LENGTH} disabled={busy} />
             {error && (
-              <div className="rounded-xl bg-[var(--jt-terra-50)] p-3 text-center text-sm text-[var(--jt-terra-700)]">{error}</div>
+              <div role="alert" className="border border-[var(--jt-terra-200)] bg-[var(--jt-terra-50)] p-3 text-center text-sm text-[var(--jt-terra-700)]">{error}</div>
             )}
             <Button
               type="button"
               onClick={() => verify(code)}
               disabled={busy || !isValidOtp(code)}
-              className="w-full bg-[var(--jt-olive-700)] hover:bg-[var(--jt-olive-800)]"
+              className={SUBMIT}
             >
               {busy ? <Loader2 className="me-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="me-2 h-4 w-4" />}
               {t('تحقّق وادخل', 'Verify & sign in')}
