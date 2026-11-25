@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useLocale } from '@/contexts/LocaleContext';
+import { localizeAuthMessage } from '@/lib/auth/authErrors';
 import { OTP_LENGTH } from '@/lib/auth/otpConfig';
 import type { SocialProvider } from '@/lib/auth/socialProviders';
 
@@ -36,10 +37,16 @@ export function Login({
   /** Social providers enabled on the Supabase project; none hides the tab. */
   providers: SocialProvider[];
 }) {
-  const { t, dir } = useLocale();
+  const { t, dir, locale } = useLocale();
   const hasSocial = providers.length > 0;
   const [redirectInProgress, setRedirectInProgress] = useState(false);
   const toastRef = useRef<string | number | undefined>(undefined);
+  // useAction keeps the callbacks from the first render, when the language is
+  // still the default; read the current one through a ref.
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
 
   // Render the form client-side only. Form-filler browser extensions
   // stamp attributes (fdprocessedid) onto SSR'd inputs before React
@@ -74,8 +81,9 @@ export function Login({
         setRedirectInProgress(true);
       },
       onError: ({ error }) => {
-        const errorMessage =
-          error.serverError ?? t('فشل تسجيل الدخول', 'Failed to login');
+        const errorMessage = error.serverError
+          ? localizeAuthMessage(error.serverError, localeRef.current)
+          : t('فشل تسجيل الدخول', 'Failed to login');
         toast.error(errorMessage, {
           id: toastRef.current,
         });

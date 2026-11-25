@@ -18,7 +18,10 @@
    Palestinian Roots Platform
    ═══════════════════════════════════════════════════ */
 
-:root {
+/* .force-light re-applies the light values inside a dark page: used for the
+   public marketing pages and for bands designed as dark-with-white-text. */
+:root,
+.force-light {
   /* ── Primitive color palette ── */
   --jt-olive-50:  #F0F5EE;
   --jt-olive-100: #D8E8D2;
@@ -136,6 +139,53 @@
 }
 
 .dark {
+  /* Pages colour themselves with the --jt-* palette directly, so the scales
+     are mirrored here: 50 <-> 900, 100 <-> 800, ... Light tints become dark
+     surfaces and dark inks become light text. */
+  --jt-olive-50:  #0A1F0B;
+  --jt-olive-100: #133315;
+  --jt-olive-200: #1E4A1F;
+  --jt-olive-300: #2C5F2E;
+  --jt-olive-400: #3E7030;
+  --jt-olive-500: #5B8E4A;
+  --jt-olive-600: #82AE78;
+  --jt-olive-700: #B0CEAA;
+  --jt-olive-800: #D8E8D2;
+  --jt-olive-900: #F0F5EE;
+
+  --jt-gold-50:  #1F1702;
+  --jt-gold-100: #3E2E04;
+  --jt-gold-200: #664C08;
+  --jt-gold-300: #8F6A0D;
+  --jt-gold-400: #B88A14;
+  --jt-gold-500: #D4A31E;
+  --jt-gold-600: #E8BD47;
+  --jt-gold-700: #F2D88A;
+  --jt-gold-800: #F9EECA;
+  --jt-gold-900: #FDF9EC;
+
+  --jt-terra-50:  #1A0A02;
+  --jt-terra-100: #361606;
+  --jt-terra-200: #57250C;
+  --jt-terra-300: #7A3614;
+  --jt-terra-400: #A04A1E;
+  --jt-terra-500: #C4622D;
+  --jt-terra-600: #D97F50;
+  --jt-terra-700: #EAB090;
+  --jt-terra-800: #F5D9CC;
+  --jt-terra-900: #FCF3EE;
+
+  --jt-stone-50:  #16110C;
+  --jt-stone-100: #2B241A;
+  --jt-stone-200: #43392C;
+  --jt-stone-300: #5E5341;
+  --jt-stone-400: #7D7059;
+  --jt-stone-500: #9B8D73;
+  --jt-stone-600: #B8AD96;
+  --jt-stone-700: #D5CFBF;
+  --jt-stone-800: #EDE9E2;
+  --jt-stone-900: #F9F7F4;
+
   --background:            #0D1A0C;
   --foreground:            #EDE9E0;
   --card:                  #152113;
@@ -269,7 +319,7 @@
 
 @import './utils.css';
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *):not(.force-light):not(.force-light *));
 
 @keyframes animate-marquee {
   0%   { transform: translateX(0); }

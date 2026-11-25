@@ -38,7 +38,7 @@ export default function NotFound() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/"
-            className="jt-btn-shine inline-flex items-center gap-2 rounded-lg bg-[var(--jt-olive-700)] px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_var(--jt-olive-700)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--jt-olive-800)]"
+            className="jt-btn-shine inline-flex items-center gap-2 rounded-lg bg-[var(--jt-olive-700)] px-6 py-3 text-sm font-semibold text-white dark:text-[var(--jt-stone-50)] shadow-[0_10px_24px_-10px_var(--jt-olive-700)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[var(--jt-olive-800)]"
           >
             <span dir="rtl" lang="ar">الصفحة الرئيسية</span>
             <span aria-hidden>·</span>

@@ -74,3 +74,13 @@ export function friendlyAuthError(raw: unknown): string {
 
   return GENERIC_AUTH_ERROR;
 }
+
+/**
+ * The messages above are written as "Arabic · English". Return only the half
+ * for the active language; anything not in that shape is returned unchanged.
+ */
+export function localizeAuthMessage(message: string, locale: 'ar' | 'en'): string {
+  const parts = message.split(' · ');
+  if (parts.length !== 2) return message;
+  return locale === 'ar' ? parts[0] : parts[1];
+}

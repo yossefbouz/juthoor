@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GENERIC_AUTH_ERROR, friendlyAuthError } from '../authErrors';
+import {
+  GENERIC_AUTH_ERROR,
+  friendlyAuthError,
+  localizeAuthMessage,
+} from '../authErrors';
 
 describe('friendlyAuthError', () => {
   it('maps expired/invalid OTP tokens to a specific friendly message', () => {
@@ -68,5 +72,17 @@ describe('friendlyAuthError', () => {
   it('handles non-Error inputs safely', () => {
     expect(friendlyAuthError(null)).toBe(GENERIC_AUTH_ERROR);
     expect(friendlyAuthError(undefined)).toBe(GENERIC_AUTH_ERROR);
+  });
+});
+
+describe('localizeAuthMessage', () => {
+  it('returns only the half for the active language', () => {
+    const message = friendlyAuthError(new Error('Invalid login credentials'));
+    expect(localizeAuthMessage(message, 'en')).toBe('Incorrect email or password.');
+    expect(localizeAuthMessage(message, 'ar')).toBe('البريد أو كلمة المرور غير صحيحة');
+  });
+
+  it('leaves a message without the separator unchanged', () => {
+    expect(localizeAuthMessage('Failed to login', 'ar')).toBe('Failed to login');
   });
 });

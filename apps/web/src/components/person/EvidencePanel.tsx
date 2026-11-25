@@ -176,7 +176,7 @@ export function EvidencePanel({
                         </span>
                       )}
                       {p.year && (
-                        <span className="absolute bottom-1 start-1 rounded-full bg-[var(--jt-stone-900)]/60 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        <span className="absolute bottom-1 start-1 rounded-full bg-[var(--jt-stone-900)]/60 px-2 py-0.5 text-[10px] font-semibold text-white dark:text-[var(--jt-stone-50)]">
                           {p.year}
                         </span>
                       )}

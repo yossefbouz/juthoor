@@ -144,7 +144,7 @@ function RelayList({
                         type="button"
                         disabled={isBusy}
                         onClick={() => onRespond(r, 'accepted')}
-                        className="inline-flex items-center gap-1 rounded-full bg-[var(--jt-olive-700)] px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-full bg-[var(--jt-olive-700)] px-2.5 py-1 text-[11px] font-semibold text-white dark:text-[var(--jt-stone-50)] disabled:opacity-50"
                       >
                         {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                         {t('قبول', 'Accept')}

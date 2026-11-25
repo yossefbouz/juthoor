@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { ModeToggle } from '@/components/ui/mode-toggle';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { CardNav, type CardNavItem } from '@/components/reactbits/CardNav';
 import { NAV_ITEMS } from '@/app/nav-items';
@@ -83,7 +82,6 @@ export default function Navbar() {
       actions={
         <>
           <LocaleToggle />
-          <ModeToggle />
           <Link
             href="/login"
             className="jt-btn-shine hidden h-10 shrink-0 items-center bg-[var(--jt-gold-500)] px-4 text-[13px] font-medium text-[#0a0a0a] transition-colors hover:bg-[var(--jt-gold-400)] sm:inline-flex"

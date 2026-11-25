@@ -115,7 +115,7 @@ export function VillageDetailClient({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="relative overflow-hidden rounded-2xl bg-[var(--jt-olive-700)] p-6 md:p-7"
+          className="force-light relative overflow-hidden rounded-2xl bg-[var(--jt-olive-700)] p-6 md:p-7"
         >
           {isDepopulated && (
             <span className="absolute end-4 top-4 rounded-full bg-[var(--jt-terra-500)] px-3 py-1 text-[10px] font-semibold text-white">

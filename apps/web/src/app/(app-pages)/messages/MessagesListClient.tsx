@@ -51,7 +51,7 @@ export function MessagesListClient({ threads }: { threads: MessageThreadSummary[
               <li key={th.id}>
                 <Link
                   href={`/messages/${th.id}`}
-                  className="block rounded-2xl border border-[var(--jt-olive-200)]/60 bg-white/90 p-4 shadow-sm transition hover:border-[var(--jt-olive-400)]"
+                  className="block rounded-2xl border border-[var(--jt-olive-200)]/60 bg-card/90 p-4 shadow-sm transition hover:border-[var(--jt-olive-400)]"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-semibold text-[var(--jt-olive-900)]">

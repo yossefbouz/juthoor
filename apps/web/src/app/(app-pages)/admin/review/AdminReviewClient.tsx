@@ -185,7 +185,7 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
             return (
               <li
                 key={card.matchId}
-                className="rounded-2xl border border-[var(--jt-olive-200)]/60 bg-white/90 p-4 shadow-sm md:p-5"
+                className="rounded-2xl border border-[var(--jt-olive-200)]/60 bg-card/90 p-4 shadow-sm md:p-5"
               >
                 {/* header: the two people + score */}
                 <div className="flex flex-wrap items-center gap-3">
@@ -253,7 +253,7 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                       setNotes((n) => ({ ...n, [card.matchId]: e.target.value }))
                     }
                     placeholder={t('ملاحظة للسجل (اختياري)', 'Note for the log (optional)')}
-                    className="min-w-0 flex-1 rounded-lg border border-[var(--jt-stone-200)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]"
+                    className="min-w-0 flex-1 rounded-lg border border-[var(--jt-stone-200)] bg-card px-3 py-2 text-sm outline-none focus:border-[var(--jt-olive-400)]"
                   />
                   <div className="flex shrink-0 items-center gap-2">
                     <button
@@ -270,7 +270,7 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                       type="button"
                       disabled={busy}
                       onClick={() => decide(card.matchId, 'reject')}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40 disabled:opacity-50"
                     >
                       <X className="h-3.5 w-3.5" />
                       {t('رفض', 'Reject')}
@@ -287,7 +287,7 @@ export function AdminReviewClient({ initialCards }: { initialCards: ReviewCard[]
                       type="button"
                       disabled={busy}
                       onClick={() => decide(card.matchId, 'approve')}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--jt-olive-600)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--jt-olive-700)] disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--jt-olive-600)] px-3 py-2 text-xs font-semibold text-white dark:text-[var(--jt-stone-50)] transition hover:bg-[var(--jt-olive-700)] disabled:opacity-50"
                     >
                       {busy ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
