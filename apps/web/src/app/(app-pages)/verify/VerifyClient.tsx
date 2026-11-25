@@ -339,7 +339,7 @@ export function VerifyClient({
               type="button"
               onClick={handleSubmit}
               disabled={busy || !idFile}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--jt-terra-600)] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[var(--jt-terra-700)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--jt-terra-600)] px-6 py-3 text-sm font-semibold text-white dark:text-[var(--jt-stone-50)] transition-all hover:bg-[var(--jt-terra-700)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               {t('إرسال للمراجعة', 'Submit for review')}
@@ -380,7 +380,7 @@ function Stepper({ active }: { active: number }) {
                   (done
                     ? 'border-[var(--jt-olive-600)] bg-[var(--jt-olive-100)] text-[var(--jt-olive-700)]'
                     : isActive
-                      ? 'border-[var(--jt-olive-600)] bg-[var(--jt-olive-600)] text-white'
+                      ? 'border-[var(--jt-olive-600)] bg-[var(--jt-olive-600)] text-white dark:text-[var(--jt-stone-50)]'
                       : 'border-[var(--jt-stone-300)] bg-[var(--card)] text-[var(--jt-stone-400)]')
                 }
               >
@@ -485,7 +485,7 @@ function StatusCard({
             {body}
           </p>
           {note && (
-            <p className="mt-2 rounded-lg bg-white/50 p-2 text-xs text-[var(--jt-stone-700)]">{note}</p>
+            <p className="mt-2 rounded-lg bg-card/50 p-2 text-xs text-[var(--jt-stone-700)]">{note}</p>
           )}
         </div>
       </div>

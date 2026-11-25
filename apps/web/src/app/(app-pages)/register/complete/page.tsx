@@ -73,7 +73,7 @@ export default async function RegisterCompletePage() {
         </Link>
         <Link
           href="/dashboard"
-          className="rounded-full bg-[var(--jt-olive-700)] px-4 py-2 font-medium text-white hover:bg-[var(--jt-olive-800)]"
+          className="rounded-full bg-[var(--jt-olive-700)] px-4 py-2 font-medium text-white dark:text-[var(--jt-stone-50)] hover:bg-[var(--jt-olive-800)]"
         >
           متابعة إلى لوحة التحكم / Continue to dashboard
         </Link>

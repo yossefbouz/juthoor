@@ -135,7 +135,7 @@ export function ConnectionsClient({
             return (
               <li
                 key={card.hintId}
-                className="rounded-2xl border border-[var(--jt-olive-200)]/60 bg-white/90 p-4 shadow-sm md:p-5"
+                className="rounded-2xl border border-[var(--jt-olive-200)]/60 bg-card/90 p-4 shadow-sm md:p-5"
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="min-w-0 flex-1">
@@ -206,7 +206,7 @@ export function ConnectionsClient({
                         onClick={() =>
                           act(card.hintId, () => revokeAutoLink({ matchId: card.matchId }), true)
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40 disabled:opacity-50"
                       >
                         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
                         {t('إلغاء الربط', 'Revoke link')}
@@ -220,7 +220,7 @@ export function ConnectionsClient({
                         onClick={() =>
                           act(card.hintId, () => declineConnection({ hintId: card.hintId }), true)
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40 disabled:opacity-50"
                       >
                         <X className="h-3.5 w-3.5" />
                         {t('ليس نفس الشخص', 'Not the same')}
@@ -239,7 +239,7 @@ export function ConnectionsClient({
                             'accepted',
                           )
                         }
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--jt-olive-600)] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[var(--jt-olive-700)] disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--jt-olive-600)] px-3 py-2 text-xs font-semibold text-white dark:text-[var(--jt-stone-50)] transition hover:bg-[var(--jt-olive-700)] disabled:opacity-50"
                       >
                         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                         {t('نعم، نفس الشخص', 'Yes, same person')}
