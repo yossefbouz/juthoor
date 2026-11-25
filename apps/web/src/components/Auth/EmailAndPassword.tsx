@@ -12,6 +12,12 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { ComponentProps } from 'react';
 
+// Square, paper-and-ink fields and the gold action button of the public pages.
+const FIELD =
+  'h-11 rounded-none border-black/20 bg-white shadow-none has-[[data-slot=input-group-control]:focus-visible]:border-[#0a0a0a] has-[[data-slot=input-group-control]:focus-visible]:ring-0';
+const SUBMIT =
+  'jt-btn-shine h-11 w-full rounded-none bg-[var(--jt-gold-500)] text-[14px] font-medium text-[#0a0a0a] shadow-none hover:bg-[var(--jt-gold-400)]';
+
 export const EmailAndPassword = ({
   onSubmit,
   view,
@@ -38,11 +44,11 @@ export const EmailAndPassword = ({
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor="email" className="text-foreground">
+          <Label htmlFor={`${view}-email`} className="text-[13px] font-medium text-[var(--jt-stone-800)]">
             {t('البريد الإلكتروني', 'Email address')}
           </Label>
           <div className="mt-1">
-            <InputGroup>
+            <InputGroup className={FIELD}>
               <InputGroupAddon>
                 <Mail className="h-4 w-4" />
               </InputGroupAddon>
@@ -62,11 +68,11 @@ export const EmailAndPassword = ({
           </div>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="password" className="text-foreground">
+          <Label htmlFor={`${view}-password`} className="text-[13px] font-medium text-[var(--jt-stone-800)]">
             {t('كلمة السر', 'Password')}
           </Label>
           <div className="mt-1">
-            <InputGroup>
+            <InputGroup className={FIELD}>
               <InputGroupAddon>
                 <Lock className="h-4 w-4" />
               </InputGroupAddon>
@@ -92,15 +98,15 @@ export const EmailAndPassword = ({
             <div className="text-sm">
               <Link
                 href="/forgot-password"
-                className="font-medium text-muted-foreground dark:hover:text-gray-600 hover:text-foreground"
+                className="font-medium text-[var(--jt-stone-600)] underline-offset-4 hover:text-[#0a0a0a] hover:underline"
               >
                 {t('نسيت كلمة السر؟', 'Forgot your password?')}
               </Link>
             </div>
           ) : null}
         </div>
-        <div className="space-y-2">
-          <Button disabled={isLoading} type="submit" className="w-full">
+        <div className="space-y-4">
+          <Button disabled={isLoading} type="submit" className={SUBMIT}>
             {isLoading ? (
               <>
                 <Spinner className="h-4 w-4 me-2" />
@@ -115,7 +121,7 @@ export const EmailAndPassword = ({
               <div className="text-sm">
                 <Link
                   href="/sign-up"
-                  className="font-medium text-muted-foreground hover:text-foreground"
+                  className="font-medium text-[var(--jt-stone-600)] underline-offset-4 hover:text-[#0a0a0a] hover:underline"
                 >
                   {t('ليس لديك حساب؟ أنشئ واحدًا', "Don't have an account? Sign up")}
                 </Link>
@@ -124,7 +130,7 @@ export const EmailAndPassword = ({
               <div className="text-sm">
                 <Link
                   href="/login"
-                  className="font-medium text-muted-foreground hover:text-foreground"
+                  className="font-medium text-[var(--jt-stone-600)] underline-offset-4 hover:text-[#0a0a0a] hover:underline"
                 >
                   {t('لديك حساب؟ سجّل الدخول', 'Already have an account? Log in')}
                 </Link>

@@ -55,10 +55,10 @@ export function ForgotPassword(): JSX.Element {
           resetSuccessMessage={setSuccessMessage}
         />
       ) : (
-        <Card className="container h-full grid items-center text-start max-w-lg mx-auto overflow-auto">
+        <Card className="mx-auto w-full max-w-md rounded-none border border-black/10 bg-white p-7 text-start shadow-[0_12px_40px_-18px_rgba(0,0,0,0.35)] sm:p-9">
           <div className="space-y-4">
             <T.H4>{t('نسيت كلمة السر', 'Forgot Password')}</T.H4>
-            <T.P className="text-muted-foreground">
+            <T.P className="text-[14px] leading-relaxed text-[var(--jt-stone-600)]">
               {t(
                 'أدخل بريدك الإلكتروني لنرسل لك رابطًا لإعادة تعيين كلمة السر.',
                 'Enter your email to receive a Magic Link to reset your password.'
