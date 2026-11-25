@@ -5,7 +5,7 @@ import { MessageSquare } from 'lucide-react';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageThreadSummary } from '@/data/user/messages';
 
-const CONTEXT_LABEL: Record<string, { ar: string; en: string }> = {
+export const CONTEXT_LABEL: Record<string, { ar: string; en: string }> = {
   relationship_dispute: { ar: 'نزاع علاقة', en: 'Relationship dispute' },
   picture_link: { ar: 'ربط صورة', en: 'Picture link' },
   document_link: { ar: 'ربط وثيقة', en: 'Document link' },
