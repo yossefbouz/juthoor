@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { z } from 'zod';
+import { getEnabledSocialProviders } from '@/lib/auth/socialProviders';
 import { Login } from './Login';
 
 const SearchParamsSchema = z.object({
@@ -13,11 +14,13 @@ async function LoginWrapper(props: {
 }) {
   const searchParams = await props.searchParams;
   const { next, nextActionType, closed } = SearchParamsSchema.parse(searchParams);
+  const providers = await getEnabledSocialProviders();
   return (
     <Login
       next={next}
       nextActionType={nextActionType}
       closed={closed === '1'}
+      providers={providers}
     />
   );
 }

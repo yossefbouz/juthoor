@@ -33,9 +33,12 @@ export function LoginOtpTab({ next }: { next?: string }) {
     try {
       const r = await requestEmailOtpAction({ email: email.trim(), mode: 'login' });
       if (r?.serverError) throw new Error(r.serverError);
+      if (r?.validationErrors) {
+        throw new Error(t('البريد الإلكتروني غير صالح', 'Enter a valid email address.'));
+      }
       setStep('code');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
+      setError(err instanceof Error ? err.message : t('تعذّر إرسال الرمز', 'Failed to send code'));
     } finally {
       setBusy(false);
     }

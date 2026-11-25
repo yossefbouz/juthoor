@@ -22,17 +22,22 @@ import { toast } from 'sonner';
 
 import { useLocale } from '@/contexts/LocaleContext';
 import { OTP_LENGTH } from '@/lib/auth/otpConfig';
+import type { SocialProvider } from '@/lib/auth/socialProviders';
 
 export function Login({
   next,
   nextActionType: _nextActionType,
   closed = false,
+  providers,
 }: {
   next?: string;
   nextActionType?: string;
   closed?: boolean;
+  /** Social providers enabled on the Supabase project; none hides the tab. */
+  providers: SocialProvider[];
 }) {
   const { t, dir } = useLocale();
+  const hasSocial = providers.length > 0;
   const [redirectInProgress, setRedirectInProgress] = useState(false);
   const toastRef = useRef<string | number | undefined>(undefined);
 
@@ -68,11 +73,9 @@ export function Login({
         redirectToDashboard();
         setRedirectInProgress(true);
       },
-      onError: (error) => {
+      onError: ({ error }) => {
         const errorMessage =
-          error instanceof Error
-            ? error.message
-            : t(`فشل تسجيل الدخول ${String(error)}`, `Sign in account failed ${String(error)}`);
+          error.serverError ?? t('فشل تسجيل الدخول', 'Failed to login');
         toast.error(errorMessage, {
           id: toastRef.current,
         });
@@ -113,7 +116,7 @@ export function Login({
   }
 
   return (
-    <div dir={dir} className="container items-center text-left max-w-lg mx-auto overflow-auto min-h-[470px]">
+    <div dir={dir} className="container items-center text-start max-w-lg mx-auto overflow-auto min-h-[470px]">
       {redirectInProgress ? (
         <RedirectingPleaseWaitCard
           message={t('انتظر بينما نحوّلك إلى لوحة التحكم.', 'Please wait while we redirect you to your dashboard.')}
@@ -132,11 +135,15 @@ export function Login({
               )}
             </p>
           ) : null}
-          <Tabs defaultValue="password" className="md:min-w-[400px]">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs defaultValue="password" dir={dir} className="md:min-w-[400px]">
+            <TabsList
+              className={`grid w-full ${hasSocial ? 'grid-cols-3' : 'grid-cols-2'}`}
+            >
               <TabsTrigger value="password">{t('كلمة السر', 'Password')}</TabsTrigger>
               <TabsTrigger value="otp">{t('رمز التحقق', 'OTP Code')}</TabsTrigger>
-              <TabsTrigger value="social-login">{t('التواصل الاجتماعي', 'Social')}</TabsTrigger>
+              {hasSocial ? (
+                <TabsTrigger value="social-login">{t('التواصل الاجتماعي', 'Social')}</TabsTrigger>
+              ) : null}
             </TabsList>
             <TabsContent value="otp">
               <Card className="border-none shadow-none">
@@ -178,25 +185,27 @@ export function Login({
             </TabsContent>
 
             {/* magic-link tab removed — replaced by the OTP tab above */}
-            <TabsContent value="social-login">
-              <Card className="border-none shadow-none">
-                <CardHeader className="py-6 px-0">
-                  <CardTitle>{t('تسجيل الدخول إلى جذور', 'Sign in to Juthoor')}</CardTitle>
-                  <CardDescription>
-                    {t('ادخل عبر حسابك على Google أو GitHub.', 'Sign in with your Google or GitHub account.')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 p-0">
-                  <RenderProviders
-                    providers={['google', 'github', 'twitter']}
-                    isLoading={providerStatus === 'executing'}
-                    onProviderLoginRequested={(
-                      provider: 'google' | 'github' | 'twitter'
-                    ) => executeProvider({ provider, next })}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {hasSocial ? (
+              <TabsContent value="social-login">
+                <Card className="border-none shadow-none">
+                  <CardHeader className="py-6 px-0">
+                    <CardTitle>{t('تسجيل الدخول إلى جذور', 'Sign in to Juthoor')}</CardTitle>
+                    <CardDescription>
+                      {t('ادخل عبر أحد حساباتك التالية.', 'Sign in with one of these accounts.')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2 p-0">
+                    <RenderProviders
+                      providers={providers}
+                      isLoading={providerStatus === 'executing'}
+                      onProviderLoginRequested={(provider) =>
+                        executeProvider({ provider, next })
+                      }
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ) : null}
           </Tabs>
         </div>
       )}

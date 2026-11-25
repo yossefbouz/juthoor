@@ -13,18 +13,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useLocale } from '@/contexts/LocaleContext';
 import { updatePasswordAction } from '@/data/user/security';
 
 export function UpdatePassword() {
   const router = useRouter();
+  const { t } = useLocale();
   const toastRef = useRef<string | number | undefined>(undefined);
 
   const { execute, status } = useAction(updatePasswordAction, {
     onExecute: () => {
-      toastRef.current = toast.loading('Updating password...');
+      toastRef.current = toast.loading(t('جارٍ تحديث كلمة السر...', 'Updating password...'));
     },
     onSuccess: () => {
-      toast.success('Password updated!', {
+      toast.success(t('تم تحديث كلمة السر!', 'Password updated!'), {
         id: toastRef.current,
       });
       toastRef.current = undefined;
@@ -38,7 +40,7 @@ export function UpdatePassword() {
       const errorMessage =
         error.serverError ??
         validationErrors?.password?._errors?.[0] ??
-        'Failed to update password';
+        t('تعذّر تحديث كلمة السر', 'Failed to update password');
       toast.error(errorMessage, {
         id: toastRef.current,
       });
@@ -47,21 +49,21 @@ export function UpdatePassword() {
   });
 
   return (
-    <div className="container h-full grid items-center text-left max-w-lg mx-auto overflow-auto">
+    <div className="container h-full grid items-center text-start max-w-lg mx-auto overflow-auto">
       <div className="space-y-8 ">
         <Card>
           <CardHeader>
-            <CardTitle>Reset Password</CardTitle>
+            <CardTitle>{t('إعادة تعيين كلمة السر', 'Reset Password')}</CardTitle>
             <CardDescription>
-              Enter your email to receive a Magic Link to reset your password.
+              {t('اختر كلمة سر جديدة لحسابك.', 'Choose a new password for your account.')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Password
               isLoading={status === 'executing'}
               onSubmit={(password: string) => execute({ password })}
-              label="Create your new Password"
-              buttonLabel="Confirm Password"
+              label={t('أنشئ كلمة السر الجديدة', 'Create your new Password')}
+              buttonLabel={t('تأكيد كلمة السر', 'Confirm Password')}
             />
           </CardContent>
         </Card>

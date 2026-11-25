@@ -60,10 +60,15 @@ export function SignUp({ next }: { next?: string }) {
         displayName: displayName.trim() || undefined,
       });
       if (result?.serverError) throw new Error(result.serverError);
+      if (result?.validationErrors) {
+        throw new Error(
+          t('تحقّق من الاسم والبريد الإلكتروني ثم حاول مجددًا', 'Check your name and email address, then try again.'),
+        );
+      }
       setStep('code');
       setInfo(t(`فحَصْنا بريدك. أدخل الرمز المؤلَّف من ${OTP_LENGTH} أرقام.`, `Check your email for an ${OTP_LENGTH}-digit code.`));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send code');
+      setError(err instanceof Error ? err.message : t('تعذّر إرسال الرمز', 'Failed to send code'));
     } finally {
       setBusy(false);
     }

@@ -1,4 +1,8 @@
 'use server';
+import {
+  SOCIAL_PROVIDERS,
+  getEnabledSocialProviders,
+} from '@/lib/auth/socialProviders';
 import { actionClient } from '@/lib/safe-action';
 import { createSupabaseClient } from '@/supabase-clients/server';
 import { toSiteURL } from '@/utils/helpers';
@@ -34,7 +38,7 @@ export const signInWithPasswordAction = actionClient
   });
 
 const signInWithProviderSchema = z.object({
-  provider: z.enum(['google', 'github', 'twitter']),
+  provider: z.enum(SOCIAL_PROVIDERS),
   next: z.string().optional(),
 });
 
@@ -49,6 +53,10 @@ const signInWithProviderSchema = z.object({
 export const signInWithProviderAction = actionClient
   .schema(signInWithProviderSchema)
   .action(async ({ parsedInput: { provider, next } }) => {
+    // A disabled provider would send the user to a raw Supabase error page.
+    if (!(await getEnabledSocialProviders()).includes(provider)) {
+      throw new Error(`Social provider "${provider}" is not enabled`);
+    }
     const supabase = await createSupabaseClient();
     const redirectToURL = new URL(toSiteURL('/auth/callback'));
     if (next) {
@@ -105,7 +113,7 @@ const verifyEmailOtpSchema = z.object({
   // Supabase otp_length is configurable (hosted Juthoor uses 8, local
   // stack defaults to 6) — accept the whole range so an env mismatch
   // never locks users out at the validation layer.
-  token: z.string().regex(/^\d{6,8}$/, 'A 6–8 digit code is required'),
+  token: z.string().regex(/^\d{6,8}$/, 'يلزم رمز من 6 إلى 8 أرقام · A 6–8 digit code is required'),
 });
 
 export const verifyEmailOtpAction = actionClient
