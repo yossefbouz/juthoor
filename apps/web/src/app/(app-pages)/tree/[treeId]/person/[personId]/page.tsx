@@ -207,9 +207,10 @@ export default async function PersonPage({ params }: Props) {
       />
 
       {/* Side-by-side on desktop: 360° tree on the start, evidence on the end.
-          Stacks vertically below md so mobile keeps the wheel front-and-centre. */}
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <div className="min-w-0">
+          Stacks vertically below xl: with the sidebar open the tree does not fit
+          beside the evidence card on narrower screens. */}
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
+        <div className="min-w-0 overflow-x-auto">
           <TreeView360 treeId={treeId} neighbors={neighbors} />
         </div>
         <div className="min-w-0">
